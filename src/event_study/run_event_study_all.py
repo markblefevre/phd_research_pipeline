@@ -20,12 +20,16 @@ Notes:
 import pandas as pd
 import statsmodels.api as sm
 from pathlib import Path
-from project_paths import get_project_root
-from calculate_car_per_event import calculate_car_per_event
+from src.utils.project_paths import get_project_root
+from src.event_study.calculate_car_per_event import calculate_car_per_event
+from datetime import datetime
 
 
-def run_event_study_all(windows=None, sentiment_col="document_score"):
+def run_event_study_all(windows=None, sentiment_col="document_score",
+                        paper="paper1", run_id=None):
+
     root = get_project_root()
+    print(f"[INFO] Data root (inputs): {root}")
 
     # === Inputs ===
     sentiment_csv = root / "Code" / "out" / "mdna_summary_nikkei225_with_lmmd.csv"
@@ -33,7 +37,11 @@ def run_event_study_all(windows=None, sentiment_col="document_score"):
     prices_csv = root / "nikkei" / "out" / "prices_long.csv"
     market_csv = root / "nikkei" / "out" / "TOPIX_prices.csv"
 
-    out_dir = root / "Code" / "out" / "event_study"
+    root = Path(__file__).resolve().parents[2]
+    print(f"[INFO] Repo root (outputs): {root}")
+    if run_id is None:
+        run_id = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    out_dir = root / "outputs" / paper / run_id / "event_study"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if windows is None:

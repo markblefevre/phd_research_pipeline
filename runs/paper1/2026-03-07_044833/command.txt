@@ -1,0 +1,1 @@
+\\nas\nas1\documents\education\2021 edhec exec phd\5 pipeline\scripts\paper1\run_pipeline.py

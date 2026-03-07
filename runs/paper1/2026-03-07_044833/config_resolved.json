@@ -1,0 +1,44 @@
+{
+  "paper": "paper1",
+  "run_id": "2026-03-07_044833",
+  "config": {
+    "run": {
+      "paper": "paper1",
+      "run_id": "auto"
+    },
+    "stages": {
+      "event_study": true
+    },
+    "event_study": {
+      "sentiment_cols": [
+        "document_score",
+        "lmmd_net",
+        "neg_rate",
+        "pos_rate"
+      ],
+      "windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -2,
+          2
+        ],
+        [
+          -3,
+          3
+        ]
+      ],
+      "skip_if_exists": true
+    }
+  }
+}
