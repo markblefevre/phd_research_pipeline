@@ -1,0 +1,18 @@
+{
+  "market_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\prices\\TOPIX_prices.csv",
+  "stocks_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\prices\\prices_long.csv",
+  "output_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\event_study\\alphas_betas.csv",
+  "elapsed_seconds": 1.2492,
+  "market_rows_loaded": 2389,
+  "stock_rows_loaded": 588586,
+  "ticker_count_loaded": 225,
+  "common_dates_count": 2387,
+  "market_rows_after_overlap": 2387,
+  "stock_rows_after_overlap": 530750,
+  "merged_rows_used": 530750,
+  "obs_per_ticker_min": 734,
+  "obs_per_ticker_median": 2387.0,
+  "obs_per_ticker_max": 2387,
+  "tickers_output": 225,
+  "tickers_dropped": 0
+}

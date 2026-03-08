@@ -1,0 +1,62 @@
+{
+  "mdna_found": true,
+  "document_score": 0.5,
+  "chunks": [
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "売上高は前年比 12.4％増の 1 兆 352 億円"
+      ]
+    },
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "前年比15％増、21％増、39％増となりました"
+      ]
+    },
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "売上高は現地通貨ベースで前年比3.8％増、円換算後では前年比9.9％増"
+      ]
+    },
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "売上高は現地通貨ベースで前年比28.4％増、円換算後では前年比32.8％増"
+      ]
+    },
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "売上高は現地通貨ベースで前年比16.4％増、円換算後では前年比24.1％増"
+      ]
+    },
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "資金調達手段は分散されていることから、財務の柔軟性は高いと考えています"
+      ]
+    },
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "営業活動によるキャッシュ・フローは、前年同期に比べ588億円増加の1,229億円の収入となりました"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "経営者は、これらの見積りについて過去の実績等を勘案し合理的に判断しています"
+      ]
+    }
+  ]
+}

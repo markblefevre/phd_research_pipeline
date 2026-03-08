@@ -1,0 +1,45 @@
+{
+  "mdna_found": true,
+  "document_score": 0.2,
+  "chunks": [
+    {
+      "score": 0.2,
+      "label": "positive",
+      "evidence": [
+        "取り巻く事業環境は全体としては改善しつつあります",
+        "当社グループの当連結会計年度の経営成績等については、以下のとおりとなりました。"
+      ]
+    },
+    {
+      "score": -0.1,
+      "label": "negative",
+      "evidence": [
+        "財務活動による資金は、短期借入金の返済、配当金の支払いなどにより138億78百万円の減少"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "生産、受注及び販売の実績",
+        "受注高、売上高および受注残高"
+      ]
+    },
+    {
+      "score": 0.3,
+      "label": "positive",
+      "evidence": [
+        "2018年度の受注高は過去最高の9,354億円を達成することができました",
+        "原油価格は回復しつつあり"
+      ]
+    },
+    {
+      "score": 0.4,
+      "label": "positive",
+      "evidence": [
+        "AI・IoTを活用したHot Air Recirculation予測システムの構築を目指し",
+        "水素エネルギー社会の実現に向けた取組み"
+      ]
+    }
+  ]
+}

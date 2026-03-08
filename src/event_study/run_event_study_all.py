@@ -26,16 +26,19 @@ from datetime import datetime
 
 
 def run_event_study_all(windows=None, sentiment_col="document_score",
-                        paper="paper1", run_id=None):
+    paper="paper1", run_id=None,
+    sentiment_csv=None, alphas_betas_csv=None, prices_csv=None, market_csv=None):
 
-    root = get_project_root()
-    print(f"[INFO] Data root (inputs): {root}")
+    data_root = get_project_root()
+    print(f"[INFO] Data root (inputs): {data_root}")
 
     # === Inputs ===
-    sentiment_csv = root / "Code" / "out" / "mdna_summary_nikkei225_with_lmmd.csv"
-    alphas_betas_csv = root / "Code" / "out" / "alphas_betas.csv"
-    prices_csv = root / "nikkei" / "out" / "prices_long.csv"
-    market_csv = root / "nikkei" / "out" / "TOPIX_prices.csv"
+
+    # Defaults (legacy) if not provided
+    sentiment_csv = Path(sentiment_csv) if sentiment_csv else data_root / "Code" / "out" / "mdna_summary_nikkei225_with_lmmd.csv"
+    alphas_betas_csv = Path(alphas_betas_csv) if alphas_betas_csv else data_root / "Code" / "out" / "alphas_betas.csv"
+    prices_csv = Path(prices_csv) if prices_csv else data_root / "nikkei" / "out" / "prices_long.csv"
+    market_csv = Path(market_csv) if market_csv else data_root / "nikkei" / "out" / "TOPIX_prices.csv"
 
     root = Path(__file__).resolve().parents[2]
     print(f"[INFO] Repo root (outputs): {root}")

@@ -1,0 +1,41 @@
+{
+  "mdna_found": true,
+  "document_score": 0.2,
+  "chunks": [
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "当期の業績に与える影響は限定的でした。"
+      ]
+    },
+    {
+      "score": 0.2,
+      "label": "neutral",
+      "evidence": [
+        "前年同期比で増益となりました。"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "前年同期比で改善しました。"
+      ]
+    },
+    {
+      "score": 0.3,
+      "label": "positive",
+      "evidence": [
+        "関連事業セグメント全体では黒字を計上しました。"
+      ]
+    },
+    {
+      "score": 0.2,
+      "label": "neutral",
+      "evidence": [
+        "当社は全てのセグメントにおける黒字と前年度を大きく上回る経常利益550億円、親会社株主に帰属する当期純利益326億円を達成しました。"
+      ]
+    }
+  ]
+}

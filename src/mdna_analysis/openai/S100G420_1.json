@@ -1,0 +1,27 @@
+{
+  "mdna_found": true,
+  "document_score": 0.5,
+  "chunks": [
+    {
+      "score": 0.2,
+      "label": "neutral",
+      "evidence": [
+        "米国は堅調なものの、欧州・中国の景気低迷等により、全体として減速基調となりました。"
+      ]
+    },
+    {
+      "score": 0.8,
+      "label": "positive",
+      "evidence": [
+        "３期連続で過去最高益を更新することができました。"
+      ]
+    },
+    {
+      "score": 0.5,
+      "label": "neutral",
+      "evidence": [
+        "フリー・キャッシュ・フローは732億円の資金の増加となりました。"
+      ]
+    }
+  ]
+}

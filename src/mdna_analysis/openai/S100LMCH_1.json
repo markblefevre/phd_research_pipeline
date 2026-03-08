@@ -1,0 +1,46 @@
+{
+  "mdna_found": true,
+  "document_score": -0.6,
+  "chunks": [
+    {
+      "score": -0.5,
+      "label": "negative",
+      "evidence": [
+        "極めて厳しい経営環境が続く中",
+        "2027年の開業は難しい状況となっています"
+      ]
+    },
+    {
+      "score": -0.7,
+      "label": "negative",
+      "evidence": [
+        "営業収益は前期比55.4％減",
+        "親会社株主に帰属する当期純損失は2,015億円"
+      ]
+    },
+    {
+      "score": -0.6,
+      "label": "negative",
+      "evidence": [
+        "輸送実績は前期比66.3％減",
+        "営業損失は1,833億円"
+      ]
+    },
+    {
+      "score": -0.5,
+      "label": "negative",
+      "evidence": [
+        "営業収益は前期比33.6％減",
+        "営業損失は122億円"
+      ]
+    },
+    {
+      "score": -0.7,
+      "label": "negative",
+      "evidence": [
+        "営業損失は1,847億円",
+        "親会社株主に帰属する当期純損失は2,015億円"
+      ]
+    }
+  ]
+}

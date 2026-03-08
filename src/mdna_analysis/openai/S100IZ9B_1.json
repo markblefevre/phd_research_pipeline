@@ -1,0 +1,41 @@
+{
+  "mdna_found": true,
+  "document_score": -0.2,
+  "chunks": [
+    {
+      "score": 0,
+      "label": "neutral",
+      "evidence": [
+        "当社の連結財務諸表はIFRSに基づいて作成されています。"
+      ]
+    },
+    {
+      "score": -0.5,
+      "label": "negative",
+      "evidence": [
+        "営業利益は、2,938億円（前年比29％減）となりました。"
+      ]
+    },
+    {
+      "score": -0.5,
+      "label": "negative",
+      "evidence": [
+        "当セグメントの売上高は、前年度比で6％減少し、2兆5,926億円となりました。"
+      ]
+    },
+    {
+      "score": -0.5,
+      "label": "negative",
+      "evidence": [
+        "当セグメントの営業利益は、466億円の損失となりました。"
+      ]
+    },
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "フリーキャッシュ・フローは、2,242億円（前年差2,139億円の良化）となりました。"
+      ]
+    }
+  ]
+}

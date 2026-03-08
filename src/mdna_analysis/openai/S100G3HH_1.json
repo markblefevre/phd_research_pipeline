@@ -1,0 +1,44 @@
+{
+  "mdna_found": true,
+  "document_score": -0.6,
+  "chunks": [
+    {
+      "score": -0.8,
+      "label": "negative",
+      "evidence": [
+        "経常損益が悪化しました",
+        "親会社株主に帰属する当期純損失は1,111億88百万円"
+      ]
+    },
+    {
+      "score": -0.5,
+      "label": "negative",
+      "evidence": [
+        "市況は急落し",
+        "大幅に悪化しました"
+      ]
+    },
+    {
+      "score": -0.3,
+      "label": "negative",
+      "evidence": [
+        "自動車船事業全体では前期比で減収となり、損失を計上しました"
+      ]
+    },
+    {
+      "score": -0.6,
+      "label": "negative",
+      "evidence": [
+        "営業損失となりました",
+        "営業外損益は241億97百万円の損失"
+      ]
+    },
+    {
+      "score": -0.8,
+      "label": "negative",
+      "evidence": [
+        "親会社株主に帰属する当期純損失は1,111億88百万円"
+      ]
+    }
+  ]
+}

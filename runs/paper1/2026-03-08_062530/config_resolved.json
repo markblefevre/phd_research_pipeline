@@ -1,0 +1,71 @@
+{
+  "paper": "paper1",
+  "run_id": "2026-03-08_062530",
+  "config": {
+    "run": {
+      "paper": "paper1",
+      "run_id": "auto"
+    },
+    "stages": {
+      "build_panel": true,
+      "market_model": true,
+      "event_study": true,
+      "horserace": true
+    },
+    "build_panel": {
+      "skip_if_exists": true,
+      "gpt_csv": "data/curated/paper1/panel/mdna_summary_nikkei225_filtered.csv",
+      "lmmd_csv": "data/curated/paper1/panel/lmmd_scores_nikkei225.csv",
+      "out_csv": "data/curated/paper1/panel/mdna_summary_nikkei225_with_lmmd.csv"
+    },
+    "market_model": {
+      "skip_if_exists": true,
+      "market_csv": "data/curated/paper1/prices/TOPIX_prices.csv",
+      "stocks_csv": "data/curated/paper1/prices/prices_long.csv",
+      "out_csv": "data/curated/paper1/event_study/alphas_betas.csv"
+    },
+    "event_study": {
+      "sentiment_cols": [
+        "document_score",
+        "lmmd_net",
+        "neg_rate",
+        "pos_rate"
+      ],
+      "windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -2,
+          2
+        ],
+        [
+          -3,
+          3
+        ]
+      ],
+      "skip_if_exists": true,
+      "inputs": {
+        "sentiment_csv": "data/curated/paper1/panel/mdna_summary_nikkei225_with_lmmd.csv",
+        "alphas_betas_csv": "data/curated/paper1/event_study/alphas_betas.csv",
+        "prices_csv": "data/curated/paper1/prices/prices_long.csv",
+        "market_csv": "data/curated/paper1/prices/TOPIX_prices.csv"
+      }
+    },
+    "horserace": {
+      "skip_if_exists": true,
+      "inputs": {
+        "panel_csv": "data/curated/paper1/panel/mdna_summary_nikkei225_with_lmmd.csv"
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "mdna_found": true,
+  "document_score": 0.2,
+  "chunks": [
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "売上高は2,981億円（前期比5.3％減）、営業利益については302億円（前期比2.3％増）"
+      ]
+    },
+    {
+      "score": 0.2,
+      "label": "positive",
+      "evidence": [
+        "ＲＯＥは、前期比0.9ポイント増の10.6％となりました。"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "売上高は減少しましたが、構造改革による収益体質の改善を図りました。"
+      ]
+    },
+    {
+      "score": 0.3,
+      "label": "positive",
+      "evidence": [
+        "営業利益は382億円（前期比9.1％増）となりました。"
+      ]
+    }
+  ]
+}

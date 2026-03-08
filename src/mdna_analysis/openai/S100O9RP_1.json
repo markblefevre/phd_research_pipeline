@@ -1,0 +1,55 @@
+{
+  "mdna_found": true,
+  "document_score": -0.2,
+  "chunks": [
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "合理的な基準に基づき会計上の見積りを行っております。"
+      ]
+    },
+    {
+      "score": 0.2,
+      "label": "positive",
+      "evidence": [
+        "当社グループの連結売上高は、9,114億円（前期比5.6％増）となりました。"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "DW-DXユニット全体では、前期比で増収となりました。"
+      ]
+    },
+    {
+      "score": -0.3,
+      "label": "negative",
+      "evidence": [
+        "プレシジョンメディシンユニットは、前期比で減収となりました。"
+      ]
+    },
+    {
+      "score": 0.3,
+      "label": "positive",
+      "evidence": [
+        "当事業の売上高は、1,392億円（前期比17.8％増）、営業利益は185億円（同18.7％増）となりました。"
+      ]
+    },
+    {
+      "score": -0.4,
+      "label": "negative",
+      "evidence": [
+        "フリー・キャッシュ・フローは135億円のマイナスとなりました。"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "資金調達の一元化や効率化を図っております。"
+      ]
+    }
+  ]
+}

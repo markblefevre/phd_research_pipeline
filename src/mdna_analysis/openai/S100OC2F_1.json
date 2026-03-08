@@ -1,0 +1,54 @@
+{
+  "mdna_found": true,
+  "document_score": 0.2,
+  "chunks": [
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "引き続き極めて厳しい経営環境が続く中",
+        "感染拡大防止に取り組みながら"
+      ]
+    },
+    {
+      "score": 0.2,
+      "label": "neutral",
+      "evidence": [
+        "輸送実績（輸送人キロ）は、前期比30.1％増",
+        "営業収益は前期比13.6％増"
+      ]
+    },
+    {
+      "score": 0.3,
+      "label": "positive",
+      "evidence": [
+        "早期復旧に取り組み",
+        "運転を再開しました"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "営業収益は前期比41.2％減",
+        "営業損失は37億円となりました"
+      ]
+    },
+    {
+      "score": 0.3,
+      "label": "positive",
+      "evidence": [
+        "営業利益は17億円となり",
+        "1,864億円改善しました"
+      ]
+    },
+    {
+      "score": 0.2,
+      "label": "neutral",
+      "evidence": [
+        "見積り及び判断を行っていますが",
+        "見積り特有の不確実性があるため"
+      ]
+    }
+  ]
+}

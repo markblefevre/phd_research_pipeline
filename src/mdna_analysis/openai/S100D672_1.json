@@ -1,0 +1,34 @@
+{
+  "mdna_found": true,
+  "document_score": -0.25,
+  "chunks": [
+    {
+      "score": -0.2,
+      "label": "negative",
+      "evidence": [
+        "売上高、コア営業利益、コア当期純利益はいずれも減少しました。"
+      ]
+    },
+    {
+      "score": -0.3,
+      "label": "negative",
+      "evidence": [
+        "売上高、営業利益、税引前利益、当期純利益はいずれも減少しました。"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "営業活動によるキャッシュ・フローは、3,126億円（対前連結会計年度比770億円増）となりました。"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "企業価値の持続的向上に努めるとともに株主還元にも積極的に取り組みます。"
+      ]
+    }
+  ]
+}

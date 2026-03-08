@@ -1,0 +1,30 @@
+{
+  "inputs": {
+    "gpt_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\panel\\mdna_summary_nikkei225_filtered.csv",
+    "lmmd_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\panel\\lmmd_scores_nikkei225.csv"
+  },
+  "rows": {
+    "gpt": 1087,
+    "lmmd": 1087,
+    "merged_pre_dropna": 1087,
+    "merged_post_dropna": 1087
+  },
+  "keys": {
+    "gpt_unique_keys": 1087,
+    "lmmd_unique_keys": 1087,
+    "gpt_duplicate_keys": 0,
+    "lmmd_duplicate_keys": 0
+  },
+  "outputs": {
+    "out_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\panel\\mdna_summary_nikkei225_with_lmmd.csv",
+    "qc_json": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\panel\\mdna_summary_nikkei225_with_lmmd.csv.qc.json",
+    "columns": 9
+  },
+  "missing_after_dropna": {
+    "document_score": 0,
+    "lmmd_net": 0,
+    "pos_rate": 0,
+    "neg_rate": 0
+  },
+  "written_at": "2026-03-08T06:23:06"
+}

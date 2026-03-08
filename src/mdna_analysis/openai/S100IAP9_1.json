@@ -1,0 +1,34 @@
+{
+  "mdna_found": true,
+  "document_score": 0.1,
+  "chunks": [
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "当連結会計年度における世界経済は、米中貿易摩擦の長期化の影響などによる世界経済の減速懸念の高まりのほか、海外情勢の不確実性もあり、先行き不透明な状況が続いております。"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "営業活動の結果得られた資金は105,073百万円(前期は118,018百万円の収入)となりました。"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "positive",
+      "evidence": [
+        "韓国においては、主力PCオンラインゲーム『メイプルストーリー』(MapleStory)が好調に推移したほか、『EA SPORTS™ FIFA ONLINE ４』(以下『FIFA ONLINE ４』)及び『EA SPORTS™ FIFA ONLINE ４M』(以下『FIFA ONLINE ４M』)がサービス移行の影響を受けた前連結会計年度との比較で大きく成長しました。"
+      ]
+    },
+    {
+      "score": 0.2,
+      "label": "positive",
+      "evidence": [
+        "当連結会計年度末の総資産は719,088百万円であり、前連結会計年度末に比べて69,090百万円増加しております。"
+      ]
+    }
+  ]
+}

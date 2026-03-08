@@ -1,0 +1,104 @@
+{
+  "mdna_found": true,
+  "document_score": -0.1,
+  "chunks": [
+    {
+      "score": -0.5,
+      "label": "negative",
+      "evidence": [
+        "当連結会計年度の経常利益は前連結会計年度対比288億円減益"
+      ]
+    },
+    {
+      "score": -0.3,
+      "label": "negative",
+      "evidence": [
+        "連結業務純益は、前連結会計年度比116億円減益"
+      ]
+    },
+    {
+      "score": 0.2,
+      "label": "positive",
+      "evidence": [
+        "収益を持続的に支える実力は着実に向上してきております"
+      ]
+    },
+    {
+      "score": 0.3,
+      "label": "positive",
+      "evidence": [
+        "連結業務純益は前連結会計年度比36億円増益"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "貸出金は、株式会社三井住友銀行において、国内法人向け貸出及び米州、アジアを中心とした海外貸出が増加"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "金融再生法開示債権は、前連結会計年度末比228億円増加"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "預金は、株式会社三井住友銀行において、国内預金が個人預金、法人預金ともに増加"
+      ]
+    },
+    {
+      "score": -0.2,
+      "label": "negative",
+      "evidence": [
+        "資金運用収支は前連結会計年度比588億円減益"
+      ]
+    },
+    {
+      "score": -0.1,
+      "label": "negative",
+      "evidence": [
+        "役務取引等収支は同67億円減益"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "特定取引収支は同549億円減益"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "特定取引収支は同18億円増益"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "特定取引資産残高は前連結会計年度末比2,568億円減少"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "預金合計前連結会計年度末95,583,81820,893,715116,477,534"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "キャッシュ・フローは、資金の運用・調達や貸出金・預金の増減等の「営業活動によるキャッシュ・フロー」が前連結会計年度対比４兆7,466億円減少"
+      ]
+    }
+  ]
+}

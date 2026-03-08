@@ -1,0 +1,43 @@
+{
+  "mdna_found": true,
+  "document_score": 0.6,
+  "chunks": [
+    {
+      "score": 0.8,
+      "label": "positive",
+      "evidence": [
+        "売上高は2兆38億5百万円(前連結会計年度比43.2%増)",
+        "営業利益は5,992億7千1百万円(前連結会計年度比86.9%増)"
+      ]
+    },
+    {
+      "score": -0.2,
+      "label": "negative",
+      "evidence": [
+        "FPD TFTアレイ向け製造装置市場全体としては減速傾向"
+      ]
+    },
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "流動資産は、前連結会計年度末に比べ3,930億6百万円増加",
+        "自己資本比率は70.5%"
+      ]
+    },
+    {
+      "score": 0.7,
+      "label": "positive",
+      "evidence": [
+        "営業活動によるキャッシュ・フローは前連結会計年度に比べ1,374億9千9百万円増加"
+      ]
+    },
+    {
+      "score": 0.6,
+      "label": "positive",
+      "evidence": [
+        "ROE(自己資本利益率)は前連結会計年度の26.5%から37.2%へ上昇"
+      ]
+    }
+  ]
+}

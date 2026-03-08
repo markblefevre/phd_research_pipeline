@@ -1,0 +1,34 @@
+{
+  "mdna_found": true,
+  "document_score": 0.1,
+  "chunks": [
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "総資産は、２兆3,324億円 (前連結会計年度末比588億円増) となりました。"
+      ]
+    },
+    {
+      "score": 0.0,
+      "label": "neutral",
+      "evidence": [
+        "売上収益は増加した一方、コア営業利益及びコア当期利益は減少しました。"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "売上収益、営業利益及び当期利益はいずれも増加しました。"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "企業価値の持続的向上に努めるとともに、株主還元にも積極的に取り組んでいます。"
+      ]
+    }
+  ]
+}

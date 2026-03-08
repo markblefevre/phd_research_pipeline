@@ -1,0 +1,48 @@
+{
+  "mdna_found": true,
+  "document_score": 0.3,
+  "chunks": [
+    {
+      "score": 0.5,
+      "label": "positive",
+      "evidence": [
+        "連結業績は、9期連続の営業利益及び当期利益の増益、6期連続の営業最高益を達成することができました。"
+      ]
+    },
+    {
+      "score": 0.2,
+      "label": "neutral",
+      "evidence": [
+        "自己株式の取得を決議し、総額500億円の自己株式を取得しました。"
+      ]
+    },
+    {
+      "score": 0.3,
+      "label": "positive",
+      "evidence": [
+        "売上高は、前期に対して1.2％増の1兆5,080億円（実質1.3％増）となりました。"
+      ]
+    },
+    {
+      "score": -0.2,
+      "label": "negative",
+      "evidence": [
+        "中国での転売を目的とした需要が大きく減少し、売り上げは前期を下回りました。"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "営業活動によるキャッシュ・フローは、1,956億円となりました。"
+      ]
+    },
+    {
+      "score": 0.1,
+      "label": "neutral",
+      "evidence": [
+        "IFRSでは償却を停止しております。"
+      ]
+    }
+  ]
+}
