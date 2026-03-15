@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 import time
+import os
 
 try:
     import tomllib  # Python 3.11+
@@ -19,6 +20,10 @@ except ModuleNotFoundError:
 
 # ---- Import your stage(s) ----
 # This assumes you can run: python -m src.event_study.run_event_study_all
+from src.prices.fetch_jpx_prices import run_fetch_jpx_prices
+from src.prices.compute_lagged_rolling_vol_csv import compute_lagged_rolling_vol_csv
+from src.prices.fetch_market_indexes import run_fetch_market_indexes
+from src.panel.run_lmmd_score import run_lmmd_score
 from src.event_study.run_market_model import run_market_model
 from src.event_study.run_event_study_all import run_event_study_all
 from src.event_study.run_event_study_horserace import run_horserace
@@ -127,11 +132,324 @@ def parse_windows(raw: Any) -> List[Tuple[int, int]]:
         windows.append((int(w[0]), int(w[1])))
     return windows
 
+# ----------------------------
+# Stage: Fetch JPX Prices
+# ----------------------------
+def run_stage_price_data(
+    *,
+    paper: str,
+    cfg: Dict[str, Any],
+    logger: logging.Logger,
+) -> None:
+    t0 = time.perf_counter()
+    status = "ok"
+
+    try:
+        pd_cfg = cfg.get("price_data", {})
+        skip_if_exists = bool(pd_cfg.get("skip_if_exists", True))
+        root = repo_root()
+
+        symbols_csv = pd_cfg.get("symbols_csv")
+        if not symbols_csv:
+            raise ValueError("Config error: [price_data] requires symbols_csv")
+
+        symbols_col = pd_cfg.get("symbols_col", "symbol")
+        start = pd_cfg.get("start", "2015-01-01")
+        end = pd_cfg.get("end") or None
+        chunk_size = int(pd_cfg.get("chunk_size", 60))
+        retries = int(pd_cfg.get("retries", 1))
+
+        stocks_out_csv = pd_cfg.get("stocks_out_csv", f"data/curated/{paper}/prices/prices_long.csv")
+        dividends_out_csv = pd_cfg.get("dividends_out_csv", f"data/curated/{paper}/prices/dividends.csv")
+        splits_out_csv = pd_cfg.get("splits_out_csv", f"data/curated/{paper}/prices/splits.csv")
+
+        symbols_csv_p = root / symbols_csv
+        prices_csv_p = root / stocks_out_csv
+        dividends_csv_p = root / dividends_out_csv
+        splits_csv_p = root / splits_out_csv
+
+        # run_fetch_jpx_prices writes fixed filenames into a single output directory,
+        # so require all configured outputs to live in the same directory.
+        outdirs = {
+            prices_csv_p.parent.resolve(),
+            dividends_csv_p.parent.resolve(),
+            splits_csv_p.parent.resolve(),
+        }
+        if len(outdirs) != 1:
+            raise ValueError(
+                "Config error: stocks_out_csv, dividends_out_csv, and splits_out_csv "
+                "must all be in the same directory for run_fetch_jpx_prices"
+            )
+        stocks_outdir_p = prices_csv_p.parent
+
+        # Optional sanity check: current fetcher writes fixed filenames
+        if prices_csv_p.name != "prices_long.csv":
+            raise ValueError("Config error: stocks_out_csv filename must be 'prices_long.csv'")
+        if dividends_csv_p.name != "dividends.csv":
+            raise ValueError("Config error: dividends_out_csv filename must be 'dividends.csv'")
+        if splits_csv_p.name != "splits.csv":
+            raise ValueError("Config error: splits_out_csv filename must be 'splits.csv'")
+
+        logger.info("Stage price_data: symbols_csv=%s", symbols_csv_p)
+        logger.info("Stage price_data: prices_csv=%s", prices_csv_p)
+        logger.info("Stage price_data: dividends_csv=%s", dividends_csv_p)
+        logger.info("Stage price_data: splits_csv=%s", splits_csv_p)
+        logger.info("Stage price_data: symbols_col=%s", symbols_col)
+        logger.info("Stage price_data: start=%s end=%s", start, end)
+
+        if skip_if_exists and prices_csv_p.exists() and dividends_csv_p.exists() and splits_csv_p.exists():
+            status = "skipped"
+            logger.info("[SKIP] price_data already done at %s", stocks_outdir_p)
+            return
+
+        if not symbols_csv_p.exists():
+            raise FileNotFoundError(f"Missing symbols_csv: {symbols_csv_p}")
+
+        stocks_outdir_p.mkdir(parents=True, exist_ok=True)
+
+        logger.info("[RUN] price_data")
+        summary = run_fetch_jpx_prices(
+            input_csv=symbols_csv_p,
+            outdir=stocks_outdir_p,
+            symbols_col=symbols_col,
+            start=start,
+            end=end,
+            chunk_size=chunk_size,
+            retries=retries,
+        )
+
+        logger.info("price_data summary: %s", summary)
+
+        if not prices_csv_p.exists():
+            raise FileNotFoundError(f"Expected output not written: {prices_csv_p}")
+        if not dividends_csv_p.exists():
+            logger.warning("Dividend output not found: %s", dividends_csv_p)
+        if not splits_csv_p.exists():
+            logger.warning("Split output not found: %s", splits_csv_p)
+
+    except Exception:
+        status = "failed"
+        raise
+
+    finally:
+        elapsed = time.perf_counter() - t0
+        logger.info("Stage price_data finished: status=%s elapsed=%.3fs", status, elapsed)
+
+# ----------------------------
+# Stage: Price Features (lagged rolling volatility)
+# ----------------------------
+def run_stage_price_features(
+    *,
+    paper: str,
+    cfg: Dict[str, Any],
+    logger: logging.Logger,
+) -> None:
+    t0 = time.perf_counter()
+    status = "ok"
+
+    try:
+        pf_cfg = cfg.get("price_features", {})
+        skip_if_exists = bool(pf_cfg.get("skip_if_exists", True))
+        root = repo_root()
+
+        input_csv = pf_cfg.get("input_csv", f"data/curated/{paper}/prices/prices_long.csv")
+        output_csv = pf_cfg.get("output_csv", f"data/curated/{paper}/prices/price_features.csv")
+        price_col = pf_cfg.get("price_col", "adj_close")
+        symbol_col = pf_cfg.get("symbol_col", "symbol")
+        date_col = pf_cfg.get("date_col", "date")
+        return_col = pf_cfg.get("return_col", "ret")
+        offset = int(pf_cfg.get("offset", 11))
+        windows = pf_cfg.get("windows", [20, 60, 120])
+        ddof = int(pf_cfg.get("ddof", 1))
+
+        input_csv_p = root / input_csv
+        output_csv_p = root / output_csv
+
+        logger.info("Stage price_features: input_csv=%s", input_csv_p)
+        logger.info("Stage price_features: output_csv=%s", output_csv_p)
+        logger.info(
+            "Stage price_features: price_col=%s symbol_col=%s date_col=%s return_col=%s offset=%s windows=%s ddof=%s",
+            price_col, symbol_col, date_col, return_col, offset, windows, ddof
+        )
+
+        if skip_if_exists and output_csv_p.exists():
+            status = "skipped"
+            logger.info("[SKIP] price_features already done at %s", output_csv_p)
+            return
+
+        if not input_csv_p.exists():
+            raise FileNotFoundError(f"Missing input_csv: {input_csv_p}")
+
+        logger.info("[RUN] price_features")
+        df_out = compute_lagged_rolling_vol_csv(
+            input_csv=input_csv_p,
+            output_csv=output_csv_p,
+            price_col=price_col,
+            symbol_col=symbol_col,
+            date_col=date_col,
+            offset=offset,
+            windows=windows,
+            return_col=return_col,
+            ddof=ddof,
+        )
+
+        logger.info(
+            "price_features wrote %s rows x %s cols to %s",
+            len(df_out),
+            len(df_out.columns),
+            output_csv_p,
+        )
+
+    except Exception:
+        status = "failed"
+        raise
+
+    finally:
+        elapsed = time.perf_counter() - t0
+        logger.info("Stage price_features finished: status=%s elapsed=%.3fs", status, elapsed)        
+
+# ----------------------------
+# Stage: Market Indexes
+# ----------------------------
+def run_stage_market_indexes(
+    *,
+    paper: str,
+    cfg: Dict[str, Any],
+    logger: logging.Logger,
+) -> None:
+    t0 = time.perf_counter()
+    status = "ok"
+
+    try:
+        mi_cfg = cfg.get("market_indexes", {})
+        skip_if_exists = bool(mi_cfg.get("skip_if_exists", True))
+        root = repo_root()
+
+        topix_out_csv = mi_cfg.get("topix_out_csv", f"data/curated/{paper}/prices/TOPIX_prices.csv")
+        n225_out_csv = mi_cfg.get("n225_out_csv", f"data/curated/{paper}/prices/N225_prices.csv")
+        topix_source = mi_cfg.get("topix_source", "jpx")
+        start = mi_cfg.get("start", None)
+        end = mi_cfg.get("end") or None
+        jpx_api_key_env = mi_cfg.get("jpx_api_key_env", "JQUANTS_API_KEY")
+
+        topix_out_csv_p = root / topix_out_csv
+        n225_out_csv_p = root / n225_out_csv
+
+        outdirs = {
+            topix_out_csv_p.parent.resolve(),
+            n225_out_csv_p.parent.resolve(),
+        }
+        if len(outdirs) != 1:
+            raise ValueError(
+                "Config error: topix_out_csv and n225_out_csv must be in the same directory "
+                "for run_fetch_market_indexes"
+            )
+        outdir_p = topix_out_csv_p.parent
+
+        if topix_out_csv_p.name != "TOPIX_prices.csv":
+            raise ValueError("Config error: topix_out_csv filename must be 'TOPIX_prices.csv'")
+        if n225_out_csv_p.name != "N225_prices.csv":
+            raise ValueError("Config error: n225_out_csv filename must be 'N225_prices.csv'")
+
+        jpx_api_key = os.getenv(jpx_api_key_env)
+
+        logger.info("Stage market_indexes: outdir=%s", outdir_p)
+        logger.info("Stage market_indexes: topix_out_csv=%s", topix_out_csv_p)
+        logger.info("Stage market_indexes: n225_out_csv=%s", n225_out_csv_p)
+        logger.info("Stage market_indexes: topix_source=%s", topix_source)
+        logger.info("Stage market_indexes: start=%s end=%s", start, end)
+        logger.info("Stage market_indexes: jpx_api_key_env=%s present=%s", jpx_api_key_env, bool(jpx_api_key))
+
+        if skip_if_exists and topix_out_csv_p.exists() and n225_out_csv_p.exists():
+            status = "skipped"
+            logger.info("[SKIP] market_indexes already done at %s", outdir_p)
+            return
+
+        outdir_p.mkdir(parents=True, exist_ok=True)
+
+        logger.info("[RUN] market_indexes")
+        summary = run_fetch_market_indexes(
+            outdir=outdir_p,
+            start=start,
+            end=end,
+            topix_source=topix_source,
+            jpx_api_key=jpx_api_key,
+        )
+        logger.info("market_indexes summary: %s", summary)
+
+        if not topix_out_csv_p.exists():
+            raise FileNotFoundError(f"Expected output not written: {topix_out_csv_p}")
+        if not n225_out_csv_p.exists():
+            raise FileNotFoundError(f"Expected output not written: {n225_out_csv_p}")
+
+    except Exception:
+        status = "failed"
+        raise
+
+    finally:
+        elapsed = time.perf_counter() - t0
+        logger.info("Stage market_indexes finished: status=%s elapsed=%.3fs", status, elapsed)
+        
+# ----------------------------
+# Stage: LMMD Score
+# ----------------------------
+def run_stage_lmmd_score(
+    *,
+    paper: str,
+    cfg: Dict[str, Any],
+    logger: logging.Logger,
+) -> None:
+    t0 = time.perf_counter()
+    status = "ok"
+    try:
+        ls_cfg = cfg.get("lmmd_score", {})
+        skip_if_exists = bool(ls_cfg.get("skip_if_exists", True))
+        root = repo_root()
+
+        index_csv = root / ls_cfg.get("index_csv", f"data/curated/{paper}/panel/mdna_summary_nikkei225_filtered.csv")
+        mdna_dir = root / ls_cfg.get("mdna_dir", f"data/interim/{paper}/data")
+        lmmd_dict_csv = root / ls_cfg["lmmd_dict_csv"]
+        out_csv = root / ls_cfg.get("out_csv", f"data/curated/{paper}/panel/lmmd_scores_nikkei225.csv")
+
+        token_col = ls_cfg.get("token_col", "GPT_JA")
+
+        logger.info("Stage lmmd_score: index_csv=%s", index_csv)
+        logger.info("Stage lmmd_score: mdna_dir=%s", mdna_dir)
+        logger.info("Stage lmmd_score: lmmd_dict_csv=%s", lmmd_dict_csv)
+        logger.info("Stage lmmd_score: out_csv=%s", out_csv)
+
+        if skip_if_exists and out_csv.exists():
+            status = "skipped"
+            logger.info("[SKIP] lmmd_score already done at %s", out_csv)
+            return
+
+        if not index_csv.exists():
+            raise FileNotFoundError(f"Missing index_csv: {index_csv}")
+        if not mdna_dir.exists():
+            raise FileNotFoundError(f"Missing mdna_dir: {mdna_dir}")
+        if not lmmd_dict_csv.exists():
+            raise FileNotFoundError(f"Missing lmmd_dict_csv: {lmmd_dict_csv}")
+
+        logger.info("[RUN] lmmd_score")
+        df = run_lmmd_score(
+            index_csv=index_csv,
+            mdna_dir=mdna_dir,
+            lmmd_dict_csv=lmmd_dict_csv,
+            out_csv=out_csv,
+            token_col=token_col,
+        )
+        logger.info("lmmd_score produced %s rows -> %s", df.shape[0], out_csv)
+
+    except Exception:
+        status = "failed"
+        raise
+    finally:
+        elapsed = time.perf_counter() - t0
+        logger.info("Stage lmmd_score finished: status=%s elapsed=%.3fs", status, elapsed)
 
 # ----------------------------
 # Stage: Build Panel (GPT and LMMD)
 # ----------------------------
-import time  # make sure this is at top of file
 
 def run_stage_build_panel(
     *,
@@ -337,6 +655,9 @@ def run_stage_event_study(
         elapsed = time.perf_counter() - t0
         logger.info("Stage event_study finished: status=%s elapsed=%.3fs", status, elapsed)
 
+# ----------------------------
+# Stage: Joint Regression (Horserace)
+# ----------------------------
 
 def run_stage_horserace(
     *,
@@ -430,6 +751,26 @@ def main() -> int:
     windows = parse_windows(es_cfg.get("windows", [[0, 0], [0, 1], [-1, 1]]))
 
     # Stage execution order (expand as you add stages)
+    if bool(stages.get("price_data", False)):
+        run_stage_price_data(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage price_data disabled")
+
+    if bool(stages.get("price_features", False)):
+        run_stage_price_features(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage price_features disabled")
+        
+    if bool(stages.get("market_indexes", False)):
+        run_stage_market_indexes(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage market_indexes disabled")
+
+    if bool(stages.get("lmmd_score", False)):
+        run_stage_lmmd_score(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage lmmd_score disabled")
+
     ## STAGE build_panel (must run before event_study)
     if bool(stages.get("build_panel", False)):
         run_stage_build_panel(paper=paper, cfg=cfg, logger=logger)
