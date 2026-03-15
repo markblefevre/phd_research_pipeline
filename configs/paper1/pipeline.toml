@@ -3,10 +3,52 @@ paper = "paper1"
 run_id = "auto"   # auto = driver fills timestamp
 
 [stages]
-build_panel = true
-market_model = true
-event_study = true
-horserace = true
+price_data = false
+price_features = false
+market_indexes = true
+lmmd_score = false
+build_panel = false
+market_model = false
+event_study = false
+horserace = false
+
+[price_data]
+skip_if_exists    = false
+symbols_csv       = "data/curated/paper1/universe/nikkei225_all.csv"
+symbols_col       = "symbol"
+stocks_out_csv    = "data/curated/paper1/prices/prices_long.csv"
+dividends_out_csv = "data/curated/paper1/prices/dividends.csv"
+splits_out_csv    = "data/curated/paper1/prices/splits.csv"
+start             = "2015-01-01"
+end               = ""
+# Could add chunk_size, retries
+
+[price_features]
+skip_if_exists    = false
+input_csv         = "data/curated/paper1/prices/prices_long.csv"
+output_csv        = "data/curated/paper1/prices/price_features.csv"
+price_col         = "adj_close"
+symbol_col        = "symbol"
+date_col          = "date"
+return_col        = "ret"
+offset            = 11
+windows           = [20, 60, 120]
+ddof              = 1
+
+[market_indexes]
+skip_if_exists    = false
+topix_out_csv     = "data/curated/paper1/prices/TOPIX_prices.csv"
+n225_out_csv      = "data/curated/paper1/prices/N225_prices.csv"
+topix_source      = "jpx"
+start             = "2016-03-15"
+end               = ""
+
+[lmmd_score]
+skip_if_exists = false
+index_csv        = "data/curated/paper1/panel/mdna_summary_nikkei225_filtered.csv"
+mdna_dir         = "data/interim/paper1/data"                
+lmmd_dict_csv    = "data/curated/paper1/lmmd/Loughran-McDonald_MasterDictionary_GPT_20251229_v2.csv"
+out_csv          = "data/curated/paper1/panel/lmmd_scores_nikkei225.csv"
 
 [build_panel]
 skip_if_exists = true
