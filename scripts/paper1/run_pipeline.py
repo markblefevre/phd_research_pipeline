@@ -19,13 +19,12 @@ except ModuleNotFoundError:
 
 
 # ---- Import your stage(s) ----
-# This assumes you can run: python -m src.event_study.run_event_study_all
 from src.prices.fetch_jpx_prices import run_fetch_jpx_prices
 from src.prices.compute_lagged_rolling_vol_csv import compute_lagged_rolling_vol_csv
 from src.prices.fetch_market_indexes import run_fetch_market_indexes
 from src.panel.run_lmmd_score import run_lmmd_score
 from src.event_study.run_market_model import run_market_model
-from src.event_study.run_event_study_all import run_event_study_all
+from src.event_study.run_car_computation import run_car_computation
 from src.event_study.run_event_study_horserace import run_horserace
 from src.panel.run_build_panel import build_panel
 
@@ -468,17 +467,23 @@ def run_stage_build_panel(
         gpt_rel = bp_cfg.get("gpt_csv")
         lmmd_rel = bp_cfg.get("lmmd_csv")
         out_rel = bp_cfg.get("out_csv")
-        if not (gpt_rel and lmmd_rel and out_rel):
-            raise ValueError("Config error: [build_panel] requires gpt_csv, lmmd_csv, out_csv")
+        fundamentals_rel = bp_cfg.get("fundamentals_csv")
+        price_features_rel = bp_cfg.get("price_features_csv")
+        if not (gpt_rel and lmmd_rel and out_rel and fundamentals_rel and price_features_rel):
+            raise ValueError("Config error: [build_panel] requires gpt_csv, lmmd_csv, out_csv, fundamentals_csv, price_features_csv")
 
         # Convert TOML strings -> absolute Paths
         gpt_csv = root / gpt_rel
         lmmd_csv = root / lmmd_rel
         out_csv = root / out_rel
+        fundamentals_csv = root / fundamentals_rel
+        price_features_csv = root / price_features_rel
 
         logger.info("Stage build_panel: gpt_csv=%s", gpt_csv)
         logger.info("Stage build_panel: lmmd_csv=%s", lmmd_csv)
         logger.info("Stage build_panel: out_csv=%s", out_csv)
+        logger.info("Stage build_panel: fundamentals_csv=%s", fundamentals_csv)
+        logger.info("Stage build_panel: price_features_csv=%s", price_features_csv)
 
         if skip_if_exists and out_csv.exists():
             status = "skipped"
@@ -489,9 +494,14 @@ def run_stage_build_panel(
             raise FileNotFoundError(f"Missing GPT input: {gpt_csv}")
         if not lmmd_csv.exists():
             raise FileNotFoundError(f"Missing LMMD input: {lmmd_csv}")
+        if fundamentals_csv and not fundamentals_csv.exists():
+            raise FileNotFoundError(f"Missing fundamentals_csv: {fundamentals_csv}")
+        if price_features_csv and not price_features_csv.exists():
+            raise FileNotFoundError(f"Missing price_features_csv: {price_features_csv}")
 
         logger.info("[RUN] build_panel")
-        df = build_panel(gpt_csv=gpt_csv, lmmd_csv=lmmd_csv, out_csv=out_csv)
+        df = build_panel(gpt_csv=gpt_csv, lmmd_csv=lmmd_csv, fundamentals_csv=fundamentals_csv,
+                         price_features_csv=price_features_csv, out_csv=out_csv)
         logger.info("build_panel rows=%s cols=%s -> %s", df.shape[0], df.shape[1], out_csv)
 
     except Exception:
@@ -526,14 +536,17 @@ def run_stage_market_model(
 
         root = repo_root()
 
+        panel_csv = mm_cfg.get("panel_csv", f"data/curated/{paper}/panel/mdna_summary_nikkei225_with_lmmd.csv")
         market_csv = mm_cfg.get("market_csv", f"data/curated/{paper}/prices/TOPIX_prices.csv")
         stocks_csv = mm_cfg.get("stocks_csv", f"data/curated/{paper}/prices/prices_long.csv")
         out_csv = mm_cfg.get("out_csv", f"data/curated/{paper}/event_study/alphas_betas.csv")
 
+        panel_csv_p = root / panel_csv
         market_csv_p = root / market_csv
         stocks_csv_p = root / stocks_csv
         out_csv_p = root / out_csv
 
+        logger.info("Stage market_model: panel_csv=%s", panel_csv_p)
         logger.info("Stage market_model: market_csv=%s", market_csv_p)
         logger.info("Stage market_model: stocks_csv=%s", stocks_csv_p)
         logger.info("Stage market_model: out_csv=%s", out_csv_p)
@@ -550,6 +563,7 @@ def run_stage_market_model(
 
         logger.info("[RUN] market_model")
         res = run_market_model(
+            panel_csv=panel_csv_p,
             market_csv=market_csv_p,
             stocks_csv=stocks_csv_p,
             out_csv=out_csv_p,
@@ -572,10 +586,9 @@ def event_study_out_dir(root: Path, paper: str, run_id: str) -> Path:
     return root / "outputs" / paper / run_id / "event_study"
 
 
-def event_study_done(out_dir: Path, sentiment_col: str) -> bool:
-    # Your stage writes this file:
-    # regression_summary_{sentiment_col}.csv
-    return (out_dir / f"regression_summary_{sentiment_col}.csv").exists()
+def event_study_done(out_dir: Path) -> bool:
+    # Check for at least one CAR output file
+    return any(out_dir.glob("car_results_*.csv"))
 
 
 def horserace_out_path(root: Path, paper: str, run_id: str) -> Path:
@@ -586,7 +599,7 @@ def horserace_done(root: Path, paper: str, run_id: str) -> bool:
     return horserace_out_path(root, paper, run_id).exists()
 
 
-def run_stage_event_study(
+def run_stage_car_computation(
     *,
     paper: str,
     run_id: str,
@@ -597,52 +610,49 @@ def run_stage_event_study(
     status = "ok"
 
     try:
-        es_cfg = cfg.get("event_study", {})
-        sentiment_cols = es_cfg.get("sentiment_cols", ["document_score"])
+        es_cfg = cfg.get("car_computation", {})
         windows = parse_windows(es_cfg.get("windows", [[0, 0], [0, 1], [-1, 1]]))
         skip_if_exists = bool(es_cfg.get("skip_if_exists", True))
 
         out_dir = ensure_dir(event_study_out_dir(repo_root(), paper, run_id))
 
-        logger.info("Stage event_study: out_dir=%s", out_dir)
-        logger.info("Stage event_study: windows=%s", windows)
-        logger.info("Stage event_study: sentiment_cols=%s", sentiment_cols)
+        logger.info("Stage car_computation: out_dir=%s", out_dir)
+        logger.info("Stage car_computation: windows=%s", windows)
 
         ran_any = False
         all_skipped = True
 
-        for col in sentiment_cols:
-            if skip_if_exists and event_study_done(out_dir, col):
-                logger.info("[SKIP] event_study already done for sentiment_col=%s", col)
-                continue
-
-            all_skipped = False
-            ran_any = True
-
-            inputs = es_cfg.get("inputs", {})
-            root = repo_root()
-
-            sentiment_csv = inputs.get("sentiment_csv")
-            alphas_betas_csv = inputs.get("alphas_betas_csv")
-            prices_csv = inputs.get("prices_csv")
-            market_csv = inputs.get("market_csv")
-
-            sentiment_csv = (root / sentiment_csv) if sentiment_csv else None
-            alphas_betas_csv = (root / alphas_betas_csv) if alphas_betas_csv else None
-            prices_csv = (root / prices_csv) if prices_csv else None
-            market_csv = (root / market_csv) if market_csv else None
-
-            logger.info("[RUN] event_study sentiment_col=%s", col)
-            run_event_study_all(
-                windows=windows,
-                sentiment_col=col,
-                paper=paper,
-                run_id=run_id,
-                sentiment_csv=sentiment_csv,
-                alphas_betas_csv=alphas_betas_csv,
-                prices_csv=prices_csv,
-                market_csv=market_csv,
-            )
+        if skip_if_exists and event_study_done(out_dir):
+            logger.info("[SKIP] CAR computation already done")
+            status = "skipped"
+            return
+        
+        all_skipped = False
+        ran_any = True
+        
+        inputs = es_cfg.get("inputs", {})
+        root = repo_root()
+        
+        sentiment_csv = inputs.get("sentiment_csv")
+        alphas_betas_csv = inputs.get("alphas_betas_csv")
+        prices_csv = inputs.get("prices_csv")
+        market_csv = inputs.get("market_csv")
+        
+        sentiment_csv = (root / sentiment_csv) if sentiment_csv else None
+        alphas_betas_csv = (root / alphas_betas_csv) if alphas_betas_csv else None
+        prices_csv = (root / prices_csv) if prices_csv else None
+        market_csv = (root / market_csv) if market_csv else None
+        
+        logger.info("[RUN] CAR computation")
+        run_car_computation(
+            windows=windows,
+            paper=paper,
+            run_id=run_id,
+            sentiment_csv=sentiment_csv,
+            alphas_betas_csv=alphas_betas_csv,
+            prices_csv=prices_csv,
+            market_csv=market_csv,
+        )
 
         if all_skipped and not ran_any:
             status = "skipped"
@@ -653,7 +663,7 @@ def run_stage_event_study(
 
     finally:
         elapsed = time.perf_counter() - t0
-        logger.info("Stage event_study finished: status=%s elapsed=%.3fs", status, elapsed)
+        logger.info("Stage car_computation finished: status=%s elapsed=%.3fs", status, elapsed)
 
 # ----------------------------
 # Stage: Joint Regression (Horserace)
@@ -746,8 +756,8 @@ def main() -> int:
     if not isinstance(stages, dict):
         logger.error("Config error: [stages] must be a table/dict")
         return 2
-    # Share windows from event_study to horserace
-    es_cfg = cfg.get("event_study", {})
+    # Share windows from car_computation to horserace
+    es_cfg = cfg.get("car_computation", {})
     windows = parse_windows(es_cfg.get("windows", [[0, 0], [0, 1], [-1, 1]]))
 
     # Stage execution order (expand as you add stages)
@@ -783,11 +793,11 @@ def main() -> int:
     else:
         logger.info("Stage market_model disabled")
 
-    ## STAGE event_study
-    if bool(stages.get("event_study", False)):
-        run_stage_event_study(paper=paper, run_id=run_id, cfg=cfg, logger=logger)
+    ## STAGE car_computation
+    if bool(stages.get("car_computation", False)):
+        run_stage_car_computation(paper=paper, run_id=run_id, cfg=cfg, logger=logger)
     else:
-        logger.info("Stage event_study disabled")
+        logger.info("Stage car_computation disabled")
 
     ## STAGE horserace
     if bool(stages.get("horserace", False)):
