@@ -71,6 +71,53 @@ def estimate_market_model_fast(stock_df: pd.DataFrame, market_df: pd.DataFrame):
 
     return alpha.to_dict(), beta.to_dict()
 
+
+def estimate_market_model_event_fast(panel, stock_df, market_df):
+    results = []
+
+    for row in panel.itertuples():
+        ticker = row.symbol
+        event_date = event_date = pd.to_datetime(row.filing_date).date()
+
+        df_i = stock_df[stock_df["Ticker"] == ticker].copy()
+
+        # Align dates
+        df_i = df_i.sort_values("Date").reset_index(drop=True)
+        dates = df_i["Date"].values
+
+        idx = dates.searchsorted(event_date)
+        if idx >= len(dates):
+            continue
+
+        t0_idx = idx
+        df_i["t"] = np.arange(len(df_i)) - t0_idx
+
+        # ---- estimation window ----
+        est_stock = df_i[(df_i["t"] >= -120) & (df_i["t"] <= -20)]
+
+        if len(est_stock) < 60:
+            continue
+
+        est_dates = est_stock["Date"]
+
+        est_market = market_df[market_df["Date"].isin(est_dates)]
+
+        # ---- FAST regression ----
+        alpha_dict, beta_dict = estimate_market_model_fast(est_stock, est_market)
+
+        if ticker not in alpha_dict:
+            continue
+
+        results.append({
+            "Ticker": ticker,
+            "filing_date": event_date,
+            "alpha": alpha_dict[ticker],
+            "beta": beta_dict[ticker],
+        })
+
+    return pd.DataFrame(results)
+
+
 if __name__ == "__main__":
     import argparse
     import pandas as pd

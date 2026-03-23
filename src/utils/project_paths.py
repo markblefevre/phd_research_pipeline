@@ -32,8 +32,8 @@ def get_project_root(prefer_nas: bool = True) -> Path:
 
     # --- 1. NAS paths ---
     nas_candidates = [
-        Path(r"\\Nas\nas1\Documents\Education\2021 EDHEC Exec PhD\4 Research"),   # Windows UNC
-        Path("/volumes/NAS1/Documents/Education/2021 EDHEC Exec PhD/4 Research"), # macOS mount
+        Path(r"\\Nas\nas1\Documents\Education\2021 EDHEC Exec PhD\5 Pipeline"),   # Windows UNC
+        Path("/volumes/NAS1/Documents/Education/2021 EDHEC Exec PhD/5 {Pipeline}"), # macOS mount
     ]
 
     if prefer_nas:
@@ -44,7 +44,7 @@ def get_project_root(prefer_nas: bool = True) -> Path:
 
     # --- 2. Local user Documents folder ---
     home = Path.home()
-    relative_to_user_home = Path("Documents/Education/2021 EDHEC Exec PhD/4 Research")
+    relative_to_user_home = Path("Documents/Education/2021 EDHEC Exec PhD/5 Pipeline")
 
     if system == "Windows":
         project_root = home / "OneDrive" / relative_to_user_home
