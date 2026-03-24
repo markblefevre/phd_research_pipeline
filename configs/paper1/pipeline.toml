@@ -66,7 +66,6 @@ stocks_csv       = "data/curated/paper1/prices/prices_long.csv"
 out_csv          = "data/curated/paper1/event_study/alphas_betas.csv"
 
 [car_computation]
-sentiment_cols   = ["document_score", "lmmd_net", "neg_rate", "pos_rate"]
 windows          = [[0,0],[0,1],[-1,1],[-2,2],[-3,3]]
 skip_if_exists   = true
 [car_computation.inputs]
