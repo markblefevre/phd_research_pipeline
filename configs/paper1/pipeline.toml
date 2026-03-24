@@ -10,6 +10,7 @@ lmmd_score = false
 build_panel = false
 market_model = false
 car_computation = true
+regression_dataset = true
 horserace = false
 
 [price_data]
@@ -73,6 +74,12 @@ sentiment_csv    = "data/curated/paper1/panel/mdna_summary_nikkei225_with_lmmd.c
 alphas_betas_csv = "data/curated/paper1/event_study/alphas_betas.csv"
 prices_csv       = "data/curated/paper1/prices/prices_long.csv"
 market_csv       = "data/curated/paper1/prices/TOPIX_prices.csv"
+
+[regression_dataset]
+window           = [0,1]
+skip_if_exists   = true
+[regression_dataset.inputs]
+panel_csv        = "data/curated/paper1/panel/mdna_summary_nikkei225_with_lmmd.csv"
 
 [horserace]
 skip_if_exists = true
