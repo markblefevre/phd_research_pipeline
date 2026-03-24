@@ -70,11 +70,10 @@ def fit_cluster_ols(
 
 
 def repo_root() -> Path:
-    # src/event_study/run_event_study_horserace.py -> parents[2] = repo root
     return Path(__file__).resolve().parents[2]
 
 
-def run_horserace(
+def run_regression(
     windows: Optional[List[Tuple[int, int]]] = None,
     *,
     paper: str = "paper1",
@@ -88,7 +87,7 @@ def run_horserace(
     - reads CAR files from outputs/<paper>/<run_id>/event_study/
     - merges with sentiment panel
     - runs regression grid
-    - writes horserace_summary.csv to the same event_study output directory
+    - writes regression_summary.csv to the same event_study output directory
     """
 
     if windows is None:
@@ -198,12 +197,8 @@ def run_horserace(
                     rows.append(out)
 
     res = pd.DataFrame(rows)
-    res_out = out_dir / "horserace_summary.csv"
+    res_out = out_dir / "regression_summary.csv"
     res.to_csv(res_out, index=False, encoding="utf-8-sig")
     print(f"[INFO] Saved: {res_out} ({len(res)} rows)")
     return res
 
-
-if __name__ == "__main__":
-    # Standalone execution (pipeline should pass run_id explicitly)
-    run_horserace()
