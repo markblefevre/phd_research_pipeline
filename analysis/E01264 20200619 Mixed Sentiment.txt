@@ -1,0 +1,215 @@
+Yes — this example makes the disagreement pretty understandable.
+
+For E01264 / JFE Holdings / 2020-06-19, the pattern is:
+
+GPT: strongly negative (document_score = -0.67)
+
+LMMD: slightly positive (lmmd_net = 0.0074)
+
+From the MD&A, I think GPT being negative makes a lot of sense, while LMMD being slightly positive is plausible for mechanical reasons.
+
+Why GPT likely went negative
+
+This MD&A is full of strongly adverse narrative.
+
+The text repeatedly emphasizes:
+
+景気は大幅に下押し
+
+厳しい状況
+
+鉄鋼需要の低迷
+
+鉄鉱石価格の高止まり
+
+コストが大幅に増加
+
+事業利益は前期比で大幅に悪化
+
+減損損失を計上
+
+親会社帰属利益は赤字
+
+税引前損失
+
+当期損失
+
+目標達成は困難
+
+抜本的な対策が必要
+
+And it is not just one bad sentence. The whole managerial discussion is framed as a deteriorating macro and business environment culminating in large losses and restructuring.
+
+A few especially strong signals:
+
+“極めて厳しい経営環境”
+
+“事業利益は…大幅に悪化”
+
+“親会社の所有者に帰属する当期利益…赤字となりました”
+
+“税引前損失…親会社の所有者に帰属する当期損失…”
+
+That is the kind of context-sensitive narrative a general LLM will read as clearly negative.
+
+Why LMMD could still come out slightly positive
+
+A dictionary score like lmmd_net can end up slightly positive here for a few reasons.
+
+1. The negative tone is highly contextual and multi-clause
+
+A lot of the bad news is expressed through longer constructions like:
+
+demand slowdown
+
+worsening environment
+
+impairment tied to structural reform
+
+profit deterioration relative to prior year
+
+difficult achievement of targets
+
+A lexicon may miss some of that if the exact negative meaning comes from the full sentence rather than isolated negative tokens.
+
+2. There is a lot of neutral/managerial/aspirational language
+
+The MD&A also contains many “corporate positive” phrases such as:
+
+持続的な成長
+
+企業価値の向上
+
+成長戦略の推進
+
+収益拡大
+
+強化
+
+着実な遂行
+
+拡大に努めた
+
+改善
+
+回復
+
+A dictionary can count these positive-looking words even when the overall paragraph is bad news.
+
+3. Segment discussion is mixed, not uniformly negative
+
+The engineering segment is actually described positively:
+
+増収
+
+増益
+
+着実な遂行
+
+運営型事業の拡大
+
+So if LMMD is aggregating token counts across the full MD&A, positive wording from one segment can offset severe negativity elsewhere.
+
+4. Finance dictionaries can underweight magnitude
+
+A human or LLM sees this as very negative because of the combination of:
+
+huge earnings deterioration
+
+impairment
+
+net loss
+
+debt pressure
+
+target failure
+
+restructuring
+
+But lexicon scoring often reduces all that to token counts. If the text contains enough positive/neutral managerial vocabulary, the net score can drift positive even though the economic message is clearly bad.
+
+My read of this specific case
+
+This looks like a great example for your paper because it is not random noise. It is a very interpretable disagreement:
+
+GPT captures the overall managerial narrative and economic direction
+
+LMMD appears to be pulled upward by boilerplate strategic language and mixed segment wording
+
+In plain English:
+
+The filing is economically bad, but linguistically it still contains a lot of “corporate-positive” vocabulary.
+
+That is exactly the kind of case where an LLM and a lexicon can diverge.
+
+Why this is a strong illustrative example
+
+It has several features your advisor asked for:
+
+strong disagreement
+
+opposite sign
+
+clear economic story
+
+identifiable textual explanation
+
+It also helps support a broader argument you may want to make:
+
+In Japanese MD&A, lexicon-based methods can be less sensitive to discourse-level negativity when adverse information is embedded in formal managerial prose, strategic boilerplate, and mixed segment reporting.
+
+What I would do next on this example
+
+For this filing, I would extract a short table with three buckets:
+
+Negative narrative phrases
+
+極めて厳しい経営環境
+
+大幅に悪化
+
+赤字
+
+損失
+
+需要の低迷
+
+減損損失
+
+目標の達成は困難
+
+Positive / strategic vocabulary likely helping LMMD
+
+持続的な成長
+
+企業価値の向上
+
+成長戦略の推進
+
+強化
+
+収益拡大
+
+改善
+
+回復
+
+Mixed-offset segment content
+
+engineering segment increase in revenue/profit
+
+steel segment severe deterioration
+
+trading segment revenue/profit decline
+
+That would make the disagreement very concrete.
+
+Bottom line
+
+For this JFE filing, the disagreement does not look mysterious:
+
+GPT negative score looks justified by the overall economic narrative.
+
+LMMD’s slight positive score likely reflects token-level offset from strategic/boilerplate positive words plus mixed segment discussion.
+
+This is exactly the kind of example worth featuring.
