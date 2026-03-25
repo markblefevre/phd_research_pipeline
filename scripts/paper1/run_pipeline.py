@@ -25,8 +25,9 @@ from src.prices.fetch_market_indexes import run_fetch_market_indexes
 from src.panel.run_lmmd_score import run_lmmd_score
 from src.event_study.run_market_model import run_market_model
 from src.event_study.run_car_computation import run_car_computation
-from src.event_study.run_event_study_horserace import run_horserace
+from src.event_study.run_event_study_regression import run_regression
 from src.panel.run_build_panel import build_panel
+from src.panel.build_regression_dataset import build_regression_dataset
 
 
 # ----------------------------
@@ -591,12 +592,12 @@ def event_study_done(out_dir: Path) -> bool:
     return any(out_dir.glob("car_results_*.csv"))
 
 
-def horserace_out_path(root: Path, paper: str, run_id: str) -> Path:
-    return root / "outputs" / paper / run_id / "event_study" / "horserace_summary.csv"
+def regression_out_path(root: Path, paper: str, run_id: str) -> Path:
+    return root / "outputs" / paper / run_id / "event_study" / "regression_summary.csv"
 
 
-def horserace_done(root: Path, paper: str, run_id: str) -> bool:
-    return horserace_out_path(root, paper, run_id).exists()
+def regression_done(root: Path, paper: str, run_id: str) -> bool:
+    return regression_out_path(root, paper, run_id).exists()
 
 
 def run_stage_car_computation(
@@ -665,11 +666,76 @@ def run_stage_car_computation(
         elapsed = time.perf_counter() - t0
         logger.info("Stage car_computation finished: status=%s elapsed=%.3fs", status, elapsed)
 
+
 # ----------------------------
-# Stage: Joint Regression (Horserace)
+# Stage: Regression Dataset
+# ----------------------------
+def run_stage_regression_dataset(
+    *,
+    paper: str,
+    run_id: str,
+    cfg: Dict[str, Any],
+    logger: logging.Logger,
+) -> None:
+    t0 = time.perf_counter()
+    status = "ok"
+
+    try:
+        ds_cfg = cfg.get("regression_dataset", {})
+        skip_if_exists = bool(ds_cfg.get("skip_if_exists", True))
+
+        # --- FIX: use windows (plural) ---
+        windows = parse_windows(ds_cfg.get("windows", [[0, 1]]))
+
+        out_dir = ensure_dir(event_study_out_dir(repo_root(), paper, run_id))
+
+        inputs = ds_cfg.get("inputs", {})
+        panel_csv = inputs.get("panel_csv")
+
+        if not panel_csv:
+            raise ValueError("regression_dataset requires panel_csv")
+
+        panel_csv = repo_root() / panel_csv
+
+        if not panel_csv.exists():
+            raise FileNotFoundError(f"Missing panel_csv: {panel_csv}")
+
+        # --- FIX: loop over all windows ---
+        for w0, w1 in windows:
+            out_csv = out_dir / f"regression_dataset_{w0}_{w1}.csv"
+
+            if skip_if_exists and out_csv.exists():
+                logger.info("[SKIP] regression_dataset already exists for window=(%s,%s)", w0, w1)
+                continue
+
+            car_csv = out_dir / f"car_results_{w0}_{w1}.csv"
+
+            if not car_csv.exists():
+                raise FileNotFoundError(f"Missing CAR file: {car_csv}")
+
+            logger.info("[RUN] regression_dataset window=(%s,%s)", w0, w1)
+
+            df = build_regression_dataset(
+                car_csv=car_csv,
+                panel_csv=panel_csv,
+                out_csv=out_csv,
+            )
+
+            logger.info("regression_dataset rows=%s -> %s", len(df), out_csv)
+
+    except Exception:
+        status = "failed"
+        raise
+
+    finally:
+        elapsed = time.perf_counter() - t0
+        logger.info("Stage regression_dataset finished: status=%s elapsed=%.3fs", status, elapsed)        
+        
+# ----------------------------
+# Stage: Joint Regression
 # ----------------------------
 
-def run_stage_horserace(
+def run_stage_regression(
     *,
     paper: str,
     run_id: str,
@@ -681,21 +747,21 @@ def run_stage_horserace(
     status = "ok"
 
     try:
-        hs_cfg = cfg.get("horserace", {})
+        hs_cfg = cfg.get("regression", {})
         skip_if_exists = bool(hs_cfg.get("skip_if_exists", True))
 
         hs_windows = hs_cfg.get("windows", None)
         if hs_windows is not None:
             windows = parse_windows(hs_windows)
 
-        out_path = horserace_out_path(repo_root(), paper, run_id)
+        out_path = regression_out_path(repo_root(), paper, run_id)
 
-        logger.info("Stage horserace: out_path=%s", out_path)
-        logger.info("Stage horserace: windows=%s", windows)
+        logger.info("Stage regression: out_path=%s", out_path)
+        logger.info("Stage regression: windows=%s", windows)
 
         if skip_if_exists and out_path.exists():
             status = "skipped"
-            logger.info("[SKIP] horserace already done at %s", out_path)
+            logger.info("[SKIP] regression already done at %s", out_path)
             return
 
         inputs = hs_cfg.get("inputs", {})
@@ -703,8 +769,8 @@ def run_stage_horserace(
         if panel_csv:
             panel_csv = repo_root() / panel_csv
 
-        logger.info("[RUN] horserace")
-        run_horserace(
+        logger.info("[RUN] regression")
+        run_regression(
             windows=windows,
             paper=paper,
             run_id=run_id,
@@ -717,7 +783,7 @@ def run_stage_horserace(
 
     finally:
         elapsed = time.perf_counter() - t0
-        logger.info("Stage horserace finished: status=%s elapsed=%.3fs", status, elapsed)
+        logger.info("Stage regression finished: status=%s elapsed=%.3fs", status, elapsed)
 
 
 # ----------------------------
@@ -756,7 +822,7 @@ def main() -> int:
     if not isinstance(stages, dict):
         logger.error("Config error: [stages] must be a table/dict")
         return 2
-    # Share windows from car_computation to horserace
+
     es_cfg = cfg.get("car_computation", {})
     windows = parse_windows(es_cfg.get("windows", [[0, 0], [0, 1], [-1, 1]]))
 
@@ -799,11 +865,17 @@ def main() -> int:
     else:
         logger.info("Stage car_computation disabled")
 
-    ## STAGE horserace
-    if bool(stages.get("horserace", False)):
-        run_stage_horserace(paper=paper, run_id=run_id, cfg=cfg, logger=logger, windows=windows)
+    ## STAGE regression_dataset
+    if bool(stages.get("regression_dataset", False)):
+        run_stage_regression_dataset(paper=paper, run_id=run_id, cfg=cfg, logger=logger)
     else:
-        logger.info("Stage horserace disabled")
+        logger.info("Stage regression_dataset disabled")
+    
+    ## STAGE regression
+    if bool(stages.get("regression", False)):
+        run_stage_regression(paper=paper, run_id=run_id, cfg=cfg, logger=logger, windows=windows)
+    else:
+        logger.info("Stage regression disabled")
     
     logger.info("Pipeline done: paper=%s run_id=%s", paper, run_id)
     logger.info("Outputs base: %s", out_base)
