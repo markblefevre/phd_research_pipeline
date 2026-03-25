@@ -1,0 +1,2 @@
+I need to add this somewhere into the paper
+“Treasury share counts are not consistently available as structured XBRL facts in EDINET filings and are instead often disclosed within HTML text blocks. Due to the lack of reliable machine-readable data, shares outstanding are proxied using total shares issued.”
