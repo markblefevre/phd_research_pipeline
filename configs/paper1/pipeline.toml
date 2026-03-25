@@ -1,6 +1,6 @@
 [run]
 paper = "paper1"
-run_id = "auto"   # auto = driver fills timestamp
+run_id = "1"   # auto = driver fills timestamp
 
 [stages]
 price_data = false
@@ -9,9 +9,9 @@ market_indexes = false
 lmmd_score = false
 build_panel = false
 market_model = false
-car_computation = true
+car_computation = false
 regression_dataset = true
-horserace = false
+regression = true
 
 [price_data]
 skip_if_exists    = true
@@ -76,14 +76,13 @@ prices_csv       = "data/curated/paper1/prices/prices_long.csv"
 market_csv       = "data/curated/paper1/prices/TOPIX_prices.csv"
 
 [regression_dataset]
-window           = [0,1]
-skip_if_exists   = true
+windows = [[0,0],[0,1],[-1,1],[-2,2],[-3,3]]
+skip_if_exists   = false
 [regression_dataset.inputs]
 panel_csv        = "data/curated/paper1/panel/mdna_summary_nikkei225_with_lmmd.csv"
 
-[horserace]
-skip_if_exists = true
-# optional: override which windows horserace runs
-# windows = [[0,0],[0,1],[-1,1],[-2,2],[-3,3]]
-[horserace.inputs]
-panel_csv        = "data/curated/paper1/panel/mdna_summary_nikkei225_with_lmmd.csv"
+[regression]
+skip_if_exists         = false
+windows = [[0,0],[0,1],[-1,1],[-2,2],[-3,3]]
+[regression.inputs]
+#regression_dataset_csv = "outputs/paper1/<run_id>/event_study/regression_dataset_0_1.csv"
