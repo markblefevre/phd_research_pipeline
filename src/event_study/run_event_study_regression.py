@@ -85,7 +85,6 @@ def run_regression(
     """
     Next-stage after run_event_study_all:
     - reads CAR files from outputs/<paper>/<run_id>/event_study/
-    - merges with sentiment panel
     - runs regression grid
     - writes regression_summary.csv to the same event_study output directory
     """
@@ -101,54 +100,25 @@ def run_regression(
     out_dir = car_dir or (repo_root() / "outputs" / paper / run_id / "event_study")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ---- Panel input (LEGACY for now) ----
-    if panel_csv is None:
-        panel_csv = repo_root() / "data" / "curated" / paper / "panel" / "mdna_summary_nikkei225_with_lmmd.csv"
-
-    # Load event-level panel with all sentiments
-    panel = pd.read_csv(panel_csv)
-    panel = panel.rename(columns={"symbol": "Ticker", "filing_date": "EventDate"})
-    panel["EventDate"] = pd.to_datetime(panel["EventDate"], errors="coerce")
-
-    # Attach industry (uses legacy data_root mapping for now)
-    panel = attach_ticker_industry(panel, get_project_root(), ticker_col="Ticker", label="both")
-
     rows = []
 
     for w0, w1 in windows:
-        # CAR is sentiment-invariant; we use document_score file if it exists
-        car_path = out_dir / f"car_results_all_{w0}_{w1}_document_score.csv"
-        if not car_path.exists():
+        dataset_path = out_dir / f"regression_dataset_{w0}_{w1}.csv"
+        
+        if not dataset_path.exists():
             raise FileNotFoundError(
-                f"Missing CAR file for window ({w0},{w1}). Expected: {car_path}\n"
-                f"Tip: run event study first for document_score with same paper/run_id."
+                f"Missing regression dataset for window ({w0},{w1}): {dataset_path}"
             )
+        
+        df = pd.read_csv(dataset_path)
+        if "industry" not in df.columns:
+            raise ValueError("Missing 'industry' in regression dataset")
 
-        car = pd.read_csv(car_path)
-        car["EventDate"] = pd.to_datetime(car["EventDate"], errors="coerce")
+        df["EventDate"] = pd.to_datetime(df["EventDate"], errors="coerce")
 
-        df = car.merge(
-            panel[
-                ["Ticker", "EventDate", "document_score", "lmmd_net", "neg_rate", "pos_rate", "industry"]
-            ],
-            on=["Ticker", "EventDate"],
-            how="inner",
-        )
+        controls = ["ln_market_cap", "ln_volatility"]
 
-        # Ensure numeric
-        df["CAR"] = pd.to_numeric(df["CAR"], errors="coerce")
-        for c in ["document_score", "lmmd_net", "neg_rate", "pos_rate"]:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
-
-        df = df.dropna(subset=["CAR", "document_score", "lmmd_net", "neg_rate", "pos_rate"])
-
-        # Z-score within regression sample (for comparability)
-        df["gpt_z"] = zscore(df["document_score"])
-        df["lmmd_z"] = zscore(df["lmmd_net"])
-        df["neg_z"] = zscore(df["neg_rate"])
-        df["pos_z"] = zscore(df["pos_rate"])
-
-        specs = {
+        base_specs = {
             "GPT": ["gpt_z"],
             "LMMD": ["lmmd_z"],
             "GPT+LMMD": ["gpt_z", "lmmd_z"],
@@ -157,6 +127,18 @@ def run_regression(
             "LMMD_PosNeg": ["neg_z", "pos_z"],
             "GPT+Neg+Pos": ["gpt_z", "neg_z", "pos_z"],
         }
+
+        # Is disagreement priced
+        base_specs.update({
+            "DISAGREE": ["disagreement"],
+            "LMMD+DISAGREE": ["lmmd_z", "disagreement"],
+        })
+
+        specs = {}
+        
+        for name, cols in base_specs.items():
+            specs[name] = cols
+            specs[name + "+Controls"] = cols + controls
 
         for name, xcols in specs.items():
             for add_year_fe in (False, True):
