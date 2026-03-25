@@ -1,0 +1,29 @@
+We observe substantial time variation in sentiment measures.
+GPT-based sentiment exhibits pronounced year-to-year fluctuations,
+with notably negative values in 2020 and strongly positive values in 2022.
+In contrast, the LMMD-based measure is more stable across time,
+suggesting it captures more persistent, firm-level tone rather than macro conditions.
+
+2023 has few data points, so ignore it
+
+What I learned
+1. Sentiment varies strongly over time
+2. GPT is more macro-driven
+3. LMMD is more stable
+4. CAR also varies by year
+
+What it implies
+→ Year FE is REQUIRED
+→ This supports your LMMD vs GPT story
+
+Table X reports summary statistics...
+
+We observe substantial time variation...
+(GPT vs LMMD paragraph)
+
+These patterns highlight the importance of controlling for
+time effects in subsequent regressions.
+
+Manually created
+yearly = df.groupby("year")[["document_score","lmmd_net","CAR"]].agg(["mean","std","count"])
+yearly.to_csv(out_dir / "yearly_summary.csv")
