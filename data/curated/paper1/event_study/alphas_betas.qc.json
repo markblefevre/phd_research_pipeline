@@ -1,18 +1,309 @@
 {
   "market_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\prices\\TOPIX_prices.csv",
   "stocks_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\prices\\prices_long.csv",
+  "panel_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\panel\\mdna_summary_nikkei225_with_lmmd.csv",
   "output_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\event_study\\alphas_betas.csv",
-  "elapsed_seconds": 1.2492,
-  "market_rows_loaded": 2389,
-  "stock_rows_loaded": 588586,
+  "elapsed_seconds": 8.6271,
+  "market_rows_loaded": 2441,
+  "stock_rows_loaded": 611536,
   "ticker_count_loaded": 225,
-  "common_dates_count": 2387,
-  "market_rows_after_overlap": 2387,
-  "stock_rows_after_overlap": 530750,
-  "merged_rows_used": 530750,
-  "obs_per_ticker_min": 734,
-  "obs_per_ticker_median": 2387.0,
-  "obs_per_ticker_max": 2387,
-  "tickers_output": 225,
-  "tickers_dropped": 0
+  "common_dates_count": 2440,
+  "market_rows_after_overlap": 2440,
+  "stock_rows_after_overlap": 543018,
+  "merged_rows_used": 543018,
+  "obs_per_ticker_min": 836,
+  "obs_per_ticker_median": 2440.0,
+  "obs_per_ticker_max": 2440,
+  "panel_tickers": 219,
+  "output_tickers": 219,
+  "tickers_missing_from_output": 0,
+  "events_total": 1087,
+  "events_estimated": 1086,
+  "events_dropped": 1,
+  "events_per_ticker_min": 2,
+  "events_per_ticker_median": 5.0,
+  "events_per_ticker_max": 6,
+  "events_estimated_per_ticker_min": 2,
+  "events_estimated_per_ticker_median": 5.0,
+  "events_estimated_per_ticker_max": 6,
+  "alpha_stats": {
+    "count": 1086.0,
+    "mean": 0.0003378040881589483,
+    "std": 0.0016460666159916779,
+    "min": -0.005161369696018657,
+    "25%": -0.0007157756723073962,
+    "50%": 0.000202222610823694,
+    "75%": 0.00128107282667237,
+    "max": 0.007922190711828014
+  },
+  "beta_stats": {
+    "count": 1086.0,
+    "mean": 1.040734293461693,
+    "std": 0.31531372339425173,
+    "min": 0.07195175483091722,
+    "25%": 0.8306144479477584,
+    "50%": 1.0429554365434441,
+    "75%": 1.2499878757085459,
+    "max": 2.1248103302248467
+  },
+  "dropped_events_sample": [
+    {
+      "Ticker": "4385.T",
+      "filing_date": "2018-09-28"
+    }
+  ],
+  "kept_events_sample": [
+    {
+      "Ticker": "2269.T",
+      "filing_date": "2020-06-26"
+    },
+    {
+      "Ticker": "2768.T",
+      "filing_date": "2020-06-18"
+    },
+    {
+      "Ticker": "4507.T",
+      "filing_date": "2019-06-18"
+    },
+    {
+      "Ticker": "6503.T",
+      "filing_date": "2018-06-28"
+    },
+    {
+      "Ticker": "4519.T",
+      "filing_date": "2020-03-30"
+    },
+    {
+      "Ticker": "1812.T",
+      "filing_date": "2018-06-27"
+    },
+    {
+      "Ticker": "9064.T",
+      "filing_date": "2021-06-18"
+    },
+    {
+      "Ticker": "7974.T",
+      "filing_date": "2019-06-28"
+    },
+    {
+      "Ticker": "6988.T",
+      "filing_date": "2021-06-18"
+    },
+    {
+      "Ticker": "7011.T",
+      "filing_date": "2022-06-29"
+    },
+    {
+      "Ticker": "8795.T",
+      "filing_date": "2018-06-27"
+    },
+    {
+      "Ticker": "9020.T",
+      "filing_date": "2019-06-21"
+    },
+    {
+      "Ticker": "3405.T",
+      "filing_date": "2021-03-25"
+    },
+    {
+      "Ticker": "8766.T",
+      "filing_date": "2018-06-22"
+    },
+    {
+      "Ticker": "7272.T",
+      "filing_date": "2019-03-28"
+    },
+    {
+      "Ticker": "6473.T",
+      "filing_date": "2019-06-26"
+    },
+    {
+      "Ticker": "2871.T",
+      "filing_date": "2019-06-25"
+    },
+    {
+      "Ticker": "7261.T",
+      "filing_date": "2019-06-27"
+    },
+    {
+      "Ticker": "5101.T",
+      "filing_date": "2019-03-28"
+    },
+    {
+      "Ticker": "5801.T",
+      "filing_date": "2019-06-27"
+    },
+    {
+      "Ticker": "6103.T",
+      "filing_date": "2019-06-21"
+    },
+    {
+      "Ticker": "7912.T",
+      "filing_date": "2022-06-29"
+    },
+    {
+      "Ticker": "5333.T",
+      "filing_date": "2020-06-29"
+    },
+    {
+      "Ticker": "4506.T",
+      "filing_date": "2018-06-19"
+    },
+    {
+      "Ticker": "6301.T",
+      "filing_date": "2020-06-29"
+    }
+  ],
+  "coverage_sample": [
+    {
+      "symbol": "1332.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1605.T",
+      "events_total": 6,
+      "events_estimated": 6,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1721.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1801.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1802.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1803.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1808.T",
+      "events_total": 4,
+      "events_estimated": 4,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1812.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1925.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1928.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "1963.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2002.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2269.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2282.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2413.T",
+      "events_total": 2,
+      "events_estimated": 2,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2432.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2501.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2502.T",
+      "events_total": 6,
+      "events_estimated": 6,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2503.T",
+      "events_total": 6,
+      "events_estimated": 6,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2768.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2801.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2802.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2871.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "2914.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    },
+    {
+      "symbol": "3086.T",
+      "events_total": 5,
+      "events_estimated": 5,
+      "events_dropped": 0
+    }
+  ]
 }

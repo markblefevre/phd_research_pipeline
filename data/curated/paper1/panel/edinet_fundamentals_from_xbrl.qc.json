@@ -1,0 +1,40 @@
+{
+  "n_obs": 1087,
+  "coverage": {
+    "total_shares_issued": 1.0,
+    "treasury_shares": 0.7635694572217111,
+    "close": 1.0,
+    "market_cap": 1.0,
+    "ln_market_cap": 1.0
+  },
+  "shares_outstanding": {
+    "min": 685000.0,
+    "p1": 14458660.0,
+    "median": 483585000.0,
+    "mean": 905383394.8334867,
+    "p99": 5694993440.0,
+    "max": 25389644000.0
+  },
+  "market_cap": {
+    "min": 254135000.0,
+    "p1": 24259009980.0,
+    "median": 867236742000.0,
+    "mean": 1480498435506.0146,
+    "p99": 7268180791392.41,
+    "max": 39557065352000.0
+  },
+  "ln_market_cap": {
+    "min": 19.353376179851796,
+    "p1": 23.91193636633571,
+    "median": 27.488577835276708,
+    "mean": 27.42830419289262,
+    "p99": 29.61451625474167,
+    "max": 31.30876543772718
+  },
+  "sanity_checks": {
+    "non_positive_shares_outstanding": 0,
+    "missing_prices": 0,
+    "non_positive_market_cap": 0,
+    "missing_ln_market_cap": 0
+  }
+}

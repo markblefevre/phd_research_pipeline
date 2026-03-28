@@ -1,0 +1,20 @@
+{
+  "inputs": {
+    "index_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\panel\\mdna_summary_nikkei225_filtered.csv",
+    "mdna_root": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\interim\\paper1\\data",
+    "lmmd_dict_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\lmmd\\Loughran-McDonald_MasterDictionary_GPT_20251229_v2.csv",
+    "token_col": "GPT_JA"
+  },
+  "rows": {
+    "index_rows": 1087,
+    "output_rows": 1087
+  },
+  "status_counts": {
+    "ok": 1087
+  },
+  "outputs": {
+    "out_csv": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\panel\\lmmd_scores_nikkei225.csv",
+    "qc_json": "\\\\Nas\\nas1\\Documents\\Education\\2021 EDHEC Exec PhD\\5 Pipeline\\data\\curated\\paper1\\panel\\lmmd_scores_nikkei225.csv.qc.json"
+  },
+  "written_at": "2026-03-08T23:30:38"
+}
