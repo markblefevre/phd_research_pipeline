@@ -8,10 +8,10 @@ price_features = false
 market_indexes = false
 lmmd_score = false
 build_panel = false
-market_model = false
+market_model = true
 car_computation = false
-regression_dataset = true
-regression = true
+regression_dataset = false
+regression = false
 
 [price_data]
 skip_if_exists    = true
@@ -68,7 +68,7 @@ out_csv          = "data/curated/paper1/event_study/alphas_betas.csv"
 
 [car_computation]
 windows          = [[0,0],[0,1],[-1,1],[-2,2],[-3,3]]
-skip_if_exists   = true
+skip_if_exists   = false
 [car_computation.inputs]
 sentiment_csv    = "data/curated/paper1/panel/mdna_summary_nikkei225_with_lmmd.csv"
 alphas_betas_csv = "data/curated/paper1/event_study/alphas_betas.csv"
