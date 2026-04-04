@@ -1,0 +1,49 @@
+\begin{table}[p]
+\centering
+\caption{Appendix: Joint specification regressions (GPT and LMMD)}
+\label{tab:app_joint_spec}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{l l r r l l}
+\toprule
+Window & FE & N & $R^{2}$ & GPT & LMMD \\
+\midrule
+\multicolumn{6}{l}{\textit{Panel: $[-1,1]$}} \\
+\addlinespace[1pt]
+$[-1,1]$ & NoYear+NoInd & 1086 & 0.014 & 11.13 (9.36) & 26.04*** (9.50) \\
+$[-1,1]$ & NoYear+Ind & 1086 & 0.065 & 10.88 (10.00) & 26.24** (10.34) \\
+$[-1,1]$ & Year+NoInd & 1086 & 0.033 & 8.93 (10.19) & 23.52** (9.60) \\
+$[-1,1]$ & Year+Ind & 1086 & 0.084 & 8.54 (10.57) & 23.20** (10.37) \\
+\addlinespace[2pt]
+\multicolumn{6}{l}{\textit{Panel: $[0,0]$}} \\
+\addlinespace[1pt]
+$[0,0]$ & NoYear+NoInd & 1086 & 0.010 & 9.28 (5.84) & 10.04* (5.27) \\
+$[0,0]$ & NoYear+Ind & 1086 & 0.060 & 10.19* (5.94) & 9.72* (5.36) \\
+$[0,0]$ & Year+NoInd & 1086 & 0.020 & 7.41 (6.71) & 8.58 (5.38) \\
+$[0,0]$ & Year+Ind & 1086 & 0.068 & 8.48 (6.62) & 8.13 (5.51) \\
+\addlinespace[2pt]
+\multicolumn{6}{l}{\textit{Panel: $[0,1]$}} \\
+\addlinespace[1pt]
+$[0,1]$ & NoYear+NoInd & 1086 & 0.013 & 10.86 (7.79) & 18.10** (8.19) \\
+$[0,1]$ & NoYear+Ind & 1086 & 0.073 & 11.43 (8.03) & 18.20** (8.51) \\
+$[0,1]$ & Year+NoInd & 1086 & 0.025 & 9.29 (8.57) & 16.47** (8.34) \\
+$[0,1]$ & Year+Ind & 1086 & 0.085 & 9.93 (8.77) & 16.36* (8.61) \\
+\addlinespace[2pt]
+\multicolumn{6}{l}{\textit{Panel: $[-2,2]$}} \\
+\addlinespace[1pt]
+$[-2,2]$ & NoYear+NoInd & 1086 & 0.013 & -4.38 (11.37) & 39.03*** (11.87) \\
+$[-2,2]$ & NoYear+Ind & 1086 & 0.061 & -5.29 (11.80) & 41.61*** (12.83) \\
+$[-2,2]$ & Year+NoInd & 1086 & 0.039 & -3.81 (12.53) & 36.62*** (11.95) \\
+$[-2,2]$ & Year+Ind & 1086 & 0.086 & -4.50 (12.54) & 39.07*** (12.83) \\
+\addlinespace[2pt]
+\multicolumn{6}{l}{\textit{Panel: $[-3,3]$}} \\
+\addlinespace[1pt]
+$[-3,3]$ & NoYear+NoInd & 1086 & 0.010 & -8.09 (14.16) & 42.89*** (14.79) \\
+$[-3,3]$ & NoYear+Ind & 1086 & 0.064 & -10.91 (14.44) & 52.18*** (16.05) \\
+$[-3,3]$ & Year+NoInd & 1086 & 0.037 & -2.73 (17.26) & 41.26*** (14.75) \\
+$[-3,3]$ & Year+Ind & 1086 & 0.090 & -4.80 (17.22) & 51.37*** (15.86) \\
+\bottomrule
+\end{tabular}
+\parbox{0.95\linewidth}{\footnotesize Notes: Each row reports a cross-sectional regression of CAR (in bps) on standardized sentiment measures for the stated event window and fixed-effects structure. Coefficients are scaled by 10,000. Standard errors clustered by firm in parentheses. *, **, *** denote significance at 10\%, 5\%, and 1\%.}
+\end{table}

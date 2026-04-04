@@ -1,0 +1,19 @@
+\begin{table}[htbp]
+\centering
+\caption{Sentiment Effects Across Event Windows}
+\label{tab:car_sentiment_windows}
+\begin{tabular}{lccc}
+\toprule
+Window & GPT & LMMD & Joint \\
+\midrule
+(0,0) & 0.0012* (0.0006) & 0.0011** (0.0005) & GPT: 0.0008 (0.0007); LMMD: 0.0008 (0.0006) \\
+(0,1) & 0.0016* (0.0009) & 0.0020** (0.0008) & GPT: 0.0010 (0.0009); LMMD: 0.0016* (0.0009) \\
+(-1,1) & 0.0017* (0.0011) & 0.0026** (0.0010) & GPT: 0.0009 (0.0011); LMMD: 0.0023** (0.0010) \\
+(-2,2) & 0.0010 (0.0012) & 0.0037*** (0.0012) & GPT: -0.0005 (0.0013); LMMD: 0.0039*** (0.0013) \\
+(-3,3) & 0.0015 (0.0017) & 0.0050*** (0.0015) & GPT: -0.0005 (0.0017); LMMD: 0.0051*** (0.0016) \\
+\bottomrule
+\end{tabular}
+\begin{flushleft}
+\footnotesize Notes: Each cell reports coefficient(s) and standard error(s) from regressions including year and industry fixed effects. *** $p<0.01$, ** $p<0.05$, * $p<0.1$.
+\end{flushleft}
+\end{table}

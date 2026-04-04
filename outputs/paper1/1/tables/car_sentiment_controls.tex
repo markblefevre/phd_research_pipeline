@@ -1,0 +1,23 @@
+\begin{table}[htbp]
+\centering
+\caption{Market Reaction to Disclosure Sentiment with Controls}
+\label{tab:car_sentiment_controls}
+\begin{tabular}{lccc}
+\toprule
+ & (1) & (2) & (3) \\
+\midrule
+GPT (z) & 0.0016* &  & 0.0010 \\
+  & (0.0009) &  & (0.0009) \\
+LMMD (z) &  & 0.0020** & 0.0016* \\
+  &  & (0.0008) & (0.0009) \\
+\midrule
+Year FE & Yes & Yes & Yes \\
+Industry FE & Yes & Yes & Yes \\
+Controls & Yes & Yes & Yes \\
+N & 1086 & 1086 & 1086 \\
+R² & 0.087 & 0.089 & 0.091 \\
+\bottomrule
+\end{tabular}\begin{flushleft}
+\footnotesize Notes: Standard errors in parentheses. *** $p<0.01$, ** $p<0.05$, * $p<0.1$. Standard errors clustered at firm level. All specifications include controls for log market capitalization and return volatility. Columns (1) GPT sentiment only, (2) LMMD sentiment only, (3) GPT and LMMD jointly, respectively.
+\end{flushleft}
+\end{table}
