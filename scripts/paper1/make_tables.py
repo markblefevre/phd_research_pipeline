@@ -29,7 +29,20 @@ def fmt_se(se):
     if pd.isna(se): return ""
     return f"({se:.4f})"
 
-def build_table(df, spec_order, variables, filename):
+def describe_columns(spec_order):
+    desc = []
+    for i, s in enumerate(spec_order, 1):
+        if "GPT+LMMD" in s:
+            desc.append(f"({i}) GPT and LMMD jointly")
+        elif "GPT" in s and "LMMD" not in s:
+            desc.append(f"({i}) GPT sentiment only")
+        elif "LMMD" in s and "GPT" not in s:
+            desc.append(f"({i}) LMMD sentiment only")
+        else:
+            desc.append(f"({i}) {s}")
+    return ", ".join(desc)
+
+def build_table(df, spec_order, variables, filename, caption):
     df = df[df["spec"].isin(spec_order)].copy()
 
     missing = [s for s in spec_order if s not in df["spec"].unique()]
@@ -78,15 +91,39 @@ def build_table(df, spec_order, variables, filename):
         column_format="l" + "c"*table.shape[1],
     )
 
+    lines = tex.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip().startswith("Year FE"):
+            lines.insert(i, r"\midrule")
+            break
+    tex = "\n".join(lines)
+
+    col_desc = describe_columns(spec_order)
+    
+    # --- Detect if controls are used ---
+    has_controls = any("Controls" in s for s in spec_order)
+    
+    # --- Build notes dynamically ---
+    notes = (
+        "\\footnotesize Notes: Standard errors in parentheses. "
+        "*** $p<0.01$, ** $p<0.05$, * $p<0.1$. "
+        "Standard errors clustered at firm level. "
+    )
+    
+    if has_controls:
+        notes += "All specifications include controls for log market capitalization and return volatility. "
+    else:
+        notes += "No additional control variables are included. "
+    
+    notes += f"Columns {col_desc}, respectively.\n"
+
     tex = (
         "\\begin{table}[htbp]\n\\centering\n"
-        f"\\caption{{{filename.replace('_',' ').title()}}}\n"
+        f"\\caption{{{caption}}}\n"
         f"\\label{{tab:{filename}}}\n"
         + tex +
         "\\begin{flushleft}\n"
-        "\\footnotesize Notes: Standard errors in parentheses. "
-        "*** p<0.01, ** p<0.05, * p<0.1. "
-        "Standard errors clustered at firm level.\n"
+        + notes +
         "\\end{flushleft}\n\\end{table}"
     )
 
@@ -109,16 +146,29 @@ vars_main = [
 ]
 
 # =====================================================
-# TABLE 1: MAIN RESULT
+# TABLE 5: MAIN RESULT
 # =====================================================
 spec_main = [
-    "GPT",
+    "GPT+YearFE+IndFE",
     "LMMD+YearFE+IndFE",
-    "GPT+LMMD",
     "GPT+LMMD+YearFE+IndFE",
 ]
 
-build_table(df_main, spec_main, vars_main, "table_main")
+build_table(df_main, spec_main, vars_main, "car_sentiment_main",
+            "Market Reaction to Disclosure Sentiment (CAR)")
+
+# =====================================================
+# TABLE 6: MAIN RESULT WITH CONTROLS
+# ==================================================== = [
+spec_controls = [
+    "GPT+Controls+YearFE+IndFE",
+    "LMMD+Controls+YearFE+IndFE",
+    "GPT+LMMD+Controls+YearFE+IndFE",
+]
+
+build_table(df_main, spec_controls, vars_main, "car_sentiment_controls",
+    "Market Reaction to Disclosure Sentiment with Controls"
+)
 
 # =====================================================
 # TABLE 2: GPT vs LMMD (CLEAN COMPARISON)
@@ -128,45 +178,81 @@ spec_compare = [
     "LMMD+Controls+YearFE+IndFE",
 ]
 
-build_table(df_main, spec_compare, vars_main, "table_compare")
+build_table(df_main, spec_compare, vars_main, "table_compare",
+            "Table Compare")
 
 # =====================================================
-# TABLE 3: WINDOWS (LMMD only)
+# TABLE 3: WINDOWS (GPT vs LMMD vs JOINT)
 # =====================================================
 windows = [(0,0),(0,1),(-1,1),(-2,2),(-3,3)]
 
 rows = []
 
 for w0, w1 in windows:
-    d = df_all[
+    row = {"Window": f"({w0},{w1})"}
+
+    df_w = df_all[
         (df_all["window_start"] == w0) &
-        (df_all["window_end"] == w1) &
-        (df_all["spec"] == "LMMD+Controls+YearFE+IndFE")
+        (df_all["window_end"] == w1)
     ]
 
-    if len(d) == 0:
-        continue
+    # --- GPT ---
+    d_gpt = df_w[df_w["spec"] == "GPT+YearFE+IndFE"]
+    if not d_gpt.empty:
+        r = d_gpt.iloc[0]
+        row["GPT"] = f"{fmt_coef(r['beta_gpt_z'], r['p_gpt_z'])} {fmt_se(r['se_gpt_z'])}"
+    else:
+        row["GPT"] = ""
 
-    r = d.iloc[0]
+    # --- LMMD ---
+    d_lmmd = df_w[df_w["spec"] == "LMMD+YearFE+IndFE"]
+    if not d_lmmd.empty:
+        r = d_lmmd.iloc[0]
+        row["LMMD"] = f"{fmt_coef(r['beta_lmmd_z'], r['p_lmmd_z'])} {fmt_se(r['se_lmmd_z'])}"
+    else:
+        row["LMMD"] = ""
 
-    rows.append({
-        "Window": f"({w0},{w1})",
-        "LMMD": fmt_coef(r["beta_lmmd_z"], r["p_lmmd_z"]),
-        "SE": fmt_se(r["se_lmmd_z"]),
-        "R²": f"{r['r2']:.3f}",
-    })
+    # --- JOINT ---
+    d_joint = df_w[df_w["spec"] == "GPT+LMMD+YearFE+IndFE"]
+    if not d_joint.empty:
+        r = d_joint.iloc[0]
+        row["Joint"] = (
+            f"GPT: {fmt_coef(r['beta_gpt_z'], r['p_gpt_z'])} {fmt_se(r['se_gpt_z'])}; "
+            f"LMMD: {fmt_coef(r['beta_lmmd_z'], r['p_lmmd_z'])} {fmt_se(r['se_lmmd_z'])}"
+        )
+    else:
+        row["Joint"] = ""
 
-df_win = pd.DataFrame(rows).set_index("Window")
+    rows.append(row)
 
-df_win.to_csv(OUT_DIR / "table_windows.csv")
+df_win = pd.DataFrame(rows)
 
-df_win_tex = df_win.to_latex(escape=False)
+# --- SAVE CSV ---
+df_win.to_csv(OUT_DIR / "car_sentiment_windows.csv", index=False)
 
-with open(OUT_DIR / "table_windows.tex", "w") as f:
-    f.write(df_win_tex)
+# --- LATEX ---
+tex = df_win.to_latex(
+    index=False,
+    escape=False,
+    column_format="lccc",
+)
 
-print("[OK] table_windows")
+tex = (
+    "\\begin{table}[htbp]\n\\centering\n"
+    "\\caption{Sentiment Effects Across Event Windows}\n"
+    "\\label{tab:car_sentiment_windows}\n"
+    + tex +
+    "\\begin{flushleft}\n"
+    "\\footnotesize Notes: Each cell reports coefficient(s) and standard error(s) "
+    "from regressions including year and industry fixed effects. "
+    "*** $p<0.01$, ** $p<0.05$, * $p<0.1$.\n"
+    "\\end{flushleft}\n\\end{table}"
+)
 
+with open(OUT_DIR / "car_sentiment_windows.tex", "w") as f:
+    f.write(tex)
+
+print("[OK] car_sentiment_windows")
 # =====================================================
 # TABLE 4: DISAGREEMENT
 # =====================================================
@@ -180,6 +266,7 @@ spec_dis = [
     "LMMD+DISAGREE+Controls+YearFE+IndFE",
 ]
 
-build_table(df_main, spec_dis, vars_dis, "table_disagreement")
+build_table(df_main, spec_dis, vars_dis, "table_disagreement",
+            "Table Disagreement")
 
 print("\nALL TABLES GENERATED.")
