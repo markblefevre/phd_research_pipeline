@@ -23,11 +23,11 @@ def stars(p):
 
 def fmt_coef(beta, p):
     if pd.isna(beta): return ""
-    return f"{beta:.4f}{stars(p)}"
+    return f"{beta:.5f}{stars(p)}"
 
 def fmt_se(se):
     if pd.isna(se): return ""
-    return f"({se:.4f})"
+    return f"({se:.5f})"
 
 def describe_columns(spec_order):
     desc = []
@@ -155,7 +155,7 @@ spec_main = [
 ]
 
 build_table(df_main, spec_main, vars_main, "car_sentiment_main",
-            "Market Reaction to Disclosure Sentiment (CAR)")
+            "Market Reaction to Disclosure Sentiment, CAR[0,1]")
 
 # =====================================================
 # TABLE 6: MAIN RESULT WITH CONTROLS
@@ -167,7 +167,7 @@ spec_controls = [
 ]
 
 build_table(df_main, spec_controls, vars_main, "car_sentiment_controls",
-    "Market Reaction to Disclosure Sentiment with Controls"
+    "Market Reaction to Disclosure Sentiment with Controls, CAR[0,1]"
 )
 
 # =====================================================
