@@ -1,23 +1,23 @@
 \begin{table}[htbp]
 \centering
-\caption{Market Reaction to Disclosure Sentiment (CAR)}
+\caption{Market Reaction to Disclosure Sentiment, CAR[-1,1] in Percentage Points}
 \label{tab:car_sentiment_main}
 \begin{tabular}{lccc}
 \toprule
  & (1) & (2) & (3) \\
 \midrule
-GPT (z) & 0.0016* &  & 0.0010 \\
-  & (0.0009) &  & (0.0009) \\
-LMMD (z) &  & 0.0020** & 0.0016* \\
-  &  & (0.0008) & (0.0009) \\
+GPT (z) & 0.1741* &  & 0.0854 \\
+  & (0.1051) &  & (0.1057) \\
+LMMD (z) &  & 0.2645** & 0.2320** \\
+  &  & (0.1029) & (0.1037) \\
 \midrule
 Year FE & Yes & Yes & Yes \\
 Industry FE & Yes & Yes & Yes \\
 Controls & No & No & No \\
 N & 1086 & 1086 & 1086 \\
-R² & 0.081 & 0.083 & 0.085 \\
+R² & 0.080 & 0.083 & 0.084 \\
 \bottomrule
 \end{tabular}\begin{flushleft}
-\footnotesize Notes: Standard errors in parentheses. *** $p<0.01$, ** $p<0.05$, * $p<0.1$. Standard errors clustered at firm level. No additional control variables are included. Columns (1) GPT sentiment only, (2) LMMD sentiment only, (3) GPT and LMMD jointly, respectively.
+\footnotesize Notes: Standard errors in parentheses. The dependent variable is CAR multiplied by 100, so coefficients are in percentage points. *** $p<0.01$, ** $p<0.05$, * $p<0.1$. Standard errors clustered at firm level. No additional control variables are included. Columns (1) GPT sentiment only, (2) LMMD sentiment only, (3) GPT and LMMD jointly, respectively.
 \end{flushleft}
 \end{table}

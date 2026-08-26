@@ -1,23 +1,26 @@
 \begin{table}[htbp]
 \centering
-\caption{Market Reaction to Disclosure Sentiment with Controls}
+\caption{Market Reaction to Disclosure Sentiment with Controls, CAR[-1,1] in Percentage Points}
 \label{tab:car_sentiment_controls}
 \begin{tabular}{lccc}
 \toprule
  & (1) & (2) & (3) \\
 \midrule
-GPT (z) & 0.0016* &  & 0.0010 \\
-  & (0.0009) &  & (0.0009) \\
-LMMD (z) &  & 0.0020** & 0.0016* \\
-  &  & (0.0008) & (0.0009) \\
+GPT (z) & 0.1756* &  & 0.0903 \\
+  & (0.1046) &  & (0.1056) \\
+LMMD (z) &  & 0.2577** & 0.2231** \\
+  &  & (0.1029) & (0.1042) \\
+Log Market Cap & 0.0194 & 0.0101 & 0.0109 \\
+  & (0.0620) & (0.0605) & (0.0609) \\
+Return Volatility & 0.5739* & 0.5282 & 0.5361 \\
+  & (0.3403) & (0.3392) & (0.3393) \\
 \midrule
 Year FE & Yes & Yes & Yes \\
 Industry FE & Yes & Yes & Yes \\
-Controls & Yes & Yes & Yes \\
 N & 1086 & 1086 & 1086 \\
-R² & 0.087 & 0.089 & 0.091 \\
+R² & 0.083 & 0.086 & 0.087 \\
 \bottomrule
 \end{tabular}\begin{flushleft}
-\footnotesize Notes: Standard errors in parentheses. *** $p<0.01$, ** $p<0.05$, * $p<0.1$. Standard errors clustered at firm level. All specifications include controls for log market capitalization and return volatility. Columns (1) GPT sentiment only, (2) LMMD sentiment only, (3) GPT and LMMD jointly, respectively.
+\footnotesize Notes: Standard errors in parentheses. The dependent variable is CAR multiplied by 100, so coefficients are in percentage points. *** $p<0.01$, ** $p<0.05$, * $p<0.1$. Standard errors clustered at firm level. All specifications include controls for log market capitalization and return volatility. Columns (1) GPT sentiment only, (2) LMMD sentiment only, (3) GPT and LMMD jointly, respectively.
 \end{flushleft}
 \end{table}
