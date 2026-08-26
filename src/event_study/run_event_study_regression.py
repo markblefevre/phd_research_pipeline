@@ -114,6 +114,11 @@ def run_regression(
         if "industry" not in df.columns:
             raise ValueError("Missing 'industry' in regression dataset")
 
+        # Express CAR in percentage points for regression output.
+        # This rescales coefficients and standard errors by 100,
+        # while leaving t-statistics, p-values, R², and N unchanged.
+        df["CAR"] = 100 * pd.to_numeric(df["CAR"], errors="coerce")
+
         df["EventDate"] = pd.to_datetime(df["EventDate"], errors="coerce")
 
         controls = ["ln_market_cap", "ln_volatility"]
