@@ -3,7 +3,7 @@ import pandas as pd
 
 # ================= CONFIG =================
 RUN_ID = "1"
-WINDOW_MAIN = (0, 1)
+WINDOW_MAIN = (-1, 1)
 
 ROOT = Path(__file__).resolve().parents[2]
 IN_PATH = ROOT / f"outputs/paper1/{RUN_ID}/event_study/regression_summary.csv"
@@ -193,6 +193,7 @@ def build_table(df, spec_order, variables, filename, caption, show_control_coeff
     # --- Build notes dynamically ---
     notes = (
         "\\footnotesize Notes: Standard errors in parentheses. "
+        "The dependent variable is CAR multiplied by 100, so coefficients are in percentage points. "
         "*** $p<0.01$, ** $p<0.05$, * $p<0.1$. "
         "Standard errors clustered at firm level. "
     )
@@ -242,7 +243,7 @@ spec_main = [
 ]
 
 build_table(df_main, spec_main, vars_main, "car_sentiment_main",
-            "Market Reaction to Disclosure Sentiment, CAR[0,1]")
+            "Market Reaction to Disclosure Sentiment, CAR[-1,1] in Percentage Points")
 
 # =====================================================
 # TABLE 6: MAIN RESULT WITH CONTROLS
@@ -258,7 +259,7 @@ build_table(
     spec_controls,
     vars_main,
     "car_sentiment_controls",
-    "Market Reaction to Disclosure Sentiment with Controls, CAR[0,1]",
+    "Market Reaction to Disclosure Sentiment with Controls, CAR[-1,1] in Percentage Points",
     show_control_coeffs=True,
 )
 
@@ -331,12 +332,13 @@ tex = df_win.to_latex(
 
 tex = (
     "\\begin{table}[htbp]\n\\centering\n"
-    "\\caption{Sentiment Effects Across Event Windows}\n"
+    "\\caption{Sentiment Effects Across Event Windows, CAR in Percentage Points}\n"
     "\\label{tab:car_sentiment_windows}\n"
     + tex +
     "\\begin{flushleft}\n"
     "\\footnotesize Notes: Each cell reports coefficient(s) and standard error(s) "
     "from regressions including year and industry fixed effects. "
+    "The dependent variable is CAR multiplied by 100, so coefficients are in percentage points. "
     "*** $p<0.01$, ** $p<0.05$, * $p<0.1$.\n"
     "\\end{flushleft}\n\\end{table}"
 )
