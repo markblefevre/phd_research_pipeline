@@ -8,10 +8,10 @@ price_features = false
 market_indexes = false
 lmmd_score = false
 build_panel = false
-market_model = true
+market_model = false
 car_computation = false
 regression_dataset = false
-regression = false
+regression = true
 
 [price_data]
 skip_if_exists    = true
