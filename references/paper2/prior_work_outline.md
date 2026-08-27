@@ -1,8 +1,8 @@
 # Prior Work
 
 ## 1. Dictionary-based financial sentiment
-- [ ] Loughran & McDonald (2011)
-- ...
+- [x] Loughran & McDonald (2011)
+- [ ] Henry (2016)
 
 ## 2. Machine learning and transformer-based financial sentiment
 - [x] Araci (2019)
@@ -12,9 +12,11 @@
 ## 3. Large language models
 - [x] Fatouros et al. (2023)
 - [x] Li et al. (2023)
+- [x] Siano (2025)
 
 ## 4. Economic validation: sentiment and market outcomes
 - [x] Tetlock (2007)
+- [x] Tetlock, Saar-Tsechansky & Macskassy (2008)
 - [x] Feldman et al. (2010)
 - [x] Glasserman & Mamaysky (2019)
 - [x] Frankel, Jennings & Lee (2021)
