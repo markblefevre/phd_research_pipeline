@@ -14,7 +14,7 @@
 - [x] Li et al. (2023)
 
 ## 4. Economic validation: sentiment and market outcomes
-- [ ] Tetlock (2007)
+- [x] Tetlock (2007)
 - [x] Feldman et al. (2010)
 - [x] Glasserman & Mamaysky (2019)
 - [x] Frankel, Jennings & Lee (2021)
