@@ -1,37 +1,37 @@
 # Prior Work
 
 ## 1. Dictionary-based financial sentiment
-- Loughran & McDonald (2011)
+- [ ] Loughran & McDonald (2011)
 - ...
 
-## 2. Transformers and domain-specific language models
-- Araci (2019)
-- Suzuki et al. (2023)
-- Frankel, Jennings & Lee (2021)   # maybe here, or Section 4
+## 2. Machine learning and transformer-based financial sentiment
+- [x] Araci (2019)
+- [x] Suzuki et al. (2023)
+- [x] Frankel, Jennings & Lee (2021)   # maybe here, or Section 4
 
 ## 3. Large language models
-- Fatouros et al. (2023)
-- Li et al. (2023)
-- Chiu & Hung (2025)
+- [x] Fatouros et al. (2023)
+- [x] Li et al. (2023)
 
-## 4. Sentiment and market reaction
-- Tetlock (2007)
-- Feldman et al. (2010)
-- Glasserman & Mamaysky (2019)
-- Frankel, Jennings & Lee (2021)
-- Okada et al. (2025)
+## 4. Economic validation: sentiment and market outcomes
+- [ ] Tetlock (2007)
+- [x] Feldman et al. (2010)
+- [x] Glasserman & Mamaysky (2019)
+- [x] Frankel, Jennings & Lee (2021)
+- [x] Okada et al. (2025)
+- [x] Chiu & Hung (2025)
 
 ## 5. Japanese financial-text research
-- Manabe et al.
-- Nakatsuka
-- Suzuki et al. (2023)
-- Okada et al. (2025)
+- [ ] Manabe et al.
+- [ ] Nakatsuka
+- [x] Suzuki et al. (2023)
+- [x] Okada et al. (2025)
 
 ## 6. Textual novelty
-- Brown & Tucker (2011)
-- Cohen, Malloy & Nguyen (2020)
-- Dyer, Lang & Stice-Lawrence (2017)
-- Nakatsuka & Suimon (2026)
+- [x] Brown & Tucker (2011)
+- [ ] Cohen, Malloy & Nguyen (2020)
+- [x] Dyer, Lang & Stice-Lawrence (2017)
+- [ ] Nakatsuka & Suimon (2026)
 
 ## 7. Research gap
 Current thoughts...
