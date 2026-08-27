@@ -29,7 +29,7 @@
 
 ## 6. Textual novelty
 - [x] Brown & Tucker (2011)
-- [ ] Cohen, Malloy & Nguyen (2020)
+- [x] Cohen, Malloy & Nguyen (2020)
 - [x] Dyer, Lang & Stice-Lawrence (2017)
 - [ ] Nakatsuka & Suimon (2026)
 
