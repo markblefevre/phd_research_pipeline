@@ -7,7 +7,7 @@
 ## 2. Machine learning and transformer-based financial sentiment
 - [x] Araci (2019)
 - [x] Suzuki et al. (2023)
-- [x] Frankel, Jennings & Lee (2021)   # maybe here, or Section 4
+- [x] Frankel, Jennings & Lee (2021)
 
 ## 3. Large language models
 - [x] Fatouros et al. (2023)
