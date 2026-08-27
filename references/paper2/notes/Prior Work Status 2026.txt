@@ -1,0 +1,236 @@
+Prior Work Status 2026.08.27
+
+They come together considerably better now. The biggest change is that the literature review no longer has to be organized as “old methods → new methods.” You now have enough papers to make the more interesting argument:
+
+> **The unresolved issue is not whether increasingly sophisticated NLP models can classify financial language, but whether greater linguistic sophistication produces a better economically meaningful measure of information in financial disclosures.**
+
+That gives the whole review a purpose.
+
+### 1. Start with the measurement problem: financial language is special
+
+**Tetlock (2007)** establishes the basic proposition that language in financial media is associated with market behavior.  Tetlock et al. (2008) then moves from aggregate media tone to firm-specific information and asks whether negative language contains incremental information about fundamentals and whether markets fully incorporate it. 
+
+Then **Loughran–McDonald** gives you the critical methodological problem: ordinary language resources can misinterpret financial language. Words such as *liability*, *tax*, *capital*, and *cost* can be classified negatively by generic dictionaries even though they are not necessarily negative in a financial document. 
+
+Henry–Leone strengthens that point enormously because it asks not merely whether dictionaries generate different classifications, but whether measurement choice changes **economic inference**. Their finance-specific measures outperform generic dictionaries in explaining market outcomes, yet a simple domain-specific word-count measure can perform about as well as a more complicated Naive Bayes approach. 
+
+That gives you a very useful first principle:
+
+**More complexity is not automatically better. The test should be economic usefulness.**
+
+That proposition can echo throughout the whole literature review.
+
+---
+
+### 2. Transformers attack a genuine weakness of dictionaries: context
+
+Now Araci becomes a natural response to the problem established above.
+
+FinBERT says, essentially: dictionary methods cannot understand context, whereas contextual representations potentially can. Araci gets strong sentiment-classification performance, but the important limitation for your review is that this is largely **classification validation**, not realized-market validation. Indeed, your notes identify Araci's suggestion that FinBERT should eventually be tested against stock returns. 
+
+Then **Huang et al., Frankel et al., and Siano** push contextual modeling closer to economic outcomes.
+
+But you now have a very useful distinction within this literature:
+
+* **sentiment models constructed independently of returns**, and then tested economically;
+* **text models trained using returns themselves**.
+
+That is not a minor technical distinction.
+
+Frankel trains supervised ML on `CAR[0,1]`, and Siano fine-tunes RoBERTa directly on two-day abnormal returns. Your outline already catches this problem. 
+
+So I would not present Siano simply as “transformers are better.” It answers a subtly different question:
+
+> **How much of the market reaction can a contextual model learn from language when market reaction itself supplies the labels?**
+
+That can produce excellent predictive performance, but it isn't the same test as asking whether a independently defined sentiment measure has economic validity.
+
+That distinction is becoming one of the best features of your literature review.
+
+---
+
+### 3. Japanese NLP then becomes more than just a geographic subsection
+
+**Suzuki et al.** fits beautifully here.
+
+It shows that there are *two* domains involved in your problem:
+
+**finance + Japanese language.**
+
+Japanese finance-specific pretraining and tokenizer adaptation improve NLP-task performance, and Suzuki gives you an actual linguistic mechanism: general Japanese tokenizers can fragment specialized katakana financial terms unnaturally. 
+
+But Suzuki also creates exactly the opening you need:
+
+> Better Japanese financial NLP benchmark performance does **not** establish better economic measurement.
+
+Their validation is on supervised NLP tasks rather than realized market reactions. 
+
+So Suzuki should probably appear primarily in the transformer section, not be held until a standalone “Japan” section.
+
+The progression becomes:
+
+**generic dictionary → financial dictionary → contextual financial model → Japanese contextual financial model.**
+
+That reads much more naturally.
+
+---
+
+### 4. The LLM papers now provide a genuine test of the “complexity is better” hypothesis
+
+This section has become much stronger with **Fatouros, Chiu, Okada, and Lopez-Lira**.
+
+Fatouros gives you an early clean comparison: zero-shot GPT-3.5 beats FinBERT on its FX sentiment task, and prompt design materially affects performance. 
+
+That is interesting, but Lopez-Lira now gives you something much deeper.
+
+**Lopez-Lira & Tang (2026)** effectively asks whether increased model sophistication translates into increased *economic reasoning*. They compare GPT-4 with GPT-3.5, BERT, FinBERT, Llama, dictionary methods, RavenPack, etc. 
+
+And importantly, GPT-4's advantage isn't merely a sentiment classification result. They examine immediate reaction **and subsequent return drift**.
+
+This plugs almost perfectly into your central question:
+
+**Does model sophistication produce incrementally more economically meaningful information?**
+
+And it actually produces an intriguing bridge back to Henry–Leone. Henry–Leone says complexity need not dominate simple measures; Lopez-Lira says sufficiently sophisticated modern LLMs *can* dominate simpler models.
+
+That's not a contradiction. It's an empirical question evolving with technology.
+
+So you have a nice historical tension:
+
+**Henry & Leone:** don't assume sophisticated algorithms improve measurement.
+↓
+**FinBERT / contextual models:** context may address fundamental weaknesses of word counting.
+↓
+**Fatouros / Lopez-Lira:** sufficiently capable LLMs sometimes clearly outperform older methods economically.
+
+That is much better than merely cataloguing generations of NLP technology.
+
+---
+
+### 5. Okada is now simultaneously your best friend and the paper that forces you to sharpen your contribution
+
+This is the major thing I would change in your current outline.
+
+The statement:
+
+> “We have relatively little comparable evidence in Japanese regulatory disclosure”
+
+is now **too weak as the main gap**.
+
+Okada is extremely close.
+
+It uses Japanese EDINET annual securities reports and directly compares:
+
+* a financial dictionary,
+* DeBERTaV2,
+* GPT-4o-mini,
+* Claude,
+* Gemini,
+
+and validates them economically. 
+
+Your own notes correctly call it one of the most directly relevant studies because it combines **Japanese disclosures + competing sentiment methods + economic validation**. 
+
+So I would **not** build the novelty claim around “nobody has compared modern NLP methods on Japanese disclosures.”
+
+Okada has.
+
+Instead, Okada lets you make the gap much more precise.
+
+One major difference already identified in your notes is:
+
+**Okada:** annual portfolio formation / long-horizon subsequent returns.
+**Your question:** event-window abnormal returns and comparative sentiment measurement around disclosure. 
+
+That is a much more defensible gap.
+
+And Okada produces another very useful conceptual result: the best NLP classifier isn't necessarily the best economic signal. Their domain-adapted DeBERTa performs differently from GPT/Claude once judged by subsequent returns. 
+
+That reinforces your whole literature-review thesis.
+
+---
+
+## 6. Then economic validation should probably stop being a standalone “pile of papers”
+
+This is the biggest structural change I would make.
+
+Your current Section 4 contains Tetlock, Feldman, Glasserman, Frankel, Okada, Chiu, Huang, etc. under “Economic validation.” 
+
+But virtually the **whole review is now about economic validation**.
+
+I would therefore make it the *thread running through the sections*, rather than mostly a separate literature category.
+
+For each generation of measurement, ask two questions:
+
+**How is sentiment measured?**
+**How is it validated?**
+
+For example:
+
+| Generation            | Measurement                   | Validation issue                                                                                     |
+| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Tetlock / LM          | dictionaries                  | Does tone relate to returns/fundamentals?                                                            |
+| Henry–Leone           | finance-specific dictionaries | Does measurement choice change market inference?                                                     |
+| Araci / Suzuki        | contextual transformers       | Better NLP labels, but does that imply economic relevance?                                           |
+| Frankel / Siano       | supervised contextual ML      | Strong market fit, but returns help construct the measure                                            |
+| Fatouros / Lopez-Lira | prompted LLMs                 | Can zero-shot semantic reasoning outperform prior methods economically?                              |
+| Okada                 | all three in Japanese         | Do these relative results survive in Japanese regulatory disclosure?                                 |
+| **Your paper**        | controlled comparison         | Which independently constructed sentiment measure best explains the disclosure-date market response? |
+
+That, to me, is the literature review.
+
+---
+
+## 7. And textual novelty now fits rather elegantly rather than looking bolted on
+
+The Brown–Tucker / Cohen / Dyer literature used to feel slightly like a separate research project. I don't think it does anymore.
+
+Dyer shows that filings contain substantial boilerplate, redundancy and repeated material. 
+
+Cohen makes the crucial next step: **what changed** can contain economically important information that investors fail to process immediately. Your notes make an excellent distinction:
+
+> novelty asks **“how much changed?”**
+> sentiment asks **“in what direction is the changed information?”** 
+
+And Henry–Leone independently gives you a link between these literatures by finding **change in tone more informative than tone level**. 
+
+That is a surprisingly strong theoretical connection.
+
+So novelty isn't another NLP algorithm to compare.
+
+It is a possible explanation for **why sentiment measured over an entire disclosure may be noisy**.
+
+A 50-page report can be 90% repeated material. A sophisticated sentiment model might understand every sentence perfectly and still produce an economically weak document-level signal if the economically important information is concentrated in the 10% that changed.
+
+That gives novelty a real role in your model rather than merely another literature section.
+
+---
+
+# I think the new overall story is this
+
+I would now think of the literature review as **five arguments**, not seven buckets:
+
+**1. Financial sentiment is measurable, but measurement is domain dependent.**
+Tetlock → Loughran–McDonald → Henry–Leone.
+
+**2. Contextual models address limitations of bag-of-words approaches, but NLP accuracy is not the same as economic validity.**
+Araci → Huang → Suzuki → Frankel/Siano, with the important supervised-on-returns distinction.
+
+**3. Generative LLMs create a new possibility: sophisticated semantic reasoning without outcome-specific supervised training.**
+Fatouros → Chiu → Lopez-Lira.
+
+**4. The decisive test is economic, and Japanese disclosure is now a particularly interesting comparison environment.**
+Suzuki establishes the language/domain issue; Okada is the closest direct predecessor; your study asks the narrower comparative event-study question that remains.
+
+**5. The information may reside not simply in sentiment level but in what changed.**
+Feldman/Henry → Brown → Dyer → Cohen → your novelty × sentiment idea.
+
+And then your gap becomes something closer to:
+
+> **The unresolved question is whether increasingly sophisticated sentiment methods provide incremental economic information when they are compared on the same Japanese regulatory disclosures under a common market-based validation framework, rather than evaluated on different linguistic benchmarks or trained directly on the market outcome itself. Further, prior work suggests that economically relevant information may reside disproportionately in changes to disclosure, raising the possibility that sentiment and textual novelty should be evaluated jointly.**
+
+That is much sharper than the gap in the current outline.
+
+And, importantly, **Okada does not kill your paper**. It actually makes your question much easier to explain, because it establishes that the comparison matters in exactly your setting while leaving you with a more precise question about **contemporaneous market reaction, apples-to-apples model evaluation, and potentially novelty/change**. 
+
+I think we are now close to the point where I would stop adding papers indiscriminately and start **turning this into the actual prior-literature narrative**.
