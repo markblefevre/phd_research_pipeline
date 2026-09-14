@@ -1,0 +1,226 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Japanese LMMD Construction and Validation}
+\label{subsec:lmmd_construction_validation}
+We construct a Japanese adaptation of the Loughran--McDonald Master Dictionary (LMMD) by translating English lexicon entries and validating the resulting Japanese terms for domain-appropriate sense and usage in EDINET filings. The workflow combines multi-engine translation (Azure, DeepL, GPT), diagnostic checks (POS alignment, corpus frequency, semantic similarity), and targeted manual review for high-impact sentiment terms.
+
+% Previous motivation subsection
+The Loughran--McDonald Master Dictionary (LMMD) is widely used in financial text analysis but is available only in English. 
+Because this study examines sentiment in Japanese corporate disclosures, a direct application of LMMD is not possible. 
+A cross-lingual mapping is required to transfer LMMD sentiment categories to Japanese.
+
+Financial terminology is highly domain-specific. 
+Words such as \emph{charge}, \emph{default}, \emph{bond}, \emph{provision}, or \emph{liability} exhibit substantial polysemy, and naïve machine translation often selects the incorrect sense. 
+This creates a material risk that translation errors propagate into sentiment scores and bias empirical estimates. 
+Accordingly, constructing a Japanese version of LMMD requires a dedicated translation, validation, and correction workflow.
+
+% Previous Initial Machine Translation Approach subsection
+As a starting point, each LMMD word was translated into Japanese using the Azure Cognitive Services Translator API. 
+This produced a complete mapping from English source words to Japanese target words. 
+A preliminary inspection of the translated dictionary, however, revealed several systematic deficiencies that would compromise any downstream sentiment analysis if left unaddressed.
+
+% Previous Systematic Translation Errors subsection
+Machine translation errors fell into four broad categories: 
+(1) wrong sense selection, 
+(2) stylistic mismatch, 
+(3) transliteration or overly literal translation, and 
+(4) inconsistent morphological mapping. 
+These issues are illustrated in Table~\ref{tab:mt_errors}.
+
+% Previous Wrong Sense Selection subsection
+A common failure mode involved selecting the wrong semantic sense for polysemous financial terms. 
+For example, the English term ``default'' was frequently translated as \jp{デフォルト}, which in Japanese typically refers to a ``preset option'' in software interfaces, rather than the correct legal and financial sense of ``credit default'' (\jp{債務不履行}). 
+Similarly, ``return'' was rendered as \jp{帰る} (“to go home”), a literal verb corresponding to the everyday English meaning of “to return,” rather than the financial concept of investment return (\jp{収益率}). 
+The term ``provision,'' which in accounting refers to \jp{引当金}, was translated as \jp{支給} (“payment” or “benefits”), a human-resources concept entirely unrelated to balance sheet provisions.
+
+% Previous Stylistic Mismatch subsection
+Translation engines also produced stylistically inappropriate outputs, using language that does not appear in formal corporate filings. 
+For example, the English term ``leverage'' was translated as \jp{レバレッジ}, a colloquial borrowing commonly used in informal speech or media commentary. 
+In Japanese financial reporting, however, leverage is typically expressed through more formal constructs such as \jp{財務レバレッジ} or \jp{有利子負債倍率}.
+
+% Previous Transliteration and Literal Translation subsection
+Some low-frequency terms were transliterated into katakana or mapped to literal everyday expressions that bear no domain relevance.
+For example, ``writeoff'' was translated as \jp{償却}, which captures amortization but does not reflect the specific accounting meaning of writing off assets or receivables (e.g., \jp{貸倒償却} or \jp{評価損計上}). 
+Literal or transliterated forms rarely appear in EDINET filings and therefore weaken the alignment between the Japanese lexicon and actual financial text usage.
+
+% Previous Inconsistent Morphological Mapping subsection
+A further source of noise arises from inconsistent singular–plural mappings. 
+Because Japanese does not morphologically mark plurality, singular and plural English forms should ordinarily map to the same lemma. However, machine translation occasionally produced stylistically or semantically divergent outputs. 
+For example, “expense’’ was translated as \jp{費用}, a general term for costs, whereas “expenses’’ was rendered as \jp{経費}, which denotes operating or administrative expenses in a narrower accounting sense. 
+Although both translations are plausible, the artificial distinction between singular and plural introduces unnecessary heterogeneity into the lexicon and complicates downstream token matching.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Machine Translation Errors in LMMD Financial Terms}
+\label{tab:mt_errors}
+%%\begin{tabular}{lll}
+\begin{tabular}{l p{2.4cm} p{3.4cm} p{3.7cm}}
+\toprule
+\textbf{LMMD Term} & \textbf{MT} & \textbf{Correct Term} & \textbf{Financial Sense} \\
+\midrule
+default   & \jp{デフォルト} & \jp{債務不履行}    & credit default \\[3pt]
+provision & \jp{支給}       & \jp{引当金}        & provision \\[3pt]
+return    & \jp{帰る}       & \jp{収益率}        & rate of return \\
+          &            & \jp{投資収益}      & \\[3pt]
+equity    & \jp{持分}       & \jp{株主資本}      & equity capital \\
+          &            & \jp{自己資本}      & \\[3pt]
+leverage  & \jp{レバレッジ} & \jp{財務レバレッジ} & financial leverage \\
+          &            & \jp{負債比率}        & \\[3pt]
+writeoff  & \jp{償却}       & \jp{貸倒償却}        & write-off \\
+          &            & \jp{評価損計上}      & \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+These translation errors demonstrate that a naïve machine-translated lexicon cannot be reliably applied to Japanese financial disclosures without extensive validation and correction.
+
+% Section 4 still has too many one paragraph subsections
+\subsection{Translation Validation Pipeline}
+\label{subsec:translation_validation}
+% Previous Implications for Sentiment Analysis subsection
+The quality of the sentiment lexicon directly affects classification outcomes. 
+Translation errors may cause incorrect sentiment assignments, distort weighting of positive or negative terms, and reduce predictive power in empirical return regressions. 
+Therefore, a more rigorous translation pipeline is required to ensure the validity of downstream results.
+
+% Previous Improved Translation and Validation Pipeline subsection
+To address the limitations of naïve machine translation, a multi-stage translation and verification procedure was implemented.
+
+% Previous Multi-Engine Translation subsection
+In addition to Azure Translate, two higher-quality translation systems were incorporated: 
+DeepL, which is known for superior Japanese translation accuracy, and GPT-based models (e.g. GPT-4o and successor GPT models), which were used to refine domain-specific meanings and resolve ambiguous cases. 
+For each English term, translations from multiple engines were compared for consistency.
+
+% Previous Translation Consistency Diagnostics subsection
+To assess translation stability, we translated all LMMD entries using three engines (Azure, DeepL, GPT) and compared token-level agreement. Exact match rates between engines are only 14–25\%, indicating that naïve cross-lingual dictionary transfer is highly sensitive to the translation system. We therefore apply normalization and validation steps before using the lexicon in downstream sentiment scoring.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Summary statistics for Japanese LMMD translation}
+\label{tab:lmmd_translation_summary}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Engine} & \textbf{Rows} & \textbf{Blank} & \textbf{Nonblank} & \textbf{Valid} & \textbf{Unique JA Tokens} \\
+\midrule
+AZURE & 86,554 & 66  & 86,488 & 86,488 & 50,976 \\
+DEEPL & 86,554 & 1   & 86,553 & 86,553 & 61,774 \\
+GPT   & 86,554 & 490 & 86,064 & 86,064 & 50,270 \\
+\bottomrule
+\end{tabular}
+
+\vspace{4pt}
+\begin{minipage}{0.95\linewidth}
+\footnotesize
+\emph{Notes:} “Blank” denotes empty Japanese translations. “Valid” excludes blanks and placeholder error tokens. In the initial GPT translation run, 60 entries were returned as placeholder \texttt{ERROR\_k} tokens; these entries were subsequently corrected manually using standard Japanese equivalents.
+\end{minipage}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Pairwise exact-string agreement across MT engines}
+\label{tab:lmmd_pairwise_agreement}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Pair} & \textbf{Rows Compared} & \textbf{Exact Matches} & \textbf{Exact Match Rate} \\
+\midrule
+AZURE vs GPT   & 85,998 & 21,545 & 25.1\% \\
+AZURE vs DEEPL & 86,487 & 18,735 & 21.7\% \\
+DEEPL vs GPT   & 86,064 & 12,379 & 14.4\% \\
+\bottomrule
+\end{tabular}
+
+\vspace{4pt}
+\begin{minipage}{0.95\linewidth}
+\footnotesize
+\emph{Notes:} “Exact match” requires identical Japanese strings. Lower agreement is expected because multiple Japanese renderings can be acceptable (synonyms, formality, katakana vs.\ kanji, spacing/orthography), motivating normalization before coverage and scoring.
+\end{minipage}
+\end{table}
+
+% Previous Part-of-Speech and Sense Alignment subsubsection
+Part-of-speech (POS) tags from spaCy (English) and SudachiPy with UniDic (Japanese) were compared. 
+A mismatch between expected POS (e.g., noun vs.\ verb) triggered a quality warning indicating probable misinterpretation.
+
+% Previous Corpus Frequency Validation subsection
+Each Japanese translation was evaluated for frequency in EDINET filings and other financial corpora. 
+Correct financial translations typically appear frequently in such documents, whereas colloquial expressions or unnatural katakana forms rarely appear. 
+Low-frequency translations were flagged as candidates for correction.
+
+% PreviousSemantic Similarity Scoring subsection
+Multilingual sentence embeddings (e.g., LaBSE, multilingual MiniLM, or OpenAI embeddings) were used to compute cosine similarity between the English LMMD word and its Japanese translation. 
+Low similarity scores indicate potential semantic drift and were used as an additional filter.
+
+% Previous Model-Assisted and Expert Review subsection
+High-impact sentiment words (e.g., those in the negative or uncertainty categories) were manually reviewed and corrected with the assistance of GPT-based models using financial-context prompts. 
+This produced a validated Japanese financial sentiment dictionary aligned with LMMD categories.
+
+% Previous Outcome subsection
+The resulting translation and validation framework produced a corrected, domain-appropriate Japanese version of LMMD. 
+This lexicon enables reliable sentiment classification in Japanese corporate filings and strengthens the empirical analysis connecting textual sentiment to financial outcomes. 
+Moreover, the methodology is reproducible and may be applied to sentiment lexicon construction in other languages.
+
+\subsection{Event Study Design}
+\label{subsec:eventstudy}
+
+To evaluate whether disclosure tone is reflected in stock prices, we implement a standard short-window event study following \citet{mackinlay1997event}.
+
+Abnormal returns are computed using a firm-specific market model. For each firm-event pair, we estimate the following regression over a pre-event estimation window:
+
+\begin{equation}
+R_{i,t} = \alpha_{i,e} + \beta_{i,e} R_{m,t} + \epsilon_{i,t},
+\end{equation}
+
+where $R_{i,t}$ denotes the daily return of firm $i$ on trading day $t$, and $R_{m,t}$ denotes the corresponding market return. The parameters $(\alpha_{i,e}, \beta_{i,e})$ are estimated via ordinary least squares using returns over trading days $[-120, -20]$ relative to the event date.
+
+This event-specific estimation allows market model parameters to vary over time and avoids contamination from event-period returns.
+
+Abnormal returns are then defined as:
+\begin{equation}
+AR_{i,t} = R_{i,t} - (\hat{\alpha}_{i,e} + \hat{\beta}_{i,e} R_{m,t}),
+\end{equation}
+
+and cumulative abnormal returns (CAR) over event window $[\tau_1, \tau_2]$ are given by:
+\begin{equation}
+CAR_{i,[\tau_1,\tau_2]} = \sum_{t=\tau_1}^{\tau_2} AR_{i,t}.
+\end{equation}
+
+Abnormal returns and CARs are computed independently of sentiment measures and are identical across all regression specifications.
+
+The event date is defined as the EDINET filing date aligned to the nearest trading day on or before the filing date. We examine multiple event windows, including $[0,0]$, $[0,1]$, $[-1,1]$, $[-2,2]$, and $[-3,3]$. We take $\mathrm{CAR}[-1,1]$ as the primary event window because it is short enough to remain closely tied to the filing event while allowing for modest pre-filing information leakage, filing-time frictions, and delayed processing of detailed MD\&A language. We report $\mathrm{CAR}[0,0]$ and $\mathrm{CAR}[0,1]$ as immediacy checks, and $\mathrm{CAR}[-2,2]$ and $\mathrm{CAR}[-3,3]$ as wider-window robustness tests.
+
+\subsection{Regression Specification and Control Variables}
+\label{subsec:regression_specification}
+
+To account for standard cross-sectional determinants of stock returns, we include firm-level control variables in extended regression specifications. Specifically, we control for firm size and return volatility.
+
+Firm size is measured as the logarithm of market capitalization, computed using filing-date equity prices and shares outstanding obtained from EDINET XBRL disclosures. Return volatility is measured as the logarithm of the standard deviation of daily stock returns over a 60-day pre-event window ending 11 trading days prior to the filing date. Sentiment variables are standardized within the regression sample to facilitate comparison of coefficient magnitudes across sentiment measures.
+
+To test whether disclosure sentiment is associated with market reactions, we estimate cross-sectional regressions of the form:
+\begin{equation}
+CAR_{i,[\tau_1,\tau_2]} =
+\alpha
++ \beta Sentiment_i
++ \gamma' X_i
++ \delta_y
++ \lambda_j
++ \varepsilon_i .
+\end{equation}
+
+where $CAR_{i,[\tau_1,\tau_2]}$ denotes the cumulative abnormal return for filing $i$ over event window $[\tau_1,\tau_2]$, $Sentiment_i$ denotes the standardized sentiment measure, and $X_i$ is a vector of firm-level controls. In baseline specifications, the vector $X_i$ is omitted; in controlled specifications, $X_i$ includes log market capitalization and pre-event return volatility. The terms $\delta_y$ and $\lambda_j$ denote year and industry fixed effects, respectively. Standard errors are clustered at the firm level.
+
+For specifications comparing GPT and LMMD sentiment directly, we estimate:
+\begin{equation}
+CAR_{i,[\tau_1,\tau_2]} =
+\alpha
++ \beta_1 \mathrm{GPT}_i
++ \beta_2 \mathrm{LMMD}_i
++ \gamma' X_i
++ \delta_y
++ \lambda_j
++ \varepsilon_i .
+\end{equation}
+
+where $\mathrm{GPT}_i$ and $\mathrm{LMMD}_i$ denote the standardized GPT-based and Japanese LMMD-based sentiment measures for filing $i$, respectively.

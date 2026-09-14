@@ -1,0 +1,169 @@
+\section{Translation Quality Diagnostics}
+\label{appendix:translation_diagnostics}
+
+This appendix provides supplementary material related to the evaluation of English-to-Japanese translation quality used in the construction of the Japanese version of the Loughran--McDonald Master Dictionary (LMMD). 
+It includes detailed POS tagging coverage statistics, fine-grained Japanese POS breakdowns, confusion matrices, and illustrative examples of translation errors. 
+These materials complement the methodological discussion in Section~\ref{sec:methodology}.
+
+% =====================================================
+\subsection{POS Tagging Coverage}
+\label{appendix:pos_coverage}
+
+Table~\ref{tab:pos_coverage_appendix} reports the coverage of the POS tagging tools used in the analysis.
+English POS tags were obtained from WordNet, while Japanese POS tags were produced using SudachiPy with the UniDic dictionary.
+As noted in the main text, WordNet does not include certain very rare English words (e.g., \textit{accipitral}), archaic forms (e.g., \textit{opprobriousness}), or obscure morphological variants (e.g., \textit{abjuratory}) that are present in the LMMD.
+These omissions account for the 13\% of LMMD entries for which English POS tags were unavailable, whereas SudachiPy provides nearly complete coverage of Japanese tokens.
+
+\begin{table}[h]
+\centering
+\caption{POS Tagging Coverage for LMMD Translations}
+\label{tab:pos_coverage_appendix}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Category} & \textbf{Count} & \textbf{Percent} \\
+\midrule
+Total LMMD entries               & 86,553  & 100.0\% \\
+EN\_POS available (WordNet)      & 75,237  & 86.9\%  \\
+JA\_POS available (SudachiPy)    & 86,553  & 100.0\% \\
+Both POS available               & 75,237  & 86.9\%  \\
+Missing EN\_POS                  & 11,316  & 13.1\%  \\
+Missing JA\_POS                  & 0       & 0.0\%   \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================
+\subsection{Fine-Grained Japanese POS Tags}
+\label{appendix:fine_pos}
+
+Japanese morphological analysis produces a richer set of POS categories than English.
+Table~\ref{tab:fine_pos_counts} reports the distribution of Japanese POS tags observed in the DeepL-translated LMMD lexicon.
+Although Azure and GPT translations exhibit slightly different POS distributions, DeepL provides the most consistent and domain-appropriate Japanese terminology, and therefore serves as a representative example.
+
+\begin{table}[h]
+\centering
+\caption{Distribution of Fine-Grained Japanese POS Categories}
+\label{tab:fine_pos_counts}
+\begin{tabular}{llrr}
+\toprule
+Japanese & English & Count & Percent \\
+\midrule
+\jp{名詞}        & Noun                 & 82,602 & 95.4\% \\
+\jp{接頭辞}      & Prefix               & 1,304  & 1.5\%  \\
+\jp{形状詞}      & Adjectival Noun      & 999    & 1.2\%  \\
+\jp{副詞}        & Adverb               & 633    & 0.7\%  \\
+\jp{動詞}        & Verb                 & 443    & 0.5\%  \\
+\jp{形容詞}      & Adjective            & 348    & 0.4\%  \\
+\jp{代名詞}      & Pronoun              & 90     & 0.1\%  \\
+\jp{感動詞}      & Interjection         & 44     & 0.1\%  \\
+\jp{記号}        & Symbol               & 27     & 0.0\%  \\
+\jp{連体詞}      & Attributive          & 23     & 0.0\%  \\
+\jp{助詞}        & Particle             & 15     & 0.0\%  \\
+\jp{接続詞}      & Conjunction          & 14     & 0.0\%  \\
+\jp{助動詞}      & Auxiliary Verb       & 5      & 0.0\%  \\
+\jp{接尾辞}      & Suffix               & 4      & 0.0\%  \\
+\jp{補助記号}    & Supplementary Symbol & 2      & 0.0\%  \\
+\bottomrule
+\end{tabular}
+\end{table}
+These categories are later collapsed into broader groups (\emph{Noun}, \emph{Verb}, \emph{Adjective}, \emph{Adverb}, and \emph{Other}) for POS consistency evaluation.
+This collapsing facilitates comparison between English and Japanese POS systems, which differ substantially in granularity.
+
+% =====================================================
+\subsection{POS Confusion Matrices}
+\label{appendix:confusion_matrices}
+
+This section reports the confusion matrices used to assess POS consistency between the English source terms and their Japanese machine translations.
+Tables~\ref{tab:confusion_counts} and \ref{tab:confusion_normalized} show the raw and normalized confusion matrices at the fine-grained level.
+
+\begin{table}[h]
+\centering
+\caption{POS Confusion Matrix (Raw Count) (DeepL Translations)}
+\label{tab:confusion_counts}
+\small
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lrrrrrrrrrrrrrrr}
+\toprule
+\textbf{English} &
+\textbf{\jp{代名詞}} & \textbf{\jp{副詞}} & \textbf{\jp{助動詞}} & \textbf{\jp{助詞}} &
+\textbf{\jp{動詞}} & \textbf{\jp{名詞}} & \textbf{\jp{形容詞}} & \textbf{\jp{形状詞}} &
+\textbf{\jp{感動詞}} & \textbf{\jp{接尾辞}} & \textbf{\jp{接続詞}} & \textbf{\jp{接頭辞}} &
+\textbf{\jp{補助記号}} & \textbf{\jp{記号}} & \textbf{\jp{連体詞}} \\
+\midrule
+ADJ  & 3 & 132 & 0 & 2 & 53 & 7,474 & 52 & 223 & 2 & 1 & 0 & 254 & 0 & 1 & 7 \\
+ADV  & 22 & 183 & 1 & 1 & 62 & 1,958 & 109 & 237 & 4 & 0 & 7 & 27 & 0 & 0 & 8 \\
+NOUN & 17 & 139 & 0 & 3 & 81 & 46,455 & 104 & 275 & 14 & 2 & 2 & 230 & 2 & 22 & 4 \\
+VERB & 6 & 99 & 3 & 1 & 202 & 16,342 & 53 & 125 & 16 & 0 & 3 & 211 & 0 & 3 & 0 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{POS Confusion Matrix (Row-Normalized)}
+\small
+\resizebox{\textwidth}{!}{
+\label{tab:confusion_normalized}
+\begin{tabular}{lrrrrrrrrrrrrrrr}
+\toprule
+\textbf{English} &
+\textbf{\jp{代名詞}} & \textbf{\jp{副詞}} & \textbf{\jp{助動詞}} & \textbf{\jp{助詞}} &
+\textbf{\jp{動詞}} & \textbf{\jp{名詞}} & \textbf{\jp{形容詞}} & \textbf{\jp{形状詞}} &
+\textbf{\jp{感動詞}} & \textbf{\jp{接尾辞}} & \textbf{\jp{接続詞}} & \textbf{\jp{接頭辞}} &
+\textbf{\jp{補助記号}} & \textbf{\jp{記号}} & \textbf{\jp{連体詞}} \\
+\midrule
+ADJ & 0.0\% & 1.6\% & 0.0\% & 0.0\% & 0.6\% & 91.1\% & 0.6\% & 2.7\% & 0.0\% & 0.0\% & 0.0\% & 3.1\% & 0.0\% & 0.0\% & 0.1\% \\
+ADV & 0.8\% & 7.0\% & 0.0\% & 0.0\% & 2.4\% & 74.8\% & 4.2\% & 9.0\% & 0.2\% & 0.0\% & 0.3\% & 1.0\% & 0.0\% & 0.0\% & 0.3\% \\
+NOUN & 0.0\% & 0.3\% & 0.0\% & 0.0\% & 0.2\% & 98.1\% & 0.2\% & 0.6\% & 0.0\% & 0.0\% & 0.0\% & 0.5\% & 0.0\% & 0.0\% & 0.0\% \\
+VERB & 0.0\% & 0.6\% & 0.0\% & 0.0\% & 1.2\% & 95.8\% & 0.3\% & 0.7\% & 0.1\% & 0.0\% & 0.0\% & 1.2\% & 0.0\% & 0.0\% & 0.0\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+% =====================================================
+\subsection{Examples of POS Mismatches}
+\label{appendix:pos_examples}
+
+Table~\ref{tab:pos_mismatches} presents illustrative examples of incorrect or misleading translations where the POS category of the Japanese output does not match the POS of the original English term. These examples often correspond to semantic drift or wrong-sense selections by the translation engine.
+
+\begin{table}[h]
+\centering
+\caption{Examples of POS Mismatches in Machine Translation}
+\label{tab:pos_mismatches}
+\begin{tabular}{llccc}
+\toprule
+\textbf{English} & \textbf{Japanese} & \textbf{EN\_POS} & \textbf{JA\_POS} & \textbf{Notes} \\
+\midrule
+return    & \jp{戻る}      & NOUN & \jp{動詞} & Incorrect sense (verb) \\
+claim     & \jp{主張する}   & NOUN & \jp{動詞} & Wrong sense (assertion vs. claim) \\
+provision & \jp{支給}      & NOUN & \jp{動詞} & Misinterpreted as ``payment'' \\
+default   & \jp{デフォルト} & NOUN & \jp{名詞} & Literal katakana form \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================
+\subsection{Examples of Correct POS Alignments}
+\label{appendix:pos_good_examples}
+
+For completeness, Table~\ref{tab:pos_matches} provides examples in which the translation engine produced accurate financial Japanese terminology consistent with the source POS.
+
+\begin{table}[h]
+\centering
+\caption{Examples of Correct POS Alignment}
+\label{tab:pos_matches}
+\begin{tabular}{llcc}
+\toprule
+\textbf{English} & \textbf{Japanese} & \textbf{EN\_POS} & \textbf{JA\_POS} \\
+\midrule
+liability & \jp{負債} & NOUN & \jp{名詞} \\
+asset     & \jp{資産} & NOUN & \jp{名詞} \\
+impair    & \jp{減損する} & VERB & \jp{動詞} \\
+volatility & \jp{変動性} & NOUN & \jp{名詞} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The raw and normalized confusion matrices indicate strong POS preservation in the English-to-Japanese translations. Most English nouns (and many adjectives) map to Japanese nouns, consistent with the nominal style of Japanese financial writing, while verbs and adverbs exhibit limited cross-category drift. Overall, these diagnostics suggest that the DeepL-translated Japanese LMMD retains the source lexicon’s syntactic structure closely enough to support downstream sentiment analysis.

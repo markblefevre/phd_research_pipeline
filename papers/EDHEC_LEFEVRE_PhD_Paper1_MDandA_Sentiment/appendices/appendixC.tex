@@ -1,0 +1,153 @@
+% appendices/appendixC.tex
+\section{XBRL Elements and MD\&A Extraction Rules}
+\label{appendix:xbrl_mdna_extraction}
+
+This appendix documents the XBRL/iXBRL elements and the deterministic rules used to extract the Management Discussion and Analysis (MD\&A) narrative from EDINET filings. The purpose is to make the text corpus construction fully reproducible while keeping implementation-specific details out of Chapter~\ref{chap:data}.
+
+% =====================================================
+\section{Taxonomy Scope and Naming Conventions}
+\label{appendix:taxonomy_scope}
+
+EDINET filings include XBRL or inline XBRL (iXBRL) instance documents. Narrative sections are typically provided as \emph{text-block} elements defined under the corporate reporting namespace (\texttt{jpcrp\_cor}). We focus on the post-2017 taxonomy structure (JPFR~2017), which supports consistent identification of MD\&A in filings submitted from 2018 onward.
+
+\paragraph{Element naming.}
+Throughout, we refer to XBRL concepts using their fully qualified names of the form \texttt{<namespace>:<conceptName>}.
+
+% =====================================================
+\section{Primary MD\&A Text-Block Element(s)}
+\label{appendix:mdna_primary_element}
+
+The MD\&A narrative is extracted from the following primary text-block element:
+
+\begin{itemize}
+  \item \texttt{jpcrp\_cor:ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock}
+\end{itemize}
+
+\noindent If multiple candidate elements are present (e.g., due to filing variants), the pipeline selects the first non-empty candidate according to the precedence ordering listed in Section~\ref{appendix:mdna_fallbacks}.
+
+% =====================================================
+\section{Fallback Elements and Precedence Ordering}
+\label{appendix:mdna_fallbacks}
+
+In rare cases, filings may omit the primary MD\&A element or populate it with an empty/placeholder value. To ensure robustness, we apply the following ordered fallback list (highest priority first):
+
+\begin{enumerate}
+  \item \texttt{jpcrp\_cor:ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock} (primary)
+  \item \texttt{<fallback\_namespace>:<fallback\_concept>} \hfill \emph{(if used; replace)}
+  \item \texttt{<fallback\_namespace>:<fallback\_concept>} \hfill \emph{(if used; replace)}
+\end{enumerate}
+
+\noindent A filing is retained only if at least one candidate element yields non-empty narrative text after the cleaning steps in Section~\ref{appendix:mdna_cleaning}.
+
+% =====================================================
+\section{Extraction Pipeline Overview}
+\label{appendix:mdna_pipeline_overview}
+
+For each EDINET document identifier, the extraction pipeline performs:
+
+\begin{enumerate}
+  \item \textbf{Locate instance document(s):} identify the XBRL/iXBRL instance file(s) within the downloaded package.
+  \item \textbf{Parse facts:} load all facts for candidate MD\&A elements (Section~\ref{appendix:mdna_primary_element}).
+  \item \textbf{Select element value:} choose the highest-precedence candidate with non-empty content (Section~\ref{appendix:mdna_fallbacks}).
+  \item \textbf{Clean text:} remove markup artifacts and normalize whitespace (Section~\ref{appendix:mdna_cleaning}).
+  \item \textbf{Validate output:} confirm minimum-length and language/content checks (Section~\ref{appendix:mdna_validation}).
+  \item \textbf{Write corpus record:} save the cleaned MD\&A text and metadata for downstream processing.
+\end{enumerate}
+
+% =====================================================
+\section{Text Cleaning and Normalization Rules}
+\label{appendix:mdna_cleaning}
+
+XBRL text-blocks may contain embedded HTML-like markup, inline tags, and formatting artifacts. The following deterministic cleaning rules are applied:
+
+\begin{enumerate}
+  \item \textbf{Markup removal:} strip HTML/iXBRL tags while preserving visible text.
+  \item \textbf{Ruby/annotation handling:} remove ruby annotation tags (furigana) while retaining base characters (if present).
+  \item \textbf{Table handling:} replace table cells with whitespace-delimited text (or drop tables; specify rule).
+  \item \textbf{Whitespace normalization:} collapse repeated whitespace and normalize line breaks.
+  \item \textbf{Unicode normalization:} apply NFKC normalization (if used) and normalize punctuation variants (if used).
+\end{enumerate}
+
+\paragraph{Output format.}
+The final MD\&A corpus is stored as UTF-8 plain text with preserved paragraph breaks (or specify alternative, e.g., single-line).
+
+% =====================================================
+\section{Section Boundary and Segment Identification (Optional)}
+\label{appendix:mdna_segmentation}
+
+If the MD\&A text-block includes multiple subsections, the pipeline optionally segments the narrative into standardized subsections using rule-based anchors (e.g., headings or known Japanese section markers). When segmentation is enabled, each subsection is stored separately with an identifier and original ordering.
+
+\begin{itemize}
+  \item \textbf{Anchors:} list any Japanese headings/markers used (replace as needed).
+  \item \textbf{Priority:} specify how overlapping anchors are resolved.
+  \item \textbf{Fallback:} if segmentation fails, retain the full MD\&A text as a single segment.
+\end{itemize}
+
+% =====================================================
+\section{Validation and Exclusion Criteria}
+\label{appendix:mdna_validation}
+
+To avoid including empty or malformed text-blocks, the following validation checks are applied:
+
+\begin{enumerate}
+  \item \textbf{Non-empty content:} extracted text length exceeds \texttt{L\_min} characters (specify threshold).
+  \item \textbf{Language sanity check:} text contains Japanese characters above a minimum proportion (if used).
+  \item \textbf{Structural sanity check:} exclude documents dominated by boilerplate, repeated headers, or encoding errors (if used).
+\end{enumerate}
+
+\noindent Filings failing validation are excluded from the corpus and recorded in the sample construction log (Appendix~\ref{appendix:edinet_retrieval}).
+
+% =====================================================
+\section{Reproducibility: Element List and Parameters}
+\label{appendix:mdna_params}
+
+Table~\ref{tab:mdna_elements} lists all XBRL concepts queried by the pipeline, along with their role in extraction.
+
+\begin{table}[h]
+\centering
+\caption{XBRL Concepts Used for MD\&A Extraction}
+\label{tab:mdna_elements}
+\begin{tabular}{lll}
+\toprule
+\textbf{Concept} & \textbf{Role} & \textbf{Notes} \\
+\midrule
+\texttt{jpcrp\_cor:ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock}
+  & Primary & MD\&A narrative text-block \\
+\texttt{<fallback\_namespace>:<fallback\_concept>} & Fallback & (if used) \\
+\texttt{<fallback\_namespace>:<fallback\_concept>} & Fallback & (if used) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Key thresholds.}
+For completeness, Table~\ref{tab:mdna_thresholds} records the principal thresholds used in validation.
+
+\begin{table}[h]
+\centering
+\caption{MD\&A Extraction Validation Thresholds}
+\label{tab:mdna_thresholds}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value / Description} \\
+\midrule
+Minimum length (\texttt{L\_min}) & \texttt{<e.g., 500 characters>} \\
+Japanese character share & \texttt{<e.g., 0.30>} (if used) \\
+Segmentation enabled & \texttt{True/False} \\
+Unicode normalization & \texttt{NFKC / none} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================
+\section{Pseudocode Summary (Optional)}
+\label{appendix:mdna_pseudocode}
+
+\begin{quote}\small
+\textbf{Algorithm:} MD\&A extraction for EDINET document $d$ \\
+1.\ Parse XBRL/iXBRL package for $d$. \\
+2.\ For concepts in precedence list: read text-block fact value. \\
+3.\ Select first non-empty value; if none, mark $d$ as excluded. \\
+4.\ Clean markup; normalize whitespace; apply Unicode normalization (optional). \\
+5.\ Validate length/language checks; if failed, exclude $d$. \\
+6.\ Save cleaned text and metadata to corpus.
+\end{quote}

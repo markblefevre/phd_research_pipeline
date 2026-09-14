@@ -1,0 +1,39 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+This study examines whether document-level sentiment extracted from Japanese
+MD\&A disclosures is associated with abnormal stock returns around EDINET
+filing dates, and whether GPT-based sentiment contains incremental explanatory
+power beyond a finance-specific Japanese lexicon. Using 1,087 annual filings
+from Nikkei 225 firms over 2018--2023, we compare GPT-based document sentiment
+with a Japanese adaptation of the Loughran--McDonald Master Dictionary in a
+cross-sectional event-study framework with year and industry fixed effects and
+firm-clustered standard errors.
+
+The evidence shows that disclosure tone is associated with abnormal returns, but that this relation is captured more consistently by the
+Japanese LMMD measure than by the GPT-based document score. GPT sentiment is
+positively associated with CARs in some shorter-window standalone
+specifications, but its coefficient attenuates once finance-specific lexical
+tone is included. By contrast, LMMD net tone remains economically meaningful
+and statistically more stable in joint specifications, especially in the
+primary $[-1,1]$ event window. Wider-window results reinforce this pattern but
+are interpreted as robustness evidence because longer windows are more exposed
+to unrelated firm news.
+
+When cumulative abnormal returns are used as the benchmark for economically relevant disclosure tone, the Japanese LMMD measure exhibits the stronger and more persistent association in this setting, while GPT contributes little incremental return-relevant variation once LMMD tone is included. Methodologically, the paper contributes a
+validated Japanese LMMD construction, a large-scale GPT-based scoring pipeline
+for Japanese MD\&A text, and a unified event-study design that allows direct
+comparison between dictionary-based and LLM-based sentiment measures.
+
+The results have implications for applied NLP in finance. For standardized
+annual disclosures, transparent domain dictionaries may capture much of the
+return-relevant sentiment signal, while LLM-based measures may add more value
+in settings where language is less standardized, more interactive, or more
+context-dependent, such as earnings calls, press releases, management guidance,
+or richer narrative sections of filings. Future work could examine section-level
+sentiment, alternative prompting and aggregation strategies, higher-frequency
+disclosure events, and cross-country comparisons. Several limitations frame the
+interpretation: the analysis focuses on annual MD\&A filings, market reactions,
+and document-level sentiment in the Japanese institutional context; finer-grained
+textual modeling and alternative return benchmarks may reveal additional
+channels linking disclosure language to prices.

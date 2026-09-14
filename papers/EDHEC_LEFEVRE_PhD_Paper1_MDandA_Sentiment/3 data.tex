@@ -1,0 +1,61 @@
+\section{Data}
+\label{sec:data}
+
+\subsection{EDINET Filings}
+\label{subsec:edinet}
+
+Japanese annual and semi-annual reports are filed through EDINET (Electronic
+Disclosure for Investors NETwork) under the Financial Instruments and Exchange Act (FIEA).
+Filings are accessible via the Financial Services Agency EDINET portal\footnote{\url{https://disclosure2.edinet-fsa.go.jp}} and can be downloaded programmatically through the EDINET Web API. Because annual reports contain the most comprehensive narrative discussion, our baseline analysis uses annual securities reports.\footnote{In EDINET metadata, annual securities reports correspond to document code 120.}
+
+In 2017, the FSA introduced the JPFR 2017 taxonomy, standardizing XBRL-based tagging of key narrative disclosures, including Management Discussion and Analysis (MD\&A) text blocks. Beginning with 2018 filings, this standardization enables consistent section-level identification of MD\&A text across firms. Pre-2018 filings do not offer uniform availability and usage of the specific JPFR/EDINET text-block elements used to identify MD\&A reliably across firms and years; extending the sample earlier would likely require heuristic section identification/parsing and would introduce measurement heterogeneity. Accordingly, we focus on filings from 2018 onward \citep{FSA2017taxonomy, FSA2018iXBRL}.
+
+\subsection{MD\&A Text Extraction and Preprocessing}
+% Previous MD\&A Text Extraction from EDINET XBRL subsection
+EDINET filings include both structured disclosures (XBRL/iXBRL) and narrative text blocks. In this paper, we focus on the market’s reaction to narrative tone in the Management Discussion and Analysis (MD\&A) section. The empirical design does not rely on a broad set of structured accounting statement items as core regression controls. Nevertheless, the extraction pipeline operates directly on EDINET XBRL instances, which also permits retrieval of selected issuer-level structured fields used for sample construction and variable definition.
+
+MD\&A text is extracted from EDINET XBRL filings using a structured two-step procedure. First, we extract the standardized MD\&A text block when available using JPFR-tagged text-block elements. In practice, EDINET filings exhibit limited tag-name variation across years and issuers; the extraction routine therefore matches the MD\&A block by robust local-name search over observed tag variants.
+
+In cases where these tags are absent or malformed, we implement a fallback procedure that scans other \texttt{TextBlock} elements and selects the most likely MD\&A section based on the presence of canonical Japanese anchor phrases (e.g., \jp{経営者による財政状態}, \jp{経営成績}, and \jp{キャッシュ・フロー}). This procedure successfully identifies MD\&A text for the full analysis sample.
+
+Extracted MD\&A content is normalized to plain text by preserving paragraph structure from embedded XHTML (e.g., line breaks and block tags), unescaping entities, and stripping residual markup. The resulting cleaned text is used as the input to both the lexicon-based and LLM-based sentiment scoring procedures. Because MD\&A sections often exceed model context limits, GPT-based sentiment is computed using a chunking and aggregation procedure described in Appendix~\ref{app:openai_scoring}.
+
+% Previous MD\&A Segment Identification subsection
+For each annual filing in the baseline sample, we extract the MD\&A from the dedicated XBRL text-block
+element.\footnote{\texttt{jpcrp\_cor:\allowbreak ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlows\allowbreak TextBlock}}
+We treat the full contents of this text block as the document-level MD\&A corpus used for all sentiment
+measures.
+
+This tag-based approach reduces measurement error relative to heuristic document parsing because the
+MD\&A boundary is defined by a standardized regulatory element rather than layout cues or keyword rules.
+It also improves cross-firm comparability by holding constant the disclosure section being scored.
+
+% Previous Japanese Tokenization subsection
+Japanese text does not include whitespace-delimited tokens, requiring morphological tokenization prior to lexicon matching. We tokenize MD\&A text using a Japanese morphological analyzer and normalize tokens to a consistent dictionary form to reduce variation due to inflection and orthography. Tokenization is used only for the dictionary-based LMMD measure; GPT sentiment is computed directly on the document text without token-level preprocessing.
+
+\subsection{Market and Return Data}
+Daily equity prices for Nikkei~225 constituents are obtained from Yahoo Finance via the
+\texttt{yfinance} interface and converted to daily simple returns using adjusted close prices.
+Market returns are constructed from TOPIX index data retrieved via the JPX J-Quants API.
+The Nikkei~225 constituent universe is sourced from the official Nikkei index component tables.
+
+Filing dates are aligned to trading days. In practice, all filing dates in the sample occur on trading days, so no adjustment is required. The alignment procedure nevertheless ensures consistent handling of non-trading day filings if present.
+
+For firm-size controls, market capitalization is constructed using filing-date equity prices and shares outstanding proxied by total shares issued. While treasury share counts are available for some firms, they are not consistently reported as structured XBRL facts across the sample. Adjusting for treasury shares would therefore introduce cross-sectional inconsistency in the construction of market capitalization. To maintain comparability across firms and over time, we use total shares issued as a uniform proxy for shares outstanding.
+
+\subsection{LMMD Dictionary \& Japanese Translation}
+The lexicon-based sentiment measure relies on a Japanese adaptation of the Loughran--McDonald Master Dictionary (LMMD). Section~\ref{sec:methodology} documents the translation, validation, and correction workflow used to map LMMD categories into domain-appropriate Japanese terminology. In the empirical analysis, LMMD-based sentiment is computed by matching tokenized Japanese text to the translated LMMD lexicon and aggregating those matches into document-level positive, negative, and net tone measures.
+
+\noindent\textbf{LMMD scoring.}
+Let $T_i$ denote the set of tokens in filing $i$ after Japanese morphological tokenization and normalization. Japanese text is tokenized using SudachiPy with the UniDic dictionary in SplitMode.C, which produces coarser-grained tokens well suited to dictionary-based sentiment analysis. Prior to tokenization, text is normalized using Unicode NFKC normalization to standardize character representations and ensure consistent matching with dictionary entries. For each filing, we compute the share of tokens that match the translated positive and negative LMMD categories, and define net tone as the difference between these two match rates:
+\begin{align}
+\text{PosRate}_i &= \frac{\#\{\text{tokens in } i \text{ matching the positive LMMD category}\}}{|T_i|}, \\
+\text{NegRate}_i &= \frac{\#\{\text{tokens in } i \text{ matching the negative LMMD category}\}}{|T_i|}, \\
+\text{LMMDNet}_i &= \text{PosRate}_i - \text{NegRate}_i .
+\end{align}
+
+\subsection{Sample Construction}
+
+The baseline sample consists of annual securities reports filed through EDINET for Nikkei~225 constituents from 2018 onward, when the JPFR~2017 taxonomy enables consistent identification of the MD\&A text block. The focus on Nikkei~225 firms ensures high data quality, consistent disclosure practices, and reliable market data, while also providing a relatively homogeneous large-cap sample commonly used in empirical studies of Japanese equity markets. This restriction may, however, limit generalizability to smaller firms.
+
+The baseline text-and-sentiment sample contains 1,087 filings. We retain filings with non-empty MD\&A text and a successful mapping from issuer identifiers to market return identifiers. One filing is excluded from the event-study regressions because only about 100 pre-event trading days are available, which is insufficient to estimate the market model over the required [-120,-20] estimation window. When multiple filings correspond to the same issuer and fiscal period, we retain a single observation according to the pipeline’s EDINET retrieval and versioning procedure.

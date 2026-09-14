@@ -1,0 +1,123 @@
+% appendices/appendixD.tex
+\section{Text Preprocessing and Japanese Tokenization}
+\label{appendix:text_preprocessing}
+
+This appendix documents the deterministic text preprocessing and Japanese tokenization steps applied to the extracted MD\&A corpus. The aim is to make the text pipeline reproducible while keeping implementation-level settings out of Chapter~\ref{chap:data}.
+
+% =====================================================
+\section{Corpus Input and Output}
+\label{appendix:corpus_io}
+
+\paragraph{Input.}
+The input to the preprocessing pipeline is the cleaned MD\&A text extracted from EDINET filings (Appendix~\ref{appendix:xbrl_mdna_extraction}). Text is stored as UTF-8.
+
+\paragraph{Output.}
+The pipeline outputs (i) a normalized text file used for downstream sentiment scoring, and (ii) tokenized representations used for dictionary-based and model-based features. Where relevant, we store both token surfaces and token-level metadata (e.g., POS tags).
+
+% =====================================================
+\section{Normalization and Cleaning Rules}
+\label{appendix:normalization_rules}
+
+The following deterministic transformations are applied in the stated order:
+
+\begin{enumerate}
+  \item \textbf{Unicode normalization:} apply \texttt{NFKC} normalization (if used) to harmonize full-width and half-width variants.
+  \item \textbf{Whitespace normalization:} collapse repeated spaces and normalize line breaks; preserve paragraph breaks (or specify alternative).
+  \item \textbf{Control characters:} remove non-printing control characters (e.g., \texttt{\textbackslash x00--\textbackslash x1F}) except standard whitespace.
+  \item \textbf{Punctuation standardization:} normalize common Japanese punctuation variants (e.g., \texttt{，} to \texttt{,} and \texttt{．} to \texttt{.}) (if used).
+  \item \textbf{Numeric handling:} retain numbers as-is (or mask to a placeholder token, e.g., \texttt{<NUM>}; specify rule).
+  \item \textbf{Latin fragments:} retain embedded English words/tickers (or drop; specify rule).
+\end{enumerate}
+
+\paragraph{Rationale.}
+These rules reduce superficial orthographic variation while preserving the semantic content of the narrative text.
+
+% =====================================================
+\section{Sentence and Paragraph Handling (Optional)}
+\label{appendix:sentence_paragraph}
+
+If sentence-level features are constructed, text is segmented into sentences using a rule-based splitter that respects Japanese punctuation (\texttt{。}, \texttt{？}, \texttt{！}) and common abbreviations. If sentence splitting is not used, this section can be omitted.
+
+\begin{itemize}
+  \item \textbf{Paragraph preservation:} paragraphs are separated by single blank lines in the normalized corpus (if used).
+  \item \textbf{Heading handling:} heading-like lines (e.g., all-caps Latin, or Japanese section markers) are retained (or removed; specify rule).
+\end{itemize}
+
+% =====================================================
+\section{Japanese Tokenization Configuration}
+\label{appendix:tokenization_config}
+
+Japanese tokenization and POS tagging are performed using SudachiPy with the UniDic dictionary (or specify alternative dictionary). We record the tokenizer configuration to ensure reproducibility.
+
+\paragraph{Tokenizer settings.}
+\begin{itemize}
+  \item \textbf{Tokenizer:} SudachiPy
+  \item \textbf{Dictionary:} UniDic (specify version if relevant)
+  \item \textbf{Split mode:} \texttt{A} / \texttt{B} / \texttt{C} (specify which is used)
+  \item \textbf{Output fields:} token surface, normalized form, lemma, and POS (specify which fields are retained)
+\end{itemize}
+
+\paragraph{POS tag mapping.}
+SudachiPy produces fine-grained POS labels. For downstream analysis, these are optionally collapsed into coarse categories (e.g., \emph{Noun}, \emph{Verb}, \emph{Adjective}, \emph{Adverb}, \emph{Other}) using a deterministic mapping table.
+
+% =====================================================
+\section{Stopwords and POS Filtering (Optional)}
+\label{appendix:stopwords_pos_filter}
+
+If stopwords or POS-based filtering is applied, the rules should be documented here.
+
+\begin{itemize}
+  \item \textbf{Stopwords:} none / custom list (specify source and size).
+  \item \textbf{POS filtering:} retain all tokens / exclude functional categories such as particles (\texttt{助詞}) and auxiliaries (\texttt{助動詞}) (specify rule).
+  \item \textbf{Named entities:} retain firm names as-is / mask issuer names (specify rule).
+\end{itemize}
+
+\noindent If no stopwording or POS filtering is used, state explicitly to avoid ambiguity.
+
+% =====================================================
+\section{Dictionary Matching and Lemmatization Choices}
+\label{appendix:dictionary_matching}
+
+For dictionary-based sentiment scoring, token-to-lexicon matching is performed using:
+
+\begin{itemize}
+  \item \textbf{Matching unit:} surface form / normalized form / lemma (specify which is used).
+  \item \textbf{Multiword handling:} no multiwords / rule-based phrase matching / tokenizer-based compounds (specify rule).
+  \item \textbf{Katakana variants:} match exact strings only / normalize long vowels and small kana (specify rule).
+\end{itemize}
+
+\paragraph{Out-of-vocabulary handling.}
+Tokens not present in the lexicon are ignored for dictionary scoring but retained for model-based features.
+
+% =====================================================
+\section{Preprocessing Summary Table}
+\label{appendix:preprocess_summary}
+
+Table~\ref{tab:preprocess_summary} summarizes the main preprocessing choices.
+
+\begin{table}[h]
+\centering
+\caption{Text Preprocessing and Tokenization Settings (Summary)}
+\label{tab:preprocess_summary}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Setting} \\
+\midrule
+Unicode normalization & \texttt{NFKC} / none \\
+Whitespace handling & collapse runs; preserve paragraphs (specify) \\
+Number handling & keep / mask to \texttt{<NUM>} \\
+English fragments & keep / remove / mask \\
+Tokenizer & SudachiPy \\
+Dictionary & UniDic (version: \texttt{X.Y}, if recorded) \\
+Split mode & \texttt{A/B/C} \\
+POS filtering & none / exclude \texttt{助詞}, \texttt{助動詞} (specify) \\
+Lexicon match form & surface / normalized / lemma \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================
+\section{Reproducibility Notes}
+\label{appendix:preprocess_reproducibility}
+
+To facilitate exact replication, we record the software environment (Python version, SudachiPy version, dictionary version) and freeze the corpus snapshot used in the empirical analysis. Any deviations (e.g., updated dictionary versions) can affect token boundaries and should be reported when reproducing results.

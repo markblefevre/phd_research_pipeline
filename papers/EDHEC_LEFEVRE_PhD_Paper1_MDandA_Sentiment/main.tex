@@ -1,0 +1,149 @@
+\documentclass[fleqn,11pt]{article}
+\usepackage{syntonly}
+\usepackage{amsmath, amssymb, amsfonts,amsthm}    %these are the ams packages I will commonly need
+\usepackage[margin=0.9in]{geometry}      %choose my own margins, nohead, nofoot options
+\usepackage{setspace}
+\doublespacing
+%\setstretch{1.2}
+%\onehalfspacing%to set double, single, 1.5 spacing etc
+\usepackage[pdftex,final]{graphicx} %for tables and figures
+\usepackage{pdflscape}%to make landscape oriented tables (KD: switched to pdflscape -- which rotates landscape
+ %tables in the pdf files.)
+\usepackage{multirow}
+%\usepackage{graphicx}      % for inserting graph
+\usepackage{hyperref}%for url links
+\usepackage[longnamesfirst]{natbib}  %for references %see http://merkel.zoneo.net/Latex/natbib.php
+
+%\syntaxonly  %just un-comment when you only want to make sure things compile.
+\usepackage{indentfirst}    %to indent first paragraph in each Section
+%\large%font size large
+%\normalsize   %font size normal
+\usepackage{booktabs}%for converting Excel tables to Latex
+\usepackage{graphicx}%to rescale table size
+\usepackage{lpic}    %to add figure caption on top of the graphs
+%\numberwithin{table}{section}
+\usepackage{subcaption}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage[capitalize,nameinlink,noabbrev]{cleveref}
+\usepackage{booktabs, threeparttable} %below for wrapping text in table cells
+%\usepackage{array} \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}} %KD: THIS IS DEFINED BELOW
+\usepackage[multiple]{footmisc}
+\usepackage{placeins}
+
+\interfootnotelinepenalty=10000
+\raggedbottom %these two lines are used to restrict all footnote within one page, not rolling over to the next page
+
+\tolerance=1
+\emergencystretch=\maxdimen
+\hyphenpenalty=10000
+\hbadness=10000      %these lines are to remove any kind of hyphenation and just have LaTeX just do a line break
+
+\usepackage{makecell}
+\renewcommand\theadfont{\series}
+
+
+\usepackage{array}
+
+\usepackage{CJKutf8}
+\newcommand{\jp}[1]{\begin{CJK}{UTF8}{min}#1\end{CJK}}
+
+\newcolumntype{F}{>{\raggedright\arraybackslash}m{4cm}}
+\newcolumntype{K}{>{\raggedright\arraybackslash}m{4.5cm}}
+\newcolumntype{E}{>{\raggedright\arraybackslash}m{3.5cm}}
+\newcolumntype{T}{>{\raggedright\arraybackslash}m{3cm}}
+\newcolumntype{M}{>{\raggedright\arraybackslash}m{2cm}}    %these 3 packages are for wrapping text in a row, the column alignment is centering, and if wider than 2cm then wrap
+\newcolumntype{N}{>{\raggedright\arraybackslash}m{2.2cm}}
+\newcolumntype{J}{>{\raggedright\arraybackslash}m{2.6cm}}
+
+\newcolumntype{B}{>{\centering\arraybackslash}m{1.2cm}}
+\newcolumntype{C}{>{\centering\arraybackslash}m{2cm}}
+\newcolumntype{D}{>{\centering\arraybackslash}m{1.8cm}}
+\newcolumntype{O}{>{\centering\arraybackslash}m{2.5cm}}
+\newcolumntype{P}{>{\centering\arraybackslash}m{1.1cm}}
+\newcolumntype{A}{>{\centering\arraybackslash}m{3cm}}
+%\interfootnotelinepenalty=10000
+%\raggedbottom %these two lines are used to restrict all footnote within one page, not rolling over to the next page
+
+\setlength{\parskip}{0.10in} %increase space between paragraphs
+\setlength\parindent{1cm}    %set the length of indention to the desired value
+
+% Auto-generated sample window (do not edit by hand)
+\input{tex_generated/appendix_dates.tex}
+\begin{document}
+
+\begin{titlepage}
+\title{Measuring Sentiment in Japanese Financial Filings}
+\author{Mark Lefevre\thanks{EDHEC Business School. Email: \texttt{fin.eng.guru@gmail.com}. I am grateful to Professor Hamid Boustanifar for guidance and helpful comments. I also thank my committee members for helpful feedback. All errors are my own.}}
+
+\date{\today}
+\maketitle
+\begin{abstract}
+\noindent 
+We examine whether disclosure sentiment predicts market reactions to Japanese corporate filings and whether an LLM-based sentiment measure provides incremental explanatory power beyond a domain-specific lexical measure in this setting. Using MD\&A sections from annual securities reports filed by Nikkei 225 firms, we compare a finance-specific Japanese adaptation of the Loughran–McDonald dictionary with a GPT-based document-level sentiment score. Lexicon-based sentiment is more consistently associated with abnormal returns, while the GPT coefficient attenuates and becomes statistically indistinguishable from zero when both measures are included. The results highlight the continued importance of domain-specific language when measuring disclosure tone in structured non-English regulatory filings.
+\vspace{1cm}\\
+\noindent\textbf{Keywords:} Natural language processing, sentiment analysis, stock returns, large language models \\
+\noindent\textbf{JEL Codes:} G14, G12, M41, C23
+\vspace{1cm}
+
+%\centering{Preliminary Working Draft}
+
+%\centering{\textit{Preliminary, Comments Welcome!}}
+
+\bigskip
+\end{abstract}
+\setcounter{page}{0}
+\thispagestyle{empty}
+\end{titlepage}
+\pagebreak \newpage
+
+
+
+
+\doublespacing
+
+
+
+%% Introduction Section %%
+\input{1 introduction}
+
+%% Prior Literature Section %%
+\input{2 literature}
+
+%% Data Section %%
+\input{3 data}
+
+%% Methodology Section %%
+\input{4 methodology}
+
+%% Empirical Results Section %%
+\input{5 results}
+ 
+%% Conclusion Section %%
+\input{6 conclusion}
+
+\vspace{1cm}
+
+\newpage
+\setlength\bibsep{0pt}
+\bibliographystyle{apalike}
+\bibliography{bib/references}
+
+
+\clearpage
+
+\newgeometry{left=22mm,right=22mm,top=22mm,bottom=22mm}
+\singlespacing
+
+
+\section*{Figures and Tables}
+\label{sec:figuretable}
+
+\appendix
+\input{appendices/appendixA}
+\input{appendices/appendixB}
+\input{appendices/appendixF}
+\input{appendices/appendix_disagreement}
+
+\end{document}

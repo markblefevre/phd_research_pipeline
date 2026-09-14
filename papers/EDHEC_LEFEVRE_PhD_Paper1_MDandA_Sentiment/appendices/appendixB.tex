@@ -1,0 +1,125 @@
+% appendices/appendixB.tex
+\section{EDINET Retrieval and Filing Filters}
+\label{appendix:edinet_retrieval}
+
+This appendix documents the EDINET data acquisition procedure and the filtering rules used to construct the final filing sample. The goal is to provide sufficient detail to reproduce the exact set of filings analyzed in the main empirical sections, while keeping implementation-specific details out of the main text.
+
+% =====================================================
+\subsection{Data Sources and Access}
+\label{appendix:edinet_sources}
+
+\paragraph{EDINET code lists.}
+Issuer master data (EDINET codes and associated filer metadata) are obtained from the FSA’s published EDINET Code List, provided as downloadable ZIP archives in Japanese and English:
+\footnote{Japanese: \url{https://disclosure2dl.edinet-fsa.go.jp/searchdocument/codelist/Edinetcode.zip}}
+\footnote{English: \url{https://disclosure2dl.edinet-fsa.go.jp/searchdocument/codelisteng/Edinetcode.zip}}
+
+EDINET filings are accessed via the Japanese Financial Services Authority (FSA) EDINET portal.\footnote{\url{https://disclosure2.edinet-fsa.go.jp}}
+Programmatic retrieval is performed using the EDINET Web API (with a lightweight Python wrapper for batching, retries, and local caching).
+
+\paragraph{Retrieved artifacts.}
+For each filing date and filer, the pipeline stores: (i) the EDINET metadata record, (ii) the downloaded filing package (XBRL), and (iii) the extracted MD\&A text file used in analysis.
+
+% =====================================================
+\subsection{Sampling Window}
+\label{appendix:edinet_window}
+
+The empirical sample covers filings submitted between \SampleStartDate{} and \SampleEndDate{}.
+We restrict attention to filings submitted from 2018 onward to ensure consistent XBRL tagging under the JPFR~2017 taxonomy, which supports systematic extraction of narrative text blocks.
+
+% =====================================================
+\subsection{Document Types and Query Parameters}
+\label{appendix:edinet_doctype}
+
+The pipeline targets annual securities reports (\emph{Yukashoken Hokokusho}). In EDINET retrieval, annual securities reports are identified using \texttt{docTypeCode = 120}.
+
+\paragraph{Core query parameters.}
+Table~\ref{tab:edinet_query_params} summarizes the key query parameters used to retrieve filings.
+
+\begin{table}[h]
+\centering
+\caption{EDINET Retrieval Parameters (Summary)}
+\label{tab:edinet_query_params}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value / Description} \\
+\midrule
+Date range & \SampleStartDate{} to \SampleEndDate{} \\
+Document type & \texttt{docTypeCode = 120} (annual securities report) \\
+Filing status & Original filings only \\
+Output format & XBRL \\
+Universe filter & Nikkei 225 constituent universe (official Nikkei component tables) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================
+%\section{Inclusion and Exclusion Rules}
+%\label{appendix:edinet_filters}
+
+%Starting from all retrieved annual filings in the sampling window, we apply the following filters to construct the analysis sample:
+
+%\begin{enumerate}
+%  \item \textbf{Filer eligibility:} retain only corporate issuers that can be mapped to market identifiers used in the return dataset (see Appendix~\ref{appendix:market_mapping}).
+%  \item \textbf{Filing completeness:} exclude filings with missing XBRL packages, corrupted downloads, or empty narrative text blocks.
+%  \item \textbf{Duplicates:} when multiple filings correspond to the same issuer and fiscal period, retain the filing with the latest submission timestamp (or specify alternative rule).
+%  \item \textbf{Amendments (if applicable):} specify whether amended filings are excluded or incorporated; if included, specify whether the original or the amendment is used.
+%  \item \textbf{Language/content screening:} exclude filings that do not contain a Japanese MD\&A narrative section or that are structurally non-comparable.
+%\end{enumerate}
+
+%\paragraph{Filter impact.}
+%Table~\ref{tab:edinet_filter_impact} reports the number of filings removed at each step.
+
+%\begin{table}[h]
+%\centering
+%\caption{Sample Construction: EDINET Filter Impact}
+%\label{tab:edinet_filter_impact}
+%\begin{tabular}{lrr}
+%\toprule
+%\textbf{Step} & \textbf{Removed} & \textbf{Remaining} \\
+%\midrule
+%Initial retrieved filings & -- & \texttt{N\_0} \\
+%Filer eligibility / mapping & \texttt{n\_1} & \texttt{N\_1} \\
+%Missing/corrupt packages & \texttt{n\_2} & \texttt{N\_2} \\
+%Empty or missing MD\&A text & \texttt{n\_3} & \texttt{N\_3} \\
+%Duplicates / multiple versions & \texttt{n\_4} & \texttt{N\_4} \\
+%Other exclusions (specify) & \texttt{n\_5} & \texttt{N\_final} \\
+%\bottomrule
+%\end{tabular}
+%\end{table}
+
+% =====================================================
+\section{Download Integrity and Reproducibility Checks}
+\label{appendix:edinet_integrity}
+
+To ensure reproducibility and guard against transient retrieval failures, the pipeline uses:
+(i) deterministic file naming based on EDINET identifiers, (ii) checksum or file-size checks on downloaded packages, and
+(iii) resumable batch retrieval with logging of failed downloads.
+
+\paragraph{Logging.}
+For each retrieval run, the pipeline records the execution timestamp, parameter settings, and a list of EDINET document identifiers successfully processed and excluded.
+
+% =====================================================
+\section{Notes on EDINET  Versioning}
+\label{appendix:edinet_versioning}
+
+Because EDINET content can be updated through amended filings and occasional metadata corrections, the analysis is tied to a frozen snapshot of retrieved artifacts. The repository includes a manifest of EDINET document identifiers used in the final sample, enabling exact reconstruction of the corpus.
+
+\section{OpenAI Sentiment Scoring}
+\label{app:openai_scoring}
+
+\paragraph{OpenAI sentiment scoring and chunking.}
+After extracting and cleaning the MD\&A text block from each EDINET XBRL instance, we compute an LLM-based
+sentiment measure using the OpenAI API. Because MD\&A sections can exceed practical context limits, the pipeline
+segments Japanese text into sentence-like units using punctuation (\jp{。！？}) and line breaks, and concatenates these
+units into contiguous chunks under an approximate character budget (default: 1{,}800 characters). The segmented
+MD\&A text is then submitted to the model using deterministic decoding (temperature $=0$) with a strict JSON
+response format. The prompt instructs the model to return both (i) a filing-level \texttt{document\_score} on a
+$[-1,+1]$ scale and (ii) per-chunk outputs including a numeric score, a categorical label
+(positive/neutral/negative), and short supporting evidence strings.
+
+The filing-level \texttt{document\_score} used in the regressions is generated directly by the model as an overall
+document-level assessment after receiving the segmented MD\&A text. It is not mechanically computed as the mean
+or median of the chunk-level scores. The batch pipeline records the mean and median of chunk-level scores separately
+as diagnostics. For transparency and auditability, the pipeline writes one JSON output per filing and a summary CSV
+containing the filing identifier, filing date, \texttt{document\_score}, number of chunks, mean chunk score, median chunk
+score, and related chunk diagnostics.

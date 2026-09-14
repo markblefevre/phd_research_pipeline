@@ -1,0 +1,175 @@
+\section{Empirical Results}
+\label{sec:empiricalreults}
+
+\subsection{Comparison of GPT and Japanese LMMD Sentiment}
+\label{subsec:crossmethodsentimentagreement} 
+
+This section compares the GPT-based document-level sentiment scores with the Japanese LMMD dictionary-based sentiment measure constructed in Section~\ref{sec:methodology}. The comparison provides insight into the extent to which alternative sentiment extraction approaches capture overlapping or distinct aspects of disclosure tone.
+
+The final merged panel contains 1,087 annual MD\&A filings from 2018 onward.
+Each filing is assigned (i) a GPT document-level sentiment score in the
+interval $[-1,1]$ and (ii) a dictionary-based net sentiment measure defined
+as the difference between positive and negative word rates in the Japanese
+LMMD lexicon.
+
+Table~\ref{tab:cross_method_corr} reports both Pearson (linear) and Spearman
+(rank-based) correlations between the two sentiment measures, as well as
+their positive and negative components separately.
+
+\begin{table}[ht]
+\centering
+\caption{Cross-Method Sentiment Correlations}
+\label{tab:cross_method_corr}
+\begin{tabular}{lcc}
+\toprule
+ & Pearson & Spearman \\
+\midrule
+\multicolumn{3}{l}{\textit{Panel A: Net Sentiment}} \\
+GPT vs. LMMD Net & 0.435 & 0.427 \\
+\midrule
+\multicolumn{3}{l}{\textit{Panel B: Sentiment Components}} \\
+GPT vs. Positive Rate & 0.159 & 0.168 \\
+GPT vs. Negative Rate & -0.481 & -0.461 \\
+\bottomrule
+\end{tabular}
+\begin{flushleft}
+\footnotesize
+Notes: Pearson correlations measure linear association. Spearman correlations measure rank-based
+monotonic association. All coefficients are statistically significant at the 1\% level.
+\end{flushleft}
+\end{table}
+
+The correlation between GPT and LMMD net sentiment is approximately 0.43. This indicates that the two measures are positively associated, but that they capture substantially different aspects of disclosure tone. GPT produces document-level assessments on a bounded $[-1,1]$ scale, whereas the LMMD measure reflects relative word-frequency rates derived from a translated lexicon. Thus, while the positive correlation suggests some common variation in Japanese MD\&A tone, its moderate magnitude underscores that the two methods are far from equivalent.
+
+Notably, the negative component exhibits a substantially stronger association
+with GPT scores than the positive component. This asymmetry is consistent
+with prior evidence that negative language tends to carry greater informational
+weight in financial disclosures (e.g., Tetlock et al., 2008). The pattern
+suggests that both transformer-based and dictionary-based approaches may be
+particularly sensitive to adverse tone.
+
+The similarity between Pearson and Spearman correlations indicates that the
+relationship is not driven by a small number of extreme observations, but
+instead reflects a broadly monotonic alignment across the distribution of
+filings.
+
+Overall, these results provide validation for the Japanese LMMD
+construction while also highlighting structural differences in how
+alternative NLP methods weight positive and negative language.
+
+As an additional diagnostic, we conduct a principal component analysis using the standardized OpenAI-based sentiment score and the standardized LMMD dictionary-based sentiment score. The first principal component explains 71.7\% of the total standardized variation and loads positively on both measures, indicating a common sentiment component. The second component explains 28.3\% of the variation and loads with opposite signs, consistent with a residual method-disagreement dimension. These results suggest that the two measures are related but not redundant: they share a common disclosure-tone component while also capturing method-specific variation.
+
+\input{EDHEC_LEFEVRE_PhD_Paper1_MDandA_Sentiment/tables/pca_sentiment}
+
+This decomposition motivates the subsequent analyses: the market-reaction tests examine whether the two sentiment measures differ in return relevance, while the disagreement tests examine the residual method-specific variation captured by the second component.
+
+\subsection{Market Reaction Tests}
+\label{subsec:market_reaction_tests}
+
+The preceding section shows that GPT-based and dictionary-based sentiment measures are positively associated but capture substantially different aspects of disclosure tone. Because both measures are intended to proxy for disclosure sentiment, the moderate correlation documented in Table~\ref{tab:cross_method_corr} indicates that measurement choice may materially affect empirical inference. We therefore next examine whether these differences matter for market reactions around filing dates.
+
+% Previous Event Study Design subsection 
+Using the event-study framework described in Section~\ref{subsec:eventstudy} and the regression specifications in Section~\ref{subsec:regression_specification}, we estimate cross-sectional regressions of cumulative abnormal returns (CAR) on standardized sentiment measures across multiple event windows. Specifically, we test whether each measure is associated with cumulative abnormal returns and whether the GPT-based score contains return-relevant variation incremental to the finance-specific Japanese LMMD measure.
+
+\subsubsection{Baseline Cross-Sectional Results}
+
+Table~\ref{tab:car_sentiment_main} reports the baseline cross-sectional regressions using $\mathrm{CAR}[-1,1]$, the primary event window. All specifications include year and industry fixed effects, and standard errors are clustered at the firm level. The three columns separately estimate the relation between abnormal returns and GPT sentiment, LMMD sentiment, and both measures jointly.
+
+\input{tables/car_sentiment_main}
+
+The results reveal a consistent asymmetry between the two sentiment measures. In standalone specifications, both sentiment measures are positively associated with $\mathrm{CAR}[-1,1]$, but the LMMD coefficient is larger and more precisely estimated. A one-standard-deviation increase in LMMD net tone is associated with a 26 basis point higher CAR. In the joint specification, the GPT coefficient falls to 9 basis points and is statistically indistinguishable from zero, while the LMMD coefficient remains significant at 23 basis points. This pattern indicates that LMMD tone is more strongly associated with abnormal returns than the broad document-level GPT score.
+
+These findings are consistent with prior evidence that domain-specific dictionaries outperform more general sentiment measures in disclosure settings (Henry and Leone, 2016), and stand in contrast to recent results in English-language contexts suggesting that LLM-based sentiment may dominate lexicon-based approaches. When cumulative abnormal returns are used as the benchmark for economically relevant disclosure tone, the results therefore favor the finance-specific lexical measure in this setting. GPT-based scores do not exhibit statistically detectable incremental return-relevant variation once LMMD tone and fixed effects are included.
+
+\subsubsection{Robustness to Firm-Level Controls}
+\label{sec:controls_robustness}
+
+To assess whether the estimated relationship between disclosure tone and abnormal returns is driven by standard firm characteristics, we augment the baseline specifications with additional firm-level controls.
+
+Specifically, we include controls for firm size and return volatility, measured as the logarithm of market capitalization and logarithm of pre-event return volatility, respectively. All specifications continue to include year and industry fixed effects, and standard errors remain clustered at the firm level. The results are reported in Table~\ref{tab:car_sentiment_controls}.
+
+\input{tables/car_sentiment_controls}
+\FloatBarrier
+
+Table~\ref{tab:car_sentiment_controls} shows that the baseline result is robust to controlling for firm size and pre-event return volatility. The inclusion of controls raises $R^2$ only modestly and leaves the sentiment coefficients largely unchanged. In the joint specification, LMMD sentiment remains statistically significant, while GPT sentiment remains statistically indistinguishable from zero. This stability suggests that the relative performance of the sentiment measures is not driven mechanically by firm size or pre-event volatility.
+
+\subsubsection{Window Robustness}
+
+To assess robustness across event-window definitions, we estimate the cross-sectional regressions across a range of event windows, from narrow windows capturing immediate reactions ([0,0], [0,1]) to wider windows that allow for more gradual information incorporation ([-1,1], [-2,2], [-3,3]). Results are reported in Table~\ref{tab:car_sentiment_windows}.
+
+\input{tables/car_sentiment_windows}
+
+The results reveal systematic differences in how the two sentiment measures are
+reflected in prices over time.
+
+GPT-based document sentiment is positively associated with abnormal returns in the narrowest standalone specifications, but its statistical significance attenuates as the event window expands. This pattern suggests that the GPT document score captures some short-window variation in disclosure tone, but its explanatory power is less stable across alternative event-window definitions.
+
+By contrast, the LMMD-based lexical measure remains positive and statistically significant across the primary and wider event windows. The magnitude of the LMMD coefficient increases as the event window expands, suggesting that the finance-specific lexical measure captures return-relevant variation that is more stable across window definitions. Because wider windows are more exposed to unrelated firm news, this pattern is best interpreted as robustness evidence rather than as direct evidence on the timing of price incorporation.
+
+The distinction becomes most apparent in joint specifications. GPT sentiment becomes statistically insignificant once LMMD sentiment is included, whereas the LMMD measure retains explanatory power in the primary $[-1,1]$ window and remains positive across the wider-window specifications. This pattern indicates that the return-relevant variation in disclosure tone is more consistently captured by domain-specific lexical features than by general-purpose document-level sentiment.
+
+The wider-window results reinforce the baseline conclusion, but they should be interpreted as robustness evidence rather than as the main identification window because longer windows are more exposed to unrelated firm news. Overall, the window analysis supports the central result: the association between disclosure tone and abnormal returns is more consistent for the Japanese LMMD measure than for the GPT-based document score across the event windows considered.
+
+Including industry fixed effects materially increases model explanatory power relative to specifications without them, as shown in Appendix~\ref{app:specgrids}. This pattern indicates that industry-level heterogeneity in disclosure language and return behavior is important in this setting. Accordingly, the baseline specifications include industry fixed effects to reduce the risk of confounding sentiment effects with persistent cross-industry differences.
+
+\subsubsection{Incremental Tests}
+To assess incremental explanatory power, we estimate joint specifications that include both GPT-based sentiment and Japanese LMMD tone, holding fixed the event window and fixed-effects structure. The goal is not to identify a structural causal mechanism, but to evaluate whether the LLM-based score contains return-relevant variation incremental to domain-specific lexical tone. Consistent with Table~\ref{tab:car_sentiment_main}, GPT sentiment is associated with CARs in standalone specifications for the shorter event windows, but its coefficient attenuates and becomes statistically indistinguishable from zero once LMMD is included. By contrast, LMMD net tone remains economically meaningful in joint specifications and retains explanatory power across most event windows and fixed-effects structures. Appendix~\ref{app:specgrids} (\cref{tab:app_gpt_only,tab:app_lmmd_only,tab:app_joint_spec}) reports the full specification grid across event windows and fixed-effects structures. Across the specification grid, the same broad pattern emerges: LMMD tone is more consistently associated with abnormal returns, whereas the GPT coefficient attenuates substantially when the two measures are included jointly.
+
+\subsection{Disagreement Between Sentiment Measures}
+Although the GPT-based and LMMD-based sentiment measures are positively related in the cross-section, they need not capture identical aspects of disclosure tone. The GPT measure reflects an overall document-level interpretation of managerial narrative, whereas the LMMD measure is based on the relative incidence of positive and negative finance-specific terms. As a result, differences between the two measures may arise from at least three sources: variation in scale, different treatment of near-neutral language, and genuine substantive differences in what each method detects. To assess the extent of this divergence, Table~\ref{tab:disagreement_summary} summarizes both continuous disagreement and categorical polarity conflict between the two measures.
+
+\begin{table}[!htbp]
+\caption{Distribution of disagreement between GPT-based and LMMD-based sentiment measures.}
+\label{tab:disagreement_summary}
+\begin{tabular}{lc}
+\toprule
+ & Disagreement sample \\
+\midrule
+Mean abs. disagreement (raw) & 0.342 \\
+Median abs. disagreement (raw) & 0.294 \\
+P75 abs. disagreement (raw) & 0.497 \\
+P90 abs. disagreement (raw) & 0.598 \\
+\midrule
+Mean abs. disagreement (z) & 0.841 \\
+Median abs. disagreement (z) & 0.711 \\
+P75 abs. disagreement (z) & 1.237 \\
+P90 abs. disagreement (z) & 1.702 \\
+\midrule
+Polarity conflict rate & 0.270 \\
+Thresholded polarity conflict rate & 0.069 \\
+Same-sign nonzero rate & 0.663 \\
+Either-neutral threshold rate & 0.599 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:disagreement_summary} summarizes the distribution of disagreement between the GPT-based and LMMD-based sentiment measures over the sample of filings for which both measures are available. The results indicate that the two measures are not interchangeable. Absolute disagreement is substantial, with mean absolute standardized disagreement of about 0.84 and a 90th percentile near 1.70. However, disagreement is more often about intensity than direction. While raw sign conflict appears in roughly 27\% of filings, thresholded polarity conflict falls below 7\% once near-neutral observations are treated separately. This evidence suggests that cross-method disagreement arises mainly in filings with weak or ambiguous tone, rather than from frequent cases of starkly opposing sentiment classifications.
+
+To better understand the source of these disagreements, Appendix G.6 examines filing-level cases with large cross-method divergence. These examples suggest that disagreement often reflects differences in how the two methods weight document-level narrative versus finance-specific lexical cues. For example, in JFE Holdings' 2020 filing, GPT assigns strongly negative sentiment, consistent with repeated references to severe business conditions, impairment losses, and losses, whereas the LMMD score remains slightly positive because the filing also contains substantial strategic language related to growth, strengthening, improvement, and corporate value creation. Conversely, in Alps Alpine's 2022 filing, GPT assigns positive sentiment, consistent with a recovery narrative and improved sales and profits, while LMMD is slightly negative because the text repeatedly references supply-chain disruption, cost inflation, semiconductor shortages, and operating losses. These cases illustrate that cross-method disagreement is not merely mechanical noise, but reflects different weighting of mixed disclosure narratives.
+
+These descriptive patterns suggest that disagreement is concentrated in ambiguous cases, but they do not yet indicate whether such disagreement is systematically related to filing characteristics. The next set of tests therefore examines the determinants of cross-method disagreement.
+
+\subsection{Determinants of Cross-Method Disagreement}
+To examine whether disagreement between the GPT-based and LMMD-based sentiment measures is driven by mechanical document characteristics, we next relate absolute cross-method disagreement to filing length. A natural concern is that longer disclosures may generate greater divergence simply because they contain more mixed language, more segment-level discussion, or more scope for document-level and lexicon-based methods to weight information differently. Table~\ref{tab:disagreement_determinants} therefore reports regressions of absolute standardized disagreement on the log of token count. The analysis is conducted on the GPT-valid sample and progressively adds year and industry fixed effects.
+
+\begin{table}[h]
+\caption{Determinants of disagreement between GPT-based and LMMD-based sentiment.}
+\label{tab:disagreement_determinants}
+\begin{tabular}{lcccc}
+\toprule
+ & (1) & (2) & (3) & (4) \\
+\midrule
+log(Token count) & 0.018 & 0.009 & 0.011 & -0.003 \\
+ & (0.048) & (0.049) & (0.054) & (0.056) \\
+Year FE & No & Yes & No & Yes \\
+Industry FE & No & No & Yes & Yes \\
+R-squared & 0.000 & 0.016 & 0.052 & 0.068 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:disagreement_determinants} provides little evidence that disagreement between the two sentiment measures is mechanically explained by filing length. Across all specifications, the coefficient on log token count is small and statistically insignificant. This suggests that the divergence between GPT-based document sentiment and LMMD-based lexical tone is not simply a byproduct of longer filings producing noisier or more variable text-based measurements.
+
+At the same time, the explanatory power of the regressions increases when industry fixed effects are included. While the baseline specification explains essentially none of the variation in disagreement, the $R^2$ rises once year and especially industry controls are introduced. One interpretation is that cross-method disagreement is more closely related to industry-specific disclosure environments than to document length alone. In other words, disagreement appears to reflect differences in the nature of narrative reporting across sectors rather than a purely mechanical effect of text size.
+
+Taken together with the descriptive evidence in Table~\ref{tab:disagreement_summary}, these results suggest that disagreement between the two measures is best understood as arising from differences in interpretation of tone, especially in filings with mixed, qualified, or near-neutral language, rather than from simple variation in document length. This is consistent with the view that document-level LLM sentiment and finance-specific lexical tone capture overlapping but non-identical aspects of disclosure content.

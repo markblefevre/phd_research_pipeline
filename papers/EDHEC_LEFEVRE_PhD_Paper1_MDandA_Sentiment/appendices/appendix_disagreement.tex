@@ -1,0 +1,310 @@
+\section{Additional Diagnostics on Sentiment Disagreement}
+\label{app:disagreement_diagnostics}
+
+This appendix provides additional diagnostics on the disagreement between the
+GPT-based sentiment measure and the Japanese LMMD-based sentiment measure.
+The goal is to distinguish economically meaningful disagreement from mechanical
+differences arising from scale, centering, and observations close to neutrality.
+
+\subsection{Motivation}
+\label{app:disagreement_motivation}
+
+Although the two sentiment measures are positively correlated in the cross-section,
+they need not capture identical aspects of disclosure tone. The GPT-based measure
+is designed to reflect overall document-level sentiment, whereas the LMMD-based
+measure aggregates token-level positive and negative word usage. As a result,
+disagreement may arise for at least three reasons. First, the two measures may
+differ in scale and dispersion. Second, they may differ in how neutrality is
+centered around zero. Third, they may differ substantively in what they detect. For example, one
+method may capture discourse-level negativity while the other is influenced by
+boilerplate managerial language or mixed segment reporting.
+
+To separate these channels, we construct both continuous and discrete measures of
+disagreement and report additional distributional and case-based diagnostics.
+
+\subsection{Continuous Disagreement Measures}
+\label{app:disagreement_continuous}
+
+Let $\text{GPT}_{i,t}$ denote the document-level GPT sentiment score for filing
+$i$ at time $t$, and let $\text{LMMD}_{i,t}$ denote the LMMD net sentiment score.
+Because the two measures are expressed on different raw scales, our primary
+continuous disagreement measure is based on standardized scores:
+\begin{align}
+z^{\text{GPT}}_{i,t} &= \frac{\text{GPT}_{i,t} - \overline{\text{GPT}}}{s_{\text{GPT}}}, \\
+z^{\text{LMMD}}_{i,t} &= \frac{\text{LMMD}_{i,t} - \overline{\text{LMMD}}}{s_{\text{LMMD}}},
+\end{align}
+where $\overline{\text{GPT}}$ and $\overline{\text{LMMD}}$ are sample means and
+$s_{\text{GPT}}$ and $s_{\text{LMMD}}$ are sample standard deviations.
+
+We then define signed and absolute disagreement as:
+\begin{align}
+\text{Disagreement}^{z}_{i,t} &= z^{\text{LMMD}}_{i,t} - z^{\text{GPT}}_{i,t}, \\
+\left| \text{Disagreement}^{z}_{i,t} \right| &= 
+\left| z^{\text{LMMD}}_{i,t} - z^{\text{GPT}}_{i,t} \right|.
+\end{align}
+
+The absolute standardized disagreement measure,
+$\left| \text{Disagreement}^{z}_{i,t} \right|$, is our preferred continuous
+proxy for the magnitude of disagreement because it is invariant to differences
+in the raw ranges of the two sentiment metrics.
+
+For transparency, we also retain the raw-scale analogues:
+\begin{align}
+\text{Disagreement}^{\text{raw}}_{i,t} &= \text{LMMD}_{i,t} - \text{GPT}_{i,t}, \\
+\left| \text{Disagreement}^{\text{raw}}_{i,t} \right| &=
+\left| \text{LMMD}_{i,t} - \text{GPT}_{i,t} \right|.
+\end{align}
+However, these raw-scale measures are interpreted cautiously because the two
+underlying sentiment scores are not naturally commensurate.
+
+\subsection{Directional Disagreement and Neutral Bands}
+\label{app:disagreement_directional}
+
+A natural discrete notion of disagreement is whether the two methods assign
+opposite signs to the same filing. A raw sign-based conflict indicator is:
+\begin{equation}
+\text{Conflict}^{0}_{i,t} =
+\mathbb{1}\!\left[
+\left( \text{GPT}_{i,t} > 0 \ \wedge \ \text{LMMD}_{i,t} < 0 \right)
+\ \vee \
+\left( \text{GPT}_{i,t} < 0 \ \wedge \ \text{LMMD}_{i,t} > 0 \right)
+\right].
+\end{equation}
+
+However, raw sign conflict may overstate substantive disagreement if many
+observations lie close to zero. To address this issue, we define method-specific
+neutral bands and construct a thresholded polarity-conflict indicator.
+
+For the GPT score, we classify filings as:
+\begin{equation}
+\text{Class}^{\text{GPT}}_{i,t} =
+\begin{cases}
+\text{positive} & \text{if } \text{GPT}_{i,t} > \varepsilon_{\text{GPT}}, \\
+\text{negative} & \text{if } \text{GPT}_{i,t} < -\varepsilon_{\text{GPT}}, \\
+\text{neutral}  & \text{if } |\text{GPT}_{i,t}| \le \varepsilon_{\text{GPT}},
+\end{cases}
+\end{equation}
+where $\varepsilon_{\text{GPT}}$ is set to a fixed threshold.
+
+For the LMMD score, we analogously define:
+\begin{equation}
+\text{Class}^{\text{LMMD}}_{i,t} =
+\begin{cases}
+\text{positive} & \text{if } \text{LMMD}_{i,t} > \varepsilon_{\text{LMMD}}, \\
+\text{negative} & \text{if } \text{LMMD}_{i,t} < -\varepsilon_{\text{LMMD}}, \\
+\text{neutral}  & \text{if } |\text{LMMD}_{i,t}| \le \varepsilon_{\text{LMMD}},
+\end{cases}
+\end{equation}
+where $\varepsilon_{\text{LMMD}}$ is calibrated from the empirical distribution
+of the LMMD score.
+
+The thresholded polarity-conflict indicator is then:
+\begin{equation}
+\text{Conflict}^{\ast}_{i,t} =
+\mathbb{1}\!\left[
+\left( \text{Class}^{\text{GPT}}_{i,t} = \text{positive}
+\ \wedge \
+\text{Class}^{\text{LMMD}}_{i,t} = \text{negative} \right)
+\ \vee \
+\left( \text{Class}^{\text{GPT}}_{i,t} = \text{negative}
+\ \wedge \
+\text{Class}^{\text{LMMD}}_{i,t} = \text{positive} \right)
+\right].
+\end{equation}
+
+This thresholded measure is more conservative than the raw sign-conflict
+indicator and is intended to capture stronger directional disagreement.
+
+\subsection{Distributional Diagnostics}
+\label{app:disagreement_distributional}
+
+To assess whether zero is a meaningful empirical center for each sentiment
+measure, we report the mean, median, selected quantiles, and the shares of
+negative, neutral, and positive observations for both GPT and LMMD sentiment.
+These diagnostics help determine whether apparent disagreement is driven by
+substantive interpretive differences or by differences in centering near zero.
+
+In addition, we compare the raw sign-conflict rate to the thresholded
+polarity-conflict rate. A large decline from $\text{Conflict}^{0}_{i,t}$ to
+$\text{Conflict}^{\ast}_{i,t}$ indicates that much of the apparent disagreement
+comes from observations near neutrality rather than strong directional
+contradiction.
+
+\subsection{Robustness to GPT Validity Filters}
+\label{app:disagreement_validity}
+
+Because a small number of GPT observations may reflect incomplete or degenerate
+chunk-level outputs, we also report disagreement diagnostics after restricting
+the sample to filings with valid GPT extraction. This robustness check helps
+ensure that our disagreement measures are not driven by failed or empty GPT
+processing.
+
+Specifically, we recompute the correlation between GPT and LMMD sentiment, the
+mean and median of absolute standardized disagreement, and both the raw and
+thresholded conflict rates in the valid-GPT subsample.
+
+\subsection{Illustrative Filing-Level Examples}
+\label{app:disagreement_examples}
+
+These examples are drawn from filings with high values of the thresholded
+polarity-conflict indicator and are intended to illustrate recurring sources of
+disagreement between GPT-based and lexicon-based sentiment measures. Taken
+together, they suggest that disagreement often arises when document-level
+narrative tone, strategic or boilerplate managerial language, and segment-level
+heterogeneity pull the two measures in different directions.
+
+\paragraph{Example 1: JFE Holdings (E01264, 5411.T; filing date: 2020-06-19).}
+Scores: GPT = -0.67; LMMD net = 0.0074; 
+$|\mathrm{Disagreement}^{z}| = 3.34$.
+
+This filing provides the clearest example of cross-method disagreement. GPT
+assigns sharply negative sentiment, consistent with the document’s repeated
+emphasis on severe business conditions, profit deterioration, impairment losses,
+and the emergence of net losses. By contrast, the LMMD score remains slightly
+positive, plausibly because the filing also contains substantial strategic and
+managerial language associated with growth, strengthening, improvement, and
+corporate value creation, as well as mixed segment-level discussion.
+Table~\ref{tab:jfe_disagreement_phrases} illustrates these competing textual
+signals.
+
+\begin{table}[htbp]
+\centering
+\caption{Illustrative phrases from JFE Holdings MD\&A (filing date 2020-06-19)}
+\label{tab:jfe_disagreement_phrases}
+\begin{threeparttable}
+\begin{tabular}{p{4.0cm} p{5.0cm} p{6.5cm}}
+\toprule
+\textbf{Japanese phrase} & \textbf{English gloss} & \textbf{Interpretation} \\
+\midrule
+\multicolumn{3}{l}{\textit{Negative narrative / adverse performance language}} \\
+\jp{極めて厳しい経営環境} & extremely severe business environment & Strong document-level negative framing. \\
+\jp{大幅に悪化} & deteriorated substantially & Marked worsening in performance. \\
+\jp{赤字となりました} & became loss-making & Direct signal of negative earnings. \\
+\jp{減損損失を計上} & recorded impairment losses & Negative accounting event. \\
+\jp{需要の低迷} & demand slump & Macro and industry deterioration. \\
+\jp{目標の達成は困難} & target achievement is difficult & Negative forward-looking assessment. \\
+\addlinespace
+\multicolumn{3}{l}{\textit{Positive / strategic language likely supporting the lexicon score}} \\
+\jp{持続的な成長} & sustainable growth & Positive strategic wording. \\
+\jp{企業価値の向上} & corporate value enhancement & Standard positive managerial language. \\
+\jp{成長戦略の推進} & promotion of growth strategy & Strategic positive phrasing. \\
+\jp{収益拡大} & profit expansion & Positive business vocabulary. \\
+\jp{強化} & strengthening & Common positive management term. \\
+\jp{改善} & improvement & Positive token. \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\footnotesize
+\item Notes: The table reports selected phrases from the MD\&A of JFE Holdings
+that help explain the disagreement between GPT-based and lexicon-based sentiment.
+The upper block highlights phrases contributing to a strongly negative
+document-level interpretation, while the lower block reports positive or
+strategic language that may mechanically support a mildly positive lexicon score.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\paragraph{Example 2: Asahi Group Holdings (E00394, 2502.T; filing date 2020-03-26).}
+Scores: GPT = -0.14; LMMD net = 0.0155;
+$|\mathrm{Disagreement}^{z}| = 3.33$.
+
+This filing provides a different type of disagreement from Example~1. GPT assigns
+mildly negative sentiment, which is consistent with the document's repeated
+discussion of declines in consolidated revenue and profit, adverse weather
+conditions, foreign-exchange headwinds, competitive pressure, and weaker
+performance in selected businesses. By contrast, the LMMD score remains
+positive, plausibly because the filing is heavily interwoven with strategic and
+managerial language concerning brand strengthening, premiumization, efficiency
+improvements, growth initiatives, and value creation. In this case, the
+disagreement appears to arise not from a sharply distressed narrative, but from
+the coexistence of modest performance deterioration with an otherwise confident
+and forward-looking managerial tone. Table~\ref{tab:asahi_disagreement_phrases} illustrates these competing signals.
+
+\begin{table}[htbp]
+\centering
+\caption{Illustrative phrases from Asahi Group Holdings MD\&A (filing date 2020-03-26)}
+\label{tab:asahi_disagreement_phrases}
+\begin{threeparttable}
+\begin{tabular}{p{4.0cm} p{5.0cm} p{6.5cm}}
+\toprule
+\textbf{Japanese phrase} & \textbf{English gloss} & \textbf{Interpretation} \\
+\midrule
+\multicolumn{3}{l}{\textit{Negative / weaker-performance language}} \\
+\jp{減収} & revenue decline & Weaker top-line performance. \\
+\jp{減益} & profit decline & Negative earnings signal. \\
+\jp{競争激化} & intensifying competition & Pressure. \\
+\addlinespace
+\multicolumn{3}{l}{\textit{Positive / strategic language likely supporting the lexicon score}} \\
+\jp{価値創造} & value creation & Strong positive managerial phrasing. \\
+\jp{収益構造改革} & profit structure reform & Improvement language. \\
+\jp{ブランド価値の向上} & enhancement of brand value & Positive managerial language. \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\footnotesize
+\item Notes: The table reports selected phrases from the MD\&A of Asahi Group Holdings
+that help explain the disagreement between GPT-based and lexicon-based sentiment.
+The upper block highlights weaker performance and adverse operating conditions,
+while the lower block reports strategic and brand-oriented language that may
+mechanically support a positive lexicon score.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\paragraph{Example 3: Alps Alpine Co., Ltd. (E01793, 6770.T; filing date: 2022-06-23).}
+Scores: GPT = 0.50; LMMD net = -0.0089;
+$|\mathrm{Disagreement}^{z}| = 2.89$.
+
+This filing illustrates a third and distinct source of disagreement. Unlike
+Example~1, which reflects a strongly negative document-level narrative despite
+some positive strategic wording, and Example~2, where modest deterioration
+coexists with forward-looking managerial language, the present case is better
+characterized as a recovery narrative layered over substantial operating
+frictions and segment-level weakness. GPT assigns positive sentiment, plausibly
+because the filing emphasizes an overall rebound in economic conditions,
+recovery in selected end markets, higher consolidated sales and profits, and a
+return to net income. By contrast, the LMMD score is slightly negative, likely
+because the same text repeatedly invokes supply-chain disruption, semiconductor
+shortages, unstable component supply, cost inflation, sluggish display-related
+performance, and an operating loss in the car information equipment segment.
+Table~\ref{tab:example3_disagreement_phrases} illustrates these opposing
+signals.
+
+\begin{table}[htbp]
+\centering
+\caption{Illustrative phrases from Alps Alpine Co., Ltd. MD\&A (filing date 2022-06-23)}
+\label{tab:example3_disagreement_phrases}
+\begin{threeparttable}
+\begin{tabular}{p{4.6cm} p{4.2cm} p{5.8cm}}
+\toprule
+\textbf{Japanese phrase} & \textbf{English gloss} & \textbf{Interpretation} \\
+\midrule
+\multicolumn{3}{l}{\textit{Positive narrative / improved-results language likely supporting GPT positivity}} \\
+\jp{景気は回復傾向となりました} & economic recovery trend & Positive macro recovery framing. \\
+\jp{好転の兆しを見せました} & signs of improvement & Positive turnaround language. \\
+\jp{売上高が増加しました} & sales increased & Direct positive performance signal. \\
+\addlinespace
+\multicolumn{3}{l}{\textit{Negative operating / risk language likely weighing on the LMMD score}} \\
+\jp{物流費や部材等の高騰} & soaring costs & Cost pressure. \\
+\jp{サプライチェーンの混乱は深刻さを増しており} & worsening supply-chain disruption & Strong operating headwind. \\
+\jp{営業損失は45億円} & 4.5 bn yen operating loss  & Direct negative earnings signal. \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\footnotesize
+\item Notes: The table reports selected phrases from the MD\&A of Alps Alpine Co., Ltd. that help explain the disagreement between GPT-based and lexicon-based sentiment. The upper block highlights recovery framing and improved results that may support a positive document-level GPT assessment. The lower block highlights cost pressure, disruption, and losses that may weigh on the LMMD score.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\subsection{Relation to the Main Analysis}
+\label{app:disagreement_relation}
+
+The diagnostics in this appendix inform the interpretation of the main
+cross-sectional tests in two ways. First, they justify the use of
+$\left| \text{Disagreement}^{z}_{i,t} \right|$ as the main continuous measure of
+cross-method divergence. Second, they motivate the use of
+$\text{Conflict}^{\ast}_{i,t}$ as a conservative indicator of strong directional
+disagreement. Together, these measures allow us to distinguish between mild
+differences around neutrality and more economically meaningful disagreement in
+the interpretation of Japanese MD\&A disclosures.

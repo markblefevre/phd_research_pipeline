@@ -1,0 +1,153 @@
+% appendices/appendixE.tex
+\section{Firm Identifier Mapping and Market Data Construction}
+\label{appendix:market_mapping}
+
+This appendix documents the procedures used to map EDINET filers to market identifiers and to construct the return series used in the empirical analysis. The goal is to provide sufficient detail to reproduce the firm--date panel linking text disclosures to financial market outcomes.
+
+% =====================================================
+\section{Identifier Systems}
+\label{appendix:identifier_systems}
+
+EDINET filings identify issuers using EDINET-specific filer identifiers and metadata fields (e.g., filer name, securities code when available). Market data sources typically index firms by exchange ticker, securities code, ISIN, or vendor-specific identifiers. The analysis requires a deterministic mapping from EDINET filers to the identifiers used in the return dataset.
+
+\begin{itemize}
+  \item \textbf{EDINET identifiers:} \texttt{<e.g., EDINETCode / docID>} (specify fields used)
+  \item \textbf{Market identifiers:} \texttt{<e.g., TSE code / ticker / ISIN>} (specify)
+  \item \textbf{Linking key (preferred):} \texttt{<e.g., securities code>} (specify)
+\end{itemize}
+
+% =====================================================
+\section{Mapping Sources}
+\label{appendix:mapping_sources}
+
+The mapping is constructed from the following sources (replace with your actual sources):
+
+\begin{enumerate}
+  \item EDINET filing metadata (issuer name, securities code, submission date).
+  \item Exchange or vendor reference data providing ticker--code crosswalks.
+  \item Supplemental manual corrections for corporate actions and name changes (logged).
+\end{enumerate}
+
+\paragraph{Frozen crosswalk.}
+To ensure reproducibility, we freeze a crosswalk table containing the final mapping used in the analysis, keyed by EDINET filer identifier and mapped market identifier(s), along with effective dates.
+
+% =====================================================
+\section{Deterministic Matching Logic}
+\label{appendix:matching_logic}
+
+The mapping is generated using a deterministic, hierarchical procedure:
+
+\begin{enumerate}
+  \item \textbf{Exact code match:} if the EDINET metadata contains a securities code, match directly to the market identifier via the reference crosswalk.
+  \item \textbf{Exact name match:} if a code is missing, attempt exact match on normalized issuer names.
+  \item \textbf{Fuzzy name match (controlled):} if needed, apply a conservative fuzzy match on normalized names subject to a similarity threshold \texttt{t\_name} and additional constraints (e.g., same industry or same securities code prefix, if available).
+  \item \textbf{Manual resolution:} unresolved cases are reviewed and corrected manually; all edits are recorded in a log with justification.
+\end{enumerate}
+
+\paragraph{Name normalization.}
+Issuer names are normalized prior to matching by: (i) removing legal suffixes (e.g., \emph{Co., Ltd.}, \emph{株式会社}), (ii) standardizing whitespace and punctuation, and (iii) applying Unicode normalization (if used).
+
+% =====================================================
+\section{Corporate Actions and Identifier Changes}
+\label{appendix:corp_actions}
+
+Corporate actions can break naive identifier mapping. We handle the following cases:
+
+\begin{itemize}
+  \item \textbf{Name changes:} maintain issuer continuity using a stable identifier and effective-date ranges.
+  \item \textbf{Mergers/spin-offs:} specify whether the post-event entity inherits the predecessor mapping (and from which date).
+  \item \textbf{Delistings:} retain filings but truncate market return series after the last trading date (or exclude; specify rule).
+  \item \textbf{Multiple share classes:} choose the primary class (e.g., highest liquidity) or aggregate (specify rule).
+\end{itemize}
+
+\paragraph{Continuity rule.}
+State the rule used to define a ``firm'' through time (e.g., EDINET filer identifier continuity vs. market identifier continuity).
+
+% =====================================================
+\section{Market Data Sources}
+\label{appendix:market_sources}
+
+Returns and related market variables are obtained from \texttt{<data vendor / database>} (specify). The analysis uses \texttt{daily/monthly} returns and (if relevant) risk-factor series for abnormal return estimation.
+
+\begin{itemize}
+  \item \textbf{Prices/returns:} \texttt{<source>} (adjusted close, total return, etc.)
+  \item \textbf{Trading calendar:} \texttt{<TSE calendar / vendor calendar>} (specify)
+  \item \textbf{Risk-free rate / factors:} \texttt{<source>} (if used)
+\end{itemize}
+
+% =====================================================
+\section{Return Construction}
+\label{appendix:return_construction}
+
+Returns are constructed as:
+
+\[
+R_{i,t} = \frac{P_{i,t} - P_{i,t-1}}{P_{i,t-1}}
+\quad \text{or} \quad
+r_{i,t} = \log(P_{i,t}) - \log(P_{i,t-1}),
+\]
+where $P_{i,t}$ denotes the \texttt{adjusted/close/total-return} price for firm $i$ on trading day $t$ (specify which is used).
+
+\paragraph{Adjustments.}
+State whether prices are adjusted for splits and dividends. If both raw and adjusted prices are available, specify the series used for the main analysis.
+
+\paragraph{Missing observations.}
+State how missing prices/returns are handled (e.g., exclude firm-days; forward-fill not allowed; remove illiquid securities below a threshold).
+
+% =====================================================
+\section{Event Date Alignment (Filing Dates)}
+\label{appendix:event_alignment}
+
+Text disclosures are timestamped by EDINET submission date and time. To align disclosures with market returns, we define the event date as the first trading day on or after the EDINET submission timestamp (or specify alternative).
+
+\begin{itemize}
+  \item \textbf{Event timestamp:} EDINET submission datetime
+  \item \textbf{Event trading day:} next trading day / same-day if submitted before market close (specify rule)
+  \item \textbf{Time zone:} Japan Standard Time (JST) for EDINET timestamps; converted as needed for the market calendar
+\end{itemize}
+
+\paragraph{Non-trading days.}
+If the filing occurs on a weekend or holiday, the event is assigned to the next trading day.
+
+% =====================================================
+\section{Abnormal Return Inputs (If Applicable)}
+\label{appendix:abnormal_inputs}
+
+If abnormal returns (e.g., CAR) are used, document the following inputs (details of the model belong in Chapter~\ref{chap:methodology}):
+
+\begin{itemize}
+  \item \textbf{Estimation window:} \texttt{[T\_0, T\_1]} trading days relative to the event (specify)
+  \item \textbf{Event window:} \texttt{[t\_a, t\_b]} trading days (specify)
+  \item \textbf{Benchmark model inputs:} market index returns and/or factor returns (specify)
+\end{itemize}
+
+% =====================================================
+\section{Mapping Coverage and Diagnostics}
+\label{appendix:mapping_diagnostics}
+
+Table~\ref{tab:mapping_coverage} summarizes mapping coverage from EDINET filers to market identifiers.
+
+\begin{table}[h]
+\centering
+\caption{Coverage of EDINET-to-Market Identifier Mapping}
+\label{tab:mapping_coverage}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Category} & \textbf{Count} & \textbf{Percent} \\
+\midrule
+EDINET filers in retrieval window & \texttt{N\_edinet} & 100.0\% \\
+Mapped to market identifier & \texttt{N\_mapped} & \texttt{p\_mapped}\% \\
+Unmapped / excluded & \texttt{N\_unmapped} & \texttt{p\_unmapped}\% \\
+Final firm--event observations & \texttt{N\_panel} & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Unmatched cases.}
+Briefly describe the main reasons for unmatched issuers (e.g., non-listed entities, missing securities codes, ambiguous name matches).
+
+% =====================================================
+\section{Reproducibility Notes}
+\label{appendix:market_reproducibility}
+
+For replication, we provide (i) the frozen crosswalk table used for EDINET-to-market mapping, (ii) a manifest of included EDINET document identifiers, and (iii) the market data identifiers and date ranges required to reconstruct the return panel.
