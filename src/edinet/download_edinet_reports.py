@@ -8,6 +8,7 @@ run_edinet_download(...), but can also be adapted for standalone use.
 Primary use for Paper 2:
 - enumerate filings by submission date
 - keep Annual Securities Reports (docTypeCode == "120")
+- restrict the Paper 2 universe to listed companies
 - optionally restrict to a supplied set of EDINET codes
 - save filing metadata
 - download raw filing ZIPs for downstream MD&A extraction
@@ -232,7 +233,7 @@ def run_edinet_download(
       2 = PDF
       5 = CSV ZIP
 
-    Paper 2 defaults to docTypeCode "120" (Annual Securities Report).
+    Paper 2 uses Annual Securities Reports for listed companies only.
     """
     logger = logger or logging.getLogger(__name__)
 
@@ -304,12 +305,21 @@ def run_edinet_download(
         results = payload.get("results") or []
 
         for filing in results:
+            # Annual Securities Reports only.
             if str(filing.get("docTypeCode") or "") != str(doc_type_code):
                 continue
-
+        
+            # Paper 2 universe: listed companies only.
+            # Require corporate-disclosure filings and a populated security code.
+            if str(filing.get("ordinanceCode") or "") != "010":
+                continue
+        
+            if not str(filing.get("secCode") or "").strip():
+                continue
+        
             edinet_code = str(filing.get("edinetCode") or "").strip()
             if edinet_codes is not None and edinet_code not in edinet_codes:
-                continue
+                continue            
 
             doc_id = str(filing.get("docID") or "").strip()
             if not doc_id:
