@@ -1,0 +1,40 @@
+[run]
+paper = "paper2"
+run_id = "auto"
+
+[stages]
+edinet_download = true
+
+filing_inventory = false
+mdna_extraction = false
+text_stats = false
+textual_novelty = false
+sentiment = false
+build_panel = false
+regression = false
+
+## STAGE 1 EDINET_DOWNLOAD
+[edinet_download]
+api_key_env = "EDINET_API_KEY"
+
+# 有価証券報告書 / Annual Securities Report
+doc_type_code = "120"
+
+start_date = "2010-01-01"
+end_date   = "2025-12-31"
+
+# Blank means broad EDINET universe.
+# We filter the research sample downstream.
+edinet_codes_csv = ""
+
+raw_dir = "data/raw/paper2/edinet"
+metadata_csv = "data/interim/paper2/edinet/filings.csv"
+
+skip_if_exists = true
+resume = true
+retries = 3
+request_sleep_seconds = 0.25
+
+download_zip = true
+download_pdf = false
+download_csv = false
