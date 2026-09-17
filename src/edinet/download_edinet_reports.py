@@ -165,10 +165,53 @@ def _write_metadata(rows: list[dict[str, Any]], out_csv: Path) -> None:
     fieldnames = [k for k in preferred if k in all_keys]
     fieldnames += sorted(all_keys - set(fieldnames))
 
-    with out_csv.open("w", encoding="utf-8-sig", newline="") as f:
+    # Write atomically so an interrupted run cannot leave a truncated CSV.
+    tmp = out_csv.with_suffix(out_csv.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+    tmp.replace(out_csv)
+
+
+def _load_last_completed_date(
+    checkpoint_path: Path,
+    *,
+    metadata_csv: Path,
+    resume: bool,
+    logger: logging.Logger,
+) -> date | None:
+    """Return the last fully completed listing date, if the checkpoint is usable."""
+    if not resume or not metadata_csv.exists() or not checkpoint_path.exists():
+        return None
+
+    try:
+        payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+        value = payload.get("last_completed_date")
+        if not value:
+            return None
+        completed = datetime.strptime(value, "%Y-%m-%d").date()
+        logger.info("Loaded EDINET checkpoint: last_completed_date=%s", completed)
+        return completed
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        logger.warning("Ignoring invalid EDINET checkpoint %s: %s", checkpoint_path, exc)
+        return None
+
+
+def _write_checkpoint(checkpoint_path: Path, completed_date: date) -> None:
+    """Atomically record the last fully completed EDINET listing date."""
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "last_completed_date": completed_date.isoformat(),
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+    tmp = checkpoint_path.with_suffix(checkpoint_path.suffix + ".tmp")
+    tmp.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    tmp.replace(checkpoint_path)
 
 
 def _download_document(
@@ -220,6 +263,9 @@ def run_edinet_download(
     resume: bool = True,
     retries: int = 3,
     request_sleep_seconds: float = 0.25,
+    progress_every: int = 25,
+    metadata_checkpoint_every: int = 25,
+    checkpoint_path: Path | None = None,
     download_zip: bool = True,
     download_pdf: bool = False,
     download_csv: bool = False,
@@ -249,6 +295,18 @@ def run_edinet_download(
 
     raw_dir.mkdir(parents=True, exist_ok=True)
     metadata_csv.parent.mkdir(parents=True, exist_ok=True)
+
+    if checkpoint_path is None:
+        checkpoint_path = metadata_csv.with_name("download_checkpoint.json")
+    else:
+        checkpoint_path = Path(checkpoint_path)
+
+    last_completed_date = _load_last_completed_date(
+        checkpoint_path,
+        metadata_csv=metadata_csv,
+        resume=resume,
+        logger=logger,
+    )
 
     session = requests.Session()
     session.headers.update(
@@ -282,9 +340,34 @@ def run_edinet_download(
     downloaded = 0
     skipped = 0
 
-    for d in _date_range(start_date, end_date):
+    requested_start = datetime.strptime(start_date, "%Y-%m-%d").date()
+    requested_end = datetime.strptime(end_date, "%Y-%m-%d").date()
+
+    effective_start = requested_start
+    if last_completed_date is not None and last_completed_date >= requested_start:
+        effective_start = last_completed_date + timedelta(days=1)
+
+    if effective_start > requested_end:
+        logger.info(
+            "EDINET download already complete through %s for requested range %s..%s",
+            last_completed_date,
+            requested_start,
+            requested_end,
+        )
+
+    date_iter = (
+        _date_range(effective_start.isoformat(), end_date)
+        if effective_start <= requested_end
+        else []
+    )
+
+    for d in date_iter:
         dates_checked += 1
         d_str = d.isoformat()
+
+        date_matched = 0
+        date_downloaded = 0
+        date_skipped = 0
 
         logger.info("EDINET listing date=%s", d_str)
 
@@ -303,29 +386,31 @@ def run_edinet_download(
 
         payload = response.json()
         results = payload.get("results") or []
+        logger.info("EDINET date=%s returned %s filing records", d_str, len(results))
 
         for filing in results:
             # Annual Securities Reports only.
             if str(filing.get("docTypeCode") or "") != str(doc_type_code):
                 continue
-        
+
             # Paper 2 universe: listed companies only.
             # Require corporate-disclosure filings and a populated security code.
             if str(filing.get("ordinanceCode") or "") != "010":
                 continue
-        
+
             if not str(filing.get("secCode") or "").strip():
                 continue
-        
+
             edinet_code = str(filing.get("edinetCode") or "").strip()
             if edinet_codes is not None and edinet_code not in edinet_codes:
-                continue            
+                continue
 
             doc_id = str(filing.get("docID") or "").strip()
             if not doc_id:
                 continue
 
             filings_matched += 1
+            date_matched += 1
 
             if doc_id not in seen_doc_ids:
                 selected_rows.append(filing)
@@ -346,8 +431,12 @@ def run_edinet_download(
                     skip_if_exists=skip_if_exists,
                     logger=logger,
                 )
-                downloaded += status == "downloaded"
-                skipped += status == "skipped"
+                if status == "downloaded":
+                    downloaded += 1
+                    date_downloaded += 1
+                else:
+                    skipped += 1
+                    date_skipped += 1
 
             if download_pdf and str(filing.get("pdfFlag") or "") == "1":
                 status = _download_document(
@@ -361,8 +450,12 @@ def run_edinet_download(
                     skip_if_exists=skip_if_exists,
                     logger=logger,
                 )
-                downloaded += status == "downloaded"
-                skipped += status == "skipped"
+                if status == "downloaded":
+                    downloaded += 1
+                    date_downloaded += 1
+                else:
+                    skipped += 1
+                    date_skipped += 1
 
             if download_csv and str(filing.get("csvFlag") or "") == "1":
                 status = _download_document(
@@ -376,24 +469,57 @@ def run_edinet_download(
                     skip_if_exists=skip_if_exists,
                     logger=logger,
                 )
-                downloaded += status == "downloaded"
-                skipped += status == "skipped"
+                if status == "downloaded":
+                    downloaded += 1
+                    date_downloaded += 1
+                else:
+                    skipped += 1
+                    date_skipped += 1
+
+            if progress_every > 0 and date_matched % progress_every == 0:
+                logger.info(
+                    "EDINET progress: date=%s matched=%s downloaded=%s skipped=%s",
+                    d_str,
+                    date_matched,
+                    date_downloaded,
+                    date_skipped,
+                )
+
+            if (
+                metadata_checkpoint_every > 0
+                and date_matched % metadata_checkpoint_every == 0
+            ):
+                _write_metadata(selected_rows, metadata_csv)
 
             if request_sleep_seconds > 0:
                 time.sleep(request_sleep_seconds)
 
-        # Persist progress every day so a long historical pull is resumable.
+        # Mark a date complete only after all matching filings are processed
+        # and the metadata snapshot has been safely written.
         _write_metadata(selected_rows, metadata_csv)
+        _write_checkpoint(checkpoint_path, d)
+
+        logger.info(
+            "EDINET date complete: date=%s matched=%s downloaded=%s skipped=%s",
+            d_str,
+            date_matched,
+            date_downloaded,
+            date_skipped,
+        )
 
     summary = {
         "start_date": start_date,
         "end_date": end_date,
+        "effective_start_date": (
+            effective_start.isoformat() if effective_start <= requested_end else None
+        ),
         "dates_checked": dates_checked,
         "filings_matched": filings_matched,
         "metadata_rows": len(selected_rows),
         "files_downloaded": downloaded,
         "files_skipped": skipped,
         "metadata_csv": str(metadata_csv),
+        "checkpoint_path": str(checkpoint_path),
         "raw_dir": str(raw_dir),
     }
 
