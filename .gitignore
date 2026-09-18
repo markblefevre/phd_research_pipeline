@@ -208,3 +208,10 @@ __marimo__/
 
 # My specific ignores
 runs/
+
+# Paper 2 specific ignores
+# Definitely exclude raw files from EDINE
+data/raw/paper2/edinet/
+# Checkpoint is the last successful date we processed, ie. state
+data/interim/paper2/edinet/download_checkpoint.json
+data/interim/paper2/edinet/filings.csv
