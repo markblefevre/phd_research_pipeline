@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun May  5 23:06:30 2024
-
 @author: Mark
 
-Utility Functions for Reading in EdinetcodeDlInfo.csv files
-There are English and Japanese versions available for download
-<insert a reference here where the files can be obtained>
+Utilities for reading EDINET code-list CSV files.
+
+Important
+---------
+The EDINET code list represents current-state reference metadata.
+Fields such as listing status should NOT be used to determine whether
+an issuer was listed at the time of a historical filing, because doing
+so can introduce survivorship bias.
+
+Use current listing-status filters only for current-reference queries
+or diagnostics, not for construction of historical filing samples.
 """
 import pandas as pd
 from pathlib import Path
