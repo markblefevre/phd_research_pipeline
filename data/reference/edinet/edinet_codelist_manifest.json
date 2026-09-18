@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-01-05T01:50:29",
+  "created_at": "2026-09-18T00:28:17",
   "stamp_mode": "date",
   "latest_alias": true,
   "unzip": true,
@@ -7,26 +7,26 @@
   "files": {
     "ja": {
       "url": "https://disclosure2dl.edinet-fsa.go.jp/searchdocument/codelist/Edinetcode.zip",
-      "path": "Z:\\Documents\\Education\\2021 EDHEC Exec PhD\\4 Research\\data\\reference\\edinet\\Edinetcode_ja_20260105.zip",
-      "bytes": 561703,
-      "sha256": "4f232552101d50a623174add482afe2dea464f3fb61ea3b6f1826c5990e73213",
-      "downloaded_at": "2026-01-05T01:50:29",
-      "latest_alias_path": "Z:\\Documents\\Education\\2021 EDHEC Exec PhD\\4 Research\\data\\reference\\edinet\\Edinetcode_ja_latest.zip"
+      "path": "data/reference/edinet/Edinetcode_ja_20260918.zip",
+      "bytes": 571676,
+      "sha256": "23667e1bd74ffc29d36c90eabc42bec4392581c3d5399312f94101dc3f56ec32",
+      "downloaded_at": "2026-09-18T00:28:17",
+      "latest_alias_path": "data/reference/edinet/Edinetcode_ja_latest.zip"
     },
     "en": {
       "url": "https://disclosure2dl.edinet-fsa.go.jp/searchdocument/codelisteng/Edinetcode.zip",
-      "path": "Z:\\Documents\\Education\\2021 EDHEC Exec PhD\\4 Research\\data\\reference\\edinet\\Edinetcode_en_20260105.zip",
-      "bytes": 560736,
-      "sha256": "7c2b3158d4319178eaa73d0e0b9f7ddac39f688524387caf3a97c14985745cf4",
-      "downloaded_at": "2026-01-05T01:50:29",
-      "latest_alias_path": "Z:\\Documents\\Education\\2021 EDHEC Exec PhD\\4 Research\\data\\reference\\edinet\\Edinetcode_en_latest.zip"
+      "path": "data/reference/edinet/Edinetcode_en_20260918.zip",
+      "bytes": 570039,
+      "sha256": "b2045634a3d5bdc73a2267f39227c141427148b8b9c572df16ace524c239f777",
+      "downloaded_at": "2026-09-18T00:28:17",
+      "latest_alias_path": "data/reference/edinet/Edinetcode_en_latest.zip"
     }
   },
   "unzipped": {
     "ja": {
       "latest": {
-        "zip": "Z:\\Documents\\Education\\2021 EDHEC Exec PhD\\4 Research\\data\\reference\\edinet\\Edinetcode_ja_latest.zip",
-        "out_dir": "Z:\\Documents\\Education\\2021 EDHEC Exec PhD\\4 Research\\data\\reference\\edinet\\Edinetcode_ja_latest",
+        "zip": "data/reference/edinet/Edinetcode_ja_latest.zip",
+        "out_dir": "data/reference/edinet/Edinetcode_ja_latest",
         "files": [
           "EdinetcodeDlInfo.csv"
         ]
@@ -34,8 +34,8 @@
     },
     "en": {
       "latest": {
-        "zip": "Z:\\Documents\\Education\\2021 EDHEC Exec PhD\\4 Research\\data\\reference\\edinet\\Edinetcode_en_latest.zip",
-        "out_dir": "Z:\\Documents\\Education\\2021 EDHEC Exec PhD\\4 Research\\data\\reference\\edinet\\Edinetcode_en_latest",
+        "zip": "data/reference/edinet/Edinetcode_en_latest.zip",
+        "out_dir": "data/reference/edinet/Edinetcode_en_latest",
         "files": [
           "EdinetcodeDlInfo.csv"
         ]
