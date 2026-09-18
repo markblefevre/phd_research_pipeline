@@ -1,14 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Lookup helpers for mapping between EDINET Code and Securities Identification Code (SIC)
-using a merged Nikkei225–EDINET DataFrame.
 """
 from pathlib import Path
 import pandas as pd
-
-from utils.nikkei.read_n225_csv import read_n225_csv
-from utils.edinet.read_edinet_codelist_csv import read_eng_csv_sjis, filter_eng_listedcompanies
-from utils.nikkei.join_n225_edinet import join_n225_edinet  # reuse existing merge function
 
 # === Utility for code normalization ==========================================
 def _norm_sic(x) -> str:
@@ -77,7 +72,7 @@ def get_symbol_from_edinet(edinet_code: str, merged_df: pd.DataFrame) -> str | N
     if "EDINET Code" not in merged_df.columns:
         raise KeyError("Merged DataFrame missing 'EDINET Code' column.")
     if "symbol" not in merged_df.columns:
-        raise KeyError("Merged DataFrame missing 'symbol' column (check N225 merge).")
+        raise KeyError("Merged DataFrame missing 'symbol' column")
 
     edinet_code = str(edinet_code).strip().upper()
     hits = merged_df.loc[
@@ -98,7 +93,7 @@ def get_edinet_from_symbol(symbol: str, merged_df: pd.DataFrame) -> str | None:
     if "EDINET Code" not in merged_df.columns:
         raise KeyError("Merged DataFrame missing 'EDINET Code' column.")
     if "symbol" not in merged_df.columns:
-        raise KeyError("Merged DataFrame missing 'symbol' column (check N225 merge).")
+        raise KeyError("Merged DataFrame missing 'symbol' column")
 
     symbol = str(symbol).strip().upper()
     hits = merged_df.loc[
@@ -109,44 +104,3 @@ def get_edinet_from_symbol(symbol: str, merged_df: pd.DataFrame) -> str | None:
     if hits.empty:
         return None
     return str(hits.iloc[0]).strip()
-
-# === Minimal test main =======================================================
-if __name__ == "__main__":
-    # NAS or local paths
-    n225_path = Path("//nas/nas1/Documents/Education/2021 EDHEC Exec PhD/4 Research/nikkei/nikkei225_all.csv")
-    edinet_dir = Path("//nas/nas1/Documents/Education/2021 EDHEC Exec PhD/4 Research/EDINET Information")
-
-    # Load source data
-    n225_df = read_n225_csv(n225_path)
-    _, edinet_df = read_eng_csv_sjis(edinet_dir, Path("EdinetcodeDlInfoENG.csv"))
-    edinet_df = filter_eng_listedcompanies(edinet_df)
-
-    # Merge (reuse your join_n225_edinet)
-    merged_df = join_n225_edinet(n225_df, edinet_df)
-    print(f"Merged DataFrame: {len(merged_df)} rows")
-
-    # Sample test
-    sample = merged_df.dropna(subset=["EDINET Code", "Securities Identification Code"]).head(1)
-    if sample.empty:
-        print("No valid sample rows found after merge.")
-    else:
-        sample_edinet = sample["EDINET Code"].iloc[0]
-        sample_sic = sample["Securities Identification Code"].iloc[0]
-        sample_symbol = sample["symbol"].iloc[0]
-
-        print(f"\nTesting EDINET ↔ SIC lookup:")
-        out_sic = get_sic_from_edinet(sample_edinet, merged_df)
-        out_edinet = get_edinet_from_sic(sample_sic, merged_df)
-        print(f"EDINET → SIC: {sample_edinet}  →  {out_sic}")
-        print(f"SIC → EDINET: {sample_sic}  →  {out_edinet}")
-
-        print(f"\nTesting EDINET ↔ smbol lookup:")
-        out_symbol = get_symbol_from_edinet(sample_edinet, merged_df)
-        out_edinet2 = get_edinet_from_symbol(sample_symbol, merged_df)
-        print(f"EDINET → SIC: {sample_edinet}  →  {out_symbol}")
-        print(f"SIC → EDINET: {sample_symbol}  →  {out_edinet}")
-
-        if out_sic and out_edinet and out_symbol and out_edinet2:
-            print("Round-trip lookup OK ✅")
-        else:
-            print("Round-trip lookup failed ❌")
