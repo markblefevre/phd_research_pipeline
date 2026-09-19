@@ -1,6 +1,6 @@
 # Paper 2 — Current Status
 
-**Last updated:** 2026-09-14
+**Last updated:** 2026-09-18
 
 ## Current thesis
 
@@ -61,6 +61,45 @@ The design therefore shifts from an unconditional comparison of sentiment techno
 - Japanese-reference handling is cleaner.
 - Related Work is compiling cleanly in Overleaf.
 - The bibliography is usable, though small metadata/capitalization cleanup may still remain.
+
+
+### Data acquisition and pipeline
+
+The Paper 2 data pipeline has advanced substantially.
+
+- **Stage 1 — EDINET acquisition:** operational and running successfully.
+- The current filing manifest contains **35,615 Annual Securities Reports**, with **35,615 unique document IDs**, **4,422 unique EDINET codes**, and **4,422 unique securities codes**.
+- The manifest currently contains **35,532 unique firm-years** and **83 duplicate firm-year observations** requiring later review.
+- Submission-date coverage currently extends from **2016-09-20 through 2026-06-16**, while fiscal-period coverage extends from **2015-07-31 through 2026-03-31**.
+- Stage 1 is resumable using `download_checkpoint.json`; previously downloaded non-empty ZIP files are skipped safely.
+- A standalone filing-summary utility now produces filing counts, yearly distributions, firm-year counts, duplicate diagnostics, missing-field diagnostics, and EDINET field distributions.
+
+The EDINET reference-data utilities from Paper 1 have also been migrated into the Paper 2 codebase. The current Japanese and English EDINET code lists can be downloaded reproducibly using dated snapshots, `latest` aliases, SHA-256 hashes, and a manifest. These code lists are treated as **current-state reference metadata**, not as historical point-in-time listing-status data, because using current listing status to filter historical filings would introduce survivorship bias.
+
+### MD&A extraction
+
+The core Stage 2 MD&A extraction logic has been recovered from Paper 1 and refactored for the new EDINET ZIP-based storage layout.
+
+The production design now uses a fast `lxml` path:
+
+1. open the EDINET ZIP;
+2. select the primary Annual Securities Report XBRL under `XBRL/PublicDoc/`;
+3. locate the standardized MD&A text block by local name;
+4. fall back to Japanese anchor-text matching only when necessary;
+5. normalize embedded XHTML to canonical plain Japanese text.
+
+Arelle was tested successfully as a full XBRL-aware parser and remains useful as a validation/debugging fallback, but the `lxml` approach is substantially faster and is preferred for batch extraction.
+
+The extractor has been validated successfully on:
+
+- Toyota Motor, 2018 filing;
+- Toyota Motor, 2021 filing;
+- Sony Group, 2021 filing;
+- Mitsubishi UFJ Financial Group, 2021 filing.
+
+All four test filings were identified directly through the standardized MD&A tag, required no fallback, and extracted in approximately **0.03–0.05 seconds per filing**.
+
+The next coding step is to wrap this validated extraction core in a resumable batch process that reads `filings.csv`, processes each ZIP, writes canonical MD&A text files, and maintains an extraction manifest with status, extraction method, text length, and error diagnostics.
 
 ## Current hypothesis structure
 
@@ -123,11 +162,17 @@ The main remaining design decisions are:
    - Core: LMMD / BERT / GPT + novelty interaction.
    - Secondary: persistent vs novel text, sentiment innovation, numerical-change robustness, alternative similarity measures.
 
-5. **Adapt the Paper 1 pipeline.**
-   - Reuse event-study and regression infrastructure where possible.
+5. **Complete the Paper 2 text pipeline.**
+   - Finish the EDINET download.
+   - Build the resumable batch MD&A extraction stage around the validated `lxml` extractor.
+   - Write a canonical MD&A corpus and extraction/QC manifest.
    - Add novelty construction and interaction terms.
 
-6. **Update the Introduction and Abstract later.**
+6. **Adapt the Paper 1 market-data and regression infrastructure.**
+   - Reuse event-study and regression infrastructure where possible.
+   - Preserve historical sample construction without filtering on current EDINET listing status.
+
+7. **Update the Introduction and Abstract later.**
    - The current abstract still reflects the older lexical-versus-GPT framing and should not be treated as final.
 
 ## Current bottleneck
@@ -136,20 +181,23 @@ The literature review is no longer the main bottleneck.
 
 The bottleneck has shifted to:
 
-> **formal hypothesis development and empirical design**
+> **completing the empirical design while converting the validated data-extraction logic into the full batch pipeline**
 
-More reading should now be driven by a specific unresolved design or theory question rather than by a general attempt to expand the literature base.
+The literature review is sufficiently developed that additional reading should now be driven by specific unresolved theory or specification questions. On the coding side, the highest-priority task is the Stage 2 batch MD&A extractor, followed by formal novelty construction.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately 35–40%
+**Overall paper:** approximately 40–45%
 
 Approximate status by component:
 
 - Related Work / research gap: 80–85%
 - Research question / hypotheses: 65–75%
-- Empirical design: 35–40%
-- Coding / pipeline adaptation: 20–30%
+- Empirical design: 40–45%
+- Data acquisition / reference-data infrastructure: 75–85%
+- Coding / pipeline adaptation: 40–50%
+- MD&A extraction core: 75–85%
+- Novelty implementation: 10–20%
 - Main results: 0–10%
 - Robustness tests: 0%
 - Final Introduction / Abstract / Conclusion: 20–30%
