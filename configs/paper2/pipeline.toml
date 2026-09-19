@@ -20,8 +20,9 @@ api_key_env = "EDINET_API_KEY"
 # 有価証券報告書 / Annual Securities Report
 doc_type_code = "120"
 
-start_date = "2010-01-01"
-end_date   = "2025-12-31"
+# Only 10 year lookback through API
+start_date = "2016-09-01"
+end_date   = "2026-09-19"
 
 # Blank means broad EDINET universe.
 # We filter the research sample downstream.
@@ -33,7 +34,7 @@ metadata_csv = "data/interim/paper2/edinet/filings.csv"
 skip_if_exists = true
 resume = true
 retries = 3
-request_sleep_seconds = 0.25
+request_sleep_seconds = 0.5
 
 download_zip = true
 download_pdf = false
