@@ -20,6 +20,7 @@ except ModuleNotFoundError:
 
 # ---- Import your stage(s) ----
 from src.pipeline.stages.edinet_download import run_stage_edinet_download
+from src.pipeline.stages.mdna_extract import run_stage_mdna_extract
 from src.prices.fetch_jpx_prices import run_fetch_jpx_prices
 from src.prices.compute_lagged_rolling_vol_csv import compute_lagged_rolling_vol_csv
 from src.prices.fetch_market_indexes import run_fetch_market_indexes
@@ -834,11 +835,18 @@ def main() -> int:
     windows = parse_windows(es_cfg.get("windows", [[0, 0], [0, 1], [-1, 1]]))
 
     # Stage execution order (expand as you add stages)
-    # Stage: EDINET download
+    # Stage1: EDINET download
     if bool(stages.get("edinet_download", False)):
         run_stage_edinet_download(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage edinet_download disabled")
+    # Stage2: MDNA extract
+    if bool(stages.get("mdna_extract", False)):
+        run_stage_mdna_extract(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage mdna_extract disabled")
+
+    
     if bool(stages.get("price_data", False)):
         run_stage_price_data(paper=paper, cfg=cfg, logger=logger)
     else:
