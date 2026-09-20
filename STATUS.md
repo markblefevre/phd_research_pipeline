@@ -207,6 +207,7 @@ The main remaining design decisions are:
 - controls and fixed effects
 - whether numerical changes receive separate treatment
 - which analyses are core and which are robustness
+- novelty may be sensitive not only to number handling and corpus-wide versus firm-specific IDF, but also to Japanese tokenization/representation choice
 
 ## Immediate next steps
 
