@@ -25,12 +25,18 @@ def run_stage_mdna_extract(
     status = "ok"
 
     try:
+        ed_cfg = cfg.get("edinet_download", {})
         md_cfg = cfg.get("mdna_extract", {})
         root = repo_root()
 
+        # Stage 2 consumes Stage 1's configured metadata output by default.
+        # An explicit [mdna_extract].filings_csv value still overrides it.
         filings_csv = root / md_cfg.get(
             "filings_csv",
-            f"data/interim/{paper}/edinet/filings.csv",
+            ed_cfg.get(
+                "metadata_csv",
+                f"data/interim/{paper}/edinet/filings.csv",
+            ),
         )
         raw_dir = root / md_cfg.get(
             "raw_dir",
