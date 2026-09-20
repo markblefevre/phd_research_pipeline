@@ -538,6 +538,7 @@ data/interim/paper2/longitudinal/
     standard_annual_pairs.csv
     transition_period_pairs.csv
     noncontiguous_pairs.csv
+    research_eligible_pairs.csv
     summary.json
 ```
 
@@ -555,6 +556,11 @@ data/interim/paper2/longitudinal/
 | Standard annual pairs | 33,046 |
 | Transition-period pairs | 268 |
 | Noncontiguous pairs | 2 |
+| Domestic matched panel rows | 37,757 |
+| Foreign matched panel rows | 0 |
+| Domestic standard annual pairs | 33,046 |
+| Foreign standard annual pairs | 0 |
+| Research-eligible pairs | 33,046 |
 
 The exact one-to-one match between successful Stage 2 extractions and Stage 3 panel rows provides a strong join-integrity check.
 
@@ -570,6 +576,45 @@ Manual investigation showed that both reflect genuine issuer/listing discontinui
 - **Sony Financial Group:** the gap reflects Sony's 2020 full acquisition / privatization and the later 2025 relisting associated with the partial spin-off.
 
 These cases are retained for auditability but excluded from ordinary year-over-year novelty comparisons.
+
+## Research-Universe Eligibility
+
+The Stage 3 → Stage 4 boundary now includes an explicit domestic-company eligibility rule based on each filing's historical EDINET `formCode`.
+
+The eligible domestic Annual Securities Report form codes are:
+
+```text
+030000
+030200
+040000
+```
+
+Foreign-company Annual Securities Reports use:
+
+```text
+080000
+```
+
+and are excluded from the Paper 2 research universe.
+
+This rule is deliberately not embedded in Stage 1 acquisition or Stage 2 extraction. The earlier stages preserve the complete filing and extraction record, while Stage 3 defines the research-eligible longitudinal sample immediately before text-representation choices begin.
+
+The rule currently changes **zero observations** in the baseline novelty sample:
+
+```text
+standard annual pairs:       33,046
+domestic standard pairs:     33,046
+foreign standard pairs:           0
+research-eligible pairs:     33,046
+```
+
+The reason is that all 50 foreign-company filings in Stage 1 failed Stage 2 extraction, while all domestic-form filings extracted successfully. The explicit `formCode` criterion therefore future-proofs the sample definition so that improvements to the extractor cannot silently introduce foreign-company observations later.
+
+The canonical Stage 4 input is:
+
+```text
+data/interim/paper2/longitudinal/research_eligible_pairs.csv
+```
 
 ## Stage 3 Flow
 
@@ -593,8 +638,12 @@ flowchart TD
     H -- Yes --> I[standard_annual_pairs.csv]
     H -- No --> J[transition_period_pairs.csv]
 
-    I --> K[Stage 4 baseline<br/>novelty measurement]
-    J --> L[Stage 4 diagnostics / robustness]
+    I --> K{Domestic ASR formCode?}
+    K -- Yes --> L[research_eligible_pairs.csv]
+    K -- No --> M[Exclude from research universe]
+
+    L --> N[Stage 4 baseline<br/>novelty measurement]
+    J --> O[Stage 4 diagnostics / robustness]
 ```
 
 Stage 3 should now be treated as **complete and frozen**.
@@ -605,10 +654,12 @@ Stage 3 should now be treated as **complete and frozen**.
 
 Stage 4 begins from the frozen Stage 3 pair manifests and introduces the first methodological text-representation choices.
 
+The canonical baseline input is the research-eligible domestic sample produced at the end of Stage 3. At present it contains **33,046 pairs**, exactly matching the standard annual-pair count because no foreign-company filing survived Stage 2 extraction.
+
 The baseline sample should begin with:
 
 ```text
-data/interim/paper2/longitudinal/standard_annual_pairs.csv
+data/interim/paper2/longitudinal/research_eligible_pairs.csv
 ```
 
 Current methodological candidates include:

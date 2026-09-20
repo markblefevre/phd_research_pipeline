@@ -3,7 +3,8 @@
 Stage 3 is intentionally mechanical. It combines the canonical Stage 1 filing
 manifest with successful Stage 2 MD&A extractions, orders filings within issuer,
 and emits a reproducible manifest of adjacent reporting-period pairs for Stage 4
-textual novelty measurement.
+textual novelty measurement. It also applies an explicit historical domestic-company
+eligibility rule at the Stage 3 -> Stage 4 boundary.
 
 Important design principle
 --------------------------
@@ -28,12 +29,16 @@ from typing import Any
 import pandas as pd
 
 
+DOMESTIC_ASR_FORM_CODES = {"030000", "030200", "040000"}
+
+
 REQUIRED_FILING_COLUMNS = {
     "docID",
     "edinetCode",
     "periodStart",
     "periodEnd",
     "submitDateTime",
+    "formCode",
 }
 
 REQUIRED_EXTRACTION_COLUMNS = {
@@ -178,6 +183,13 @@ def _build_panel(
         validate="one_to_one",
     )
 
+    panel["is_domestic_asr"] = panel["formCode"].isin(
+        DOMESTIC_ASR_FORM_CODES
+    )
+    panel["exclusion_reason"] = panel["is_domestic_asr"].map(
+        {True: "", False: "foreign_company_form"}
+    )
+
     panel = panel.sort_values(
         ["edinetCode", "periodEnd", "periodStart", "submitDateTime", "docID"],
         kind="stable",
@@ -289,6 +301,23 @@ def _construct_adjacent_pairs(
             else:
                 pair_status = "noncontiguous"
 
+            prev_form_code = previous.get("formCode")
+            curr_form_code = current.get("formCode")
+            pair_is_domestic = (
+                prev_form_code in DOMESTIC_ASR_FORM_CODES
+                and curr_form_code in DOMESTIC_ASR_FORM_CODES
+            )
+            is_research_eligible = (
+                standard_annual_pair and pair_is_domestic
+            )
+
+            if not pair_is_domestic:
+                exclusion_reason = "foreign_company_form"
+            elif not standard_annual_pair:
+                exclusion_reason = pair_status
+            else:
+                exclusion_reason = ""
+
             pair_rows.append(
                 {
                     "edinetCode": edinet_code,
@@ -296,6 +325,11 @@ def _construct_adjacent_pairs(
                     "secCode": current.get("secCode"),
                     "prev_docID": previous["docID"],
                     "curr_docID": current["docID"],
+                    "prev_formCode": prev_form_code,
+                    "curr_formCode": curr_form_code,
+                    "is_domestic_asr": pair_is_domestic,
+                    "is_research_eligible": is_research_eligible,
+                    "exclusion_reason": exclusion_reason,
                     "prev_periodStart": prev_start,
                     "prev_periodEnd": prev_end,
                     "curr_periodStart": curr_start,
@@ -330,6 +364,11 @@ def _construct_adjacent_pairs(
                 "secCode",
                 "prev_docID",
                 "curr_docID",
+                "prev_formCode",
+                "curr_formCode",
+                "is_domestic_asr",
+                "is_research_eligible",
+                "exclusion_reason",
                 "prev_periodStart",
                 "prev_periodEnd",
                 "curr_periodStart",
@@ -446,6 +485,10 @@ def run_longitudinal_match(
             pairs["pair_status"].eq("noncontiguous")
         ].copy()
 
+    research_eligible_pairs = pairs.loc[
+        pairs["is_research_eligible"].astype(bool)
+    ].copy()
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     _write_csv(
@@ -471,6 +514,10 @@ def run_longitudinal_match(
     _write_csv(
         noncontiguous_pairs,
         output_dir / "noncontiguous_pairs.csv",
+    )
+    _write_csv(
+        research_eligible_pairs,
+        output_dir / "research_eligible_pairs.csv",
     )
 
     summary: dict[str, Any] = {
@@ -509,17 +556,36 @@ def run_longitudinal_match(
         "standard_annual_pairs": int(len(standard_annual_pairs)),
         "transition_period_pairs": int(len(transition_period_pairs)),
         "noncontiguous_pairs": int(len(noncontiguous_pairs)),
+        "domestic_matched_panel_rows": int(
+            panel["is_domestic_asr"].astype(bool).sum()
+        ),
+        "foreign_matched_panel_rows": int(
+            (~panel["is_domestic_asr"].astype(bool)).sum()
+        ),
+        "domestic_standard_annual_pairs": int(
+            standard_annual_pairs["is_domestic_asr"].astype(bool).sum()
+            if not standard_annual_pairs.empty
+            else 0
+        ),
+        "foreign_standard_annual_pairs": int(
+            (~standard_annual_pairs["is_domestic_asr"].astype(bool)).sum()
+            if not standard_annual_pairs.empty
+            else 0
+        ),
+        "research_eligible_pairs": int(len(research_eligible_pairs)),
     }
 
     _write_json(summary, output_dir / "summary.json")
 
     log.info("Stage 3 summary: %s", summary)
     log.info(
-        "Stage 3 outputs: panel=%s standard=%s transition=%s noncontiguous=%s",
+        "Stage 3 outputs: panel=%s standard=%s transition=%s "
+        "noncontiguous=%s research_eligible=%s",
         output_dir / "longitudinal_panel.csv",
         output_dir / "standard_annual_pairs.csv",
         output_dir / "transition_period_pairs.csv",
         output_dir / "noncontiguous_pairs.csv",
+        output_dir / "research_eligible_pairs.csv",
     )
 
     return summary

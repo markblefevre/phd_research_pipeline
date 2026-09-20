@@ -189,6 +189,37 @@ data/interim/paper2/longitudinal/
 The baseline Stage 4 novelty analysis should begin from the **33,046 standard annual pairs**. Transition-period pairs should be retained as a diagnostic or robustness sample rather than automatically discarded.
 
 
+A final Stage 3 sample-eligibility check now makes the domestic-company research universe explicit using the historical EDINET filing `formCode` attached to each filing rather than current issuer-listing metadata.
+
+The domestic Annual Securities Report form codes used for eligibility are:
+
+```text
+030000
+030200
+040000
+```
+
+Foreign-company Annual Securities Reports (`formCode = 080000`) are outside the target research universe.
+
+This rule is applied at the Stage 3 → Stage 4 boundary rather than inside the extractor. Stage 1 therefore preserves the complete filing universe, Stage 2 remains an extraction stage, and Stage 3 retains mechanical longitudinal matching before defining the research-eligible pair manifest.
+
+The eligibility check confirms:
+
+- **37,757 domestic matched panel rows**;
+- **0 foreign matched panel rows**;
+- **33,046 domestic standard annual pairs**;
+- **0 foreign standard annual pairs**;
+- **33,046 research-eligible pairs**.
+
+Thus, making the domestic-company criterion explicit changes **zero observations** in the current Stage 4 baseline sample. The 50 foreign-company filings in Stage 1 are exactly the 50 Stage 2 extraction failures, so the prior sample happened already to be domestic-only; the new rule makes that property intentional and reproducible rather than dependent on parser behavior.
+
+The canonical Stage 3 handoff to Stage 4 is now:
+
+```text
+data/interim/paper2/longitudinal/research_eligible_pairs.csv
+```
+
+
 ## Current hypothesis structure
 
 ### H1 — Conditional contextual advantage
@@ -261,7 +292,7 @@ The main remaining design decisions are:
 ## Immediate next steps
 
 1. **Freeze and document Stage 3.**
-   - Treat `standard_annual_pairs.csv` as the canonical baseline pair manifest for novelty construction.
+   - Treat `research_eligible_pairs.csv` as the canonical baseline pair manifest for novelty construction; it currently contains the same 33,046 observations as `standard_annual_pairs.csv`.
    - Retain transition-period and noncontiguous-pair outputs as audit/robustness artifacts.
    - Avoid using calendar-year labels as the longitudinal matching key.
 
@@ -311,7 +342,7 @@ The bottleneck has shifted to:
 
 > **defining and validating the Stage 4 textual-novelty measure, then integrating novelty with sentiment and market reactions**
 
-Stages 1–3 are now complete and QC-validated. The immediate empirical task is to construct corpus-wide novelty measures for the 33,046 standard annual pairs, examine their distributions and robustness to Japanese tokenization / numerical normalization, and then integrate novelty with the sentiment models.
+Stages 1–3 are now complete and QC-validated. The immediate empirical task is to construct corpus-wide novelty measures for the 33,046 research-eligible domestic standard annual pairs, examine their distributions and robustness to Japanese tokenization / numerical normalization, and then integrate novelty with the sentiment models.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
