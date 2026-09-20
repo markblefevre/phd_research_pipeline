@@ -51,8 +51,6 @@ retry_failures = false
 
 ## STAGE 3 LONGITUDINAL_MATCH
 [longitudinal_match]
-filings_csv = "data/interim/paper2/edinet/filings.csv"
-extraction_manifest = "data/interim/paper2/mdna/extraction_manifest.csv"
 output_dir = "data/interim/paper2/longitudinal"
 
 # Valid consecutive annual reports should be approximately one year apart.

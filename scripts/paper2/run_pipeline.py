@@ -21,6 +21,8 @@ except ModuleNotFoundError:
 # ---- Import your stage(s) ----
 from src.pipeline.stages.edinet_download import run_stage_edinet_download
 from src.pipeline.stages.mdna_extract import run_stage_mdna_extract
+from src.pipeline.stages.longitudinal_match import run_stage_longitudinal_match
+
 from src.prices.fetch_jpx_prices import run_fetch_jpx_prices
 from src.prices.compute_lagged_rolling_vol_csv import compute_lagged_rolling_vol_csv
 from src.prices.fetch_market_indexes import run_fetch_market_indexes
@@ -845,7 +847,11 @@ def main() -> int:
         run_stage_mdna_extract(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage mdna_extract disabled")
-
+    # Stage 3: Longitudinal matching
+    if bool(stages.get("longitudinal_match", False)):
+        run_stage_longitudinal_match(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage longitudinal_match disabled")
     
     if bool(stages.get("price_data", False)):
         run_stage_price_data(paper=paper, cfg=cfg, logger=logger)
