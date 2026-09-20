@@ -1,15 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun May  5 23:06:30 2024
-
 @author: Mark
 
-Utility Functions for Reading in EdinetcodeDlInfo.csv files
-There are English and Japanese versions available for download
-<insert a reference here where the files can be obtained>
+Utilities for reading EDINET code-list CSV files.
+
+Important
+---------
+The EDINET code list represents current-state reference metadata.
+Fields such as listing status should NOT be used to determine whether
+an issuer was listed at the time of a historical filing, because doing
+so can introduce survivorship bias.
+
+Use current listing-status filters only for current-reference queries
+or diagnostics, not for construction of historical filing samples.
 """
 import pandas as pd
 from pathlib import Path
+
+def _valid_security_code(series: pd.Series) -> pd.Series:
+    s = (
+        series
+        .astype("string")
+        .str.strip()
+        .str.replace(r"\.0$", "", regex=True)
+    )
+    return s.str.fullmatch(r"\d{5}", na=False)
 
 def read_eng_csv_sjis(directory: Path, filename: Path) -> tuple[list[str], pd.DataFrame]:
     """
@@ -72,9 +87,9 @@ def read_jpn_csv_sjis(directory: Path, filename: Path) -> tuple[list[str], pd.Da
 
     return first_line_values, df
 
-def filter_eng_listedcompanies(df):
+def filter_current_domestic_listed_companies_en(df):
     """
-    Filters and returns rows from the DataFrame where the company status is 'Listed company'.
+    Filters and returns rows from the DataFrame where the current company status is 'Listed company'.
     
     This function specifically checks the "Listed company / Unlisted company" column in the provided
     DataFrame and returns a new DataFrame containing only the rows where this column's value is
@@ -91,7 +106,7 @@ def filter_eng_listedcompanies(df):
     Example:
         Assuming `original_df` is a pandas DataFrame with a column 'Listed company / Unlisted company':
         
-        >>> filtered_df = filter_eng_listedcompanies(original_df)
+        >>> filtered_df = filter_current_domestic_listed_companies_en(original_df)
         >>> print(filtered_df)
         
         This will print the DataFrame with only rows where the company is listed.
@@ -104,14 +119,14 @@ def filter_eng_listedcompanies(df):
     df = df[df["Type of Submitter"] == '内国法人・組合']
     count = len(df)
     print(f'Domestic corporations/unions: {count}')
-    df = df[df['Securities Identification Code'].apply(str).apply(len)!=3]
+    df = df[_valid_security_code(df["Securities Identification Code"])]
     count = len(df)
     print(f'Valid SICs: {count}')
     return df
 
-def filter_jpn_listedcompanies(df):
+def filter_current_domestic_listed_companies_ja(df):
     """
-    Filters and returns rows from the DataFrame where the company status is '上場' (listed).
+    Filters and returns rows from the DataFrame where the current company status is '上場' (listed).
 
     This function examines the "上場区分" column in the provided DataFrame and returns a new DataFrame
     containing only the rows where this column's value is "上場", which means 'listed' in English.
@@ -129,7 +144,7 @@ def filter_jpn_listedcompanies(df):
     Example:
         Assuming `original_df` is a pandas DataFrame with a column '上場区分':
         
-        >>> filtered_df = filter_jpn_listedcompanies(original_df)
+        >>> filtered_df = filter_current_domestic_listed_companies_ja(original_df)
         >>> print(filtered_df)
         
         This will print the DataFrame with only rows where the company is listed, filtering out unlisted companies.
@@ -142,21 +157,25 @@ def filter_jpn_listedcompanies(df):
     df = df[df['提出者種別'] == '内国法人・組合']
     count = len(df)
     print(f'内国法人・組合: {count}')
-    df = df[df['証券コード'].apply(str).apply(len)!=3]
+    df = df[_valid_security_code(df["証券コード"])]
     count = len(df)
     print(f'Valid 証券コード: {count}')
     return df
 
 def get_eng_sorted_industries():
   df = read_eng_csv_sjis()
-  df = filter_eng_listedcompanies(df[1])
+  df = filter_current_domestic_listed_companies_en(df[1])
   industries =  df["Submitter's industry"].drop_duplicates().to_list()
   industries.sort()
   return industries
 
 def get_jpn_sorted_industries():
   df = read_jpn_csv_sjis()
-  df = filter_jpn_listedcompanies(df[1])
+  df = filter_current_domestic_listed_companies_ja(df[1])
   industries =  df['提出者業種'].drop_duplicates().to_list()
   industries.sort()
   return industries                  
+
+# Backward-compatible aliases used by existing Paper 1 code.
+filter_eng_listedcompanies = filter_current_domestic_listed_companies_en
+filter_jpn_listedcompanies = filter_current_domestic_listed_companies_ja
