@@ -4,7 +4,8 @@ run_id = "auto"
 
 [stages]
 edinet_download = false
-mdna_extract = true
+mdna_extract = false
+longitudinal_match = true
 
 text_stats = false
 textual_novelty = false
@@ -41,11 +42,21 @@ download_csv = false
 
 ## STAGE 2 MDNA_EXTRACT
 [mdna_extract]
-#limit = 25
-filings_csv = "data/interim/paper2/edinet/filings.csv"
 raw_dir = "data/raw/paper2/edinet"
 output_dir = "data/interim/paper2/mdna"
 manifest = "data/interim/paper2/mdna/extraction_manifest.csv"
 checkpoint_every = 100
 progress_every = 100
 retry_failures = false
+
+## STAGE 3 LONGITUDINAL_MATCH
+[longitudinal_match]
+filings_csv = "data/interim/paper2/edinet/filings.csv"
+extraction_manifest = "data/interim/paper2/mdna/extraction_manifest.csv"
+output_dir = "data/interim/paper2/longitudinal"
+
+# Valid consecutive annual reports should be approximately one year apart.
+# Pairs outside this window are written to irregular_period_pairs.csv for review
+# rather than silently included in the novelty sample.
+min_period_end_gap_days = 300
+max_period_end_gap_days = 430
