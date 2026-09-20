@@ -109,7 +109,36 @@ The refactored batch implementation was then regression-tested against the exist
 
 Stage 2 has now been wired into `run_pipeline.py` through the modular pipeline adapter and successfully tested through the normal pipeline entry point.
 
-The **full 37,807-filing Stage 2 extraction is currently running**. Early progress is healthy. The first observed failure was an `xbrl_not_found` case for EDINET code `E05821`, a foreign issuer, and therefore outside the intended Japanese-firm research universe. Failures will be summarized and reviewed after the batch completes rather than interrupting the production run.
+The full **37,807-filing Stage 2 extraction is now complete and QC-validated**.
+
+Final extraction results are:
+
+- **37,757 successful MD&A extractions** out of 37,807 filings;
+- **99.8677% extraction success rate**;
+- **37,752** successful extractions using the standardized primary XBRL MD&A tag;
+- **4** successful extractions using the conservative Japanese anchor-text fallback;
+- **1** successful manual iXBRL extraction for document `S100QGPT` (Japan Aqua, E30126);
+- **50 remaining failures**.
+
+The fallback logic was tightened after manual review showed that score-1 anchor matches could produce false positives. The production fallback now requires an anchor score of at least 3. The four surviving fallback cases were manually reviewed and found to contain genuine MD&A content.
+
+The Japan Aqua FY2022 filing (`S100QGPT`) provided an unusual tagging case. The MD&A was clearly present in section 3 of the human-readable iXBRL HTML but was not enclosed in either of the expected standardized MD&A TextBlock concepts in the consolidated XBRL instance. Rather than weakening the general parser to accommodate a single anomalous filing, the MD&A was recovered through an explicit one-off `manual_ixbrl` extraction with provenance recorded in the extraction manifest.
+
+Final Stage 2 QC confirms:
+
+- Stage 1 filings rows: **37,807**
+- Stage 2 manifest rows: **37,807**
+- successful extractions: **37,757**
+- failed extractions: **50**
+- missing Stage 2 manifest rows: **0**
+- extra Stage 2 manifest rows: **0**
+- duplicate Stage 1 document IDs: **0**
+- duplicate Stage 2 document IDs: **0**
+- output-file issues among successful rows: **0**
+
+Successful MD&A text length has a median of approximately **6,216 characters**, with the 1st and 99th percentiles at approximately **971** and **20,936** characters respectively. There are **29 short texts below 500 characters** and **37 long texts above 50,000 characters**; these are review flags rather than automatic exclusion criteria.
+
+Stage 2 should now be treated as **complete and frozen**. Generated MD&A text files and extraction manifests are pipeline artifacts and are not committed to Git; the extraction logic, QC utility, configuration, and explicit manual-recovery script are version controlled.
 
 ## Current hypothesis structure
 
@@ -172,43 +201,54 @@ The main remaining design decisions are:
    - Core: LMMD / BERT / GPT + novelty interaction.
    - Secondary: persistent vs novel text, sentiment innovation, numerical-change robustness, alternative similarity measures.
 
-5. **Complete and validate the Paper 2 text pipeline.**
-   - Allow the full Stage 2 MD&A extraction run to finish.
-   - Summarize extraction statuses, methods, text-length distributions, and failure cases.
-   - Explicitly identify/exclude foreign issuers as part of sample construction.
-   - Freeze the canonical MD&A corpus and extraction/QC manifest.
-   - Implement text statistics, longitudinal matching, and novelty construction.
+5. **Construct the longitudinal MD&A panel and textual-novelty dataset.**
+   - Join successful Stage 2 MD&A observations to the canonical filing metadata.
+   - Order disclosures by firm and fiscal period.
+   - Identify valid consecutive-year MD&A pairs.
+   - Resolve the 83 duplicate firm-year observations during sample construction.
+   - Produce basic text-length and longitudinal coverage diagnostics.
+   - Freeze the eligible novelty-pair manifest before estimating similarity measures.
 
-6. **Adapt the Paper 1 market-data and regression infrastructure.**
+6. **Implement the baseline textual-novelty measure.**
+   - Define the baseline year-over-year text representation.
+   - Compute similarity between each firm's current and prior MD&A.
+   - Define textual novelty as an inverse similarity measure.
+   - Examine the cross-sectional and time-series distribution of novelty before introducing sentiment interactions.
+   - Retain alternative similarity definitions for robustness analysis.
+
+7. **Adapt the Paper 1 market-data and regression infrastructure.**
    - Reuse event-study and regression infrastructure where possible.
    - Preserve historical sample construction without filtering on current EDINET listing status.
+   - Revisit EDINET share-count issues only if Paper 2 requires reconstructing shares outstanding, market capitalization, or per-share measures from EDINET rather than using external market data.
 
-7. **Update the Introduction and Abstract later.**
+8. **Update the Introduction and Abstract later.**
    - The current abstract still reflects the older lexical-versus-GPT framing and should not be treated as final.
 
 ## Current bottleneck
 
-The literature review is no longer the main bottleneck.
+The literature review and MD&A extraction stages are no longer the primary bottlenecks.
 
 The bottleneck has shifted to:
 
-> **completing the empirical design while finishing and validating the full MD&A corpus, then formalizing textual novelty**
+> **constructing the longitudinal firm-year text panel, defining textual novelty precisely, and integrating novelty with the sentiment and market-reaction specifications**
 
-The literature review is sufficiently developed that additional reading should now be driven by specific unresolved theory or specification questions. On the coding side, Stage 2 is now implemented and running at full scale; the next bottleneck is extraction QC followed by longitudinal text matching and formal novelty construction.
+Stage 2 extraction is complete and QC-validated. The immediate empirical task is therefore to determine the usable number of consecutive-year MD&A pairs, examine longitudinal text characteristics, and implement the baseline novelty measure.
+
+Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately 40–45%
+**Overall paper:** approximately 45%
 
 Approximate status by component:
 
 - Related Work / research gap: 80–85%
 - Research question / hypotheses: 65–75%
 - Empirical design: 40–45%
-- Data acquisition / reference-data infrastructure: 90–95%
-- Coding / pipeline adaptation: 55–65%
-- MD&A extraction core / batch pipeline: 90–95%
-- Novelty implementation: 10–20%
+- Data acquisition / reference-data infrastructure: 95%
+- Coding / pipeline adaptation: 65–70%
+- MD&A extraction core / batch pipeline: 100%
+- Novelty implementation: 15–20%
 - Main results: 0–10%
 - Robustness tests: 0%
 - Final Introduction / Abstract / Conclusion: 20–30%
