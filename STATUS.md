@@ -165,6 +165,35 @@ The following should not be headline hypotheses unless further literature develo
 
 Model-ranking changes should be treated as an empirical implication of H1 rather than as a separate hypothesis.
 
+## Preliminary novelty sniff tests
+
+Before formalizing Stage 3, consecutive-year MD&A disclosures were examined for three large Japanese firms with very different business models: Toyota, MUFG, and Sony.
+
+The purpose was not to establish the final novelty methodology, but to determine whether simple year-over-year textual similarity produces economically interpretable variation before committing to full-sample implementation.
+
+A rough TF-IDF cosine similarity measure based on Japanese character 3–5-grams was applied to successive MD&A disclosures. Both raw text and a version with numerical strings normalized were examined.
+
+Several preliminary lessons emerged:
+
+* **Year-over-year textual novelty is clearly present and economically interpretable.** Large similarity breaks often correspond to identifiable events such as COVID-related disruption, accounting-regime changes, reporting-segment reorganizations, or major changes in business perimeter.
+* **Numerical changes materially affect measured similarity.** Normalizing numbers substantially increases similarity in many firm-years, especially for highly quantitative disclosures. Raw novelty and linguistically normalized novelty therefore capture related but distinct concepts and should both be retained during methodological development.
+* **Baseline textual persistence differs substantially across firms and industries.** Toyota exhibits relatively stable but visibly changing operational MD&A; MUFG shows greater annual structural and financial-statement variation; Sony contains unusually persistent accounting and valuation language, with normalized similarity often close to one.
+* **Whole-document similarity can be dominated by persistent boilerplate.** Sony provides a particularly clear example: economically meaningful changes can occur within an MD&A whose large accounting-policy sections remain almost unchanged.
+* **Structural disclosure changes can generate apparent novelty that is not purely economic information.** Examples include accounting-standard changes, segment reorganizations, and changes in consolidation perimeter. These cases should be diagnosed rather than automatically treated as errors.
+* **Novelty and sentiment appear conceptually distinct.** Large textual changes can accompany either deterioration or improvement in business conditions, supporting the planned use of novelty as a conditioning variable rather than a directional sentiment measure.
+
+These observations strengthen the motivation for including **industry fixed effects** in the empirical specification. They also suggest that absolute textual novelty may not be directly comparable across all industries because normal disclosure persistence appears to differ systematically by business type.
+
+Accordingly, Stage 3 should preserve a simple absolute novelty measure as the baseline while also retaining the possibility of robustness specifications based on:
+
+* numerical normalization;
+* industry-relative novelty;
+* firm-relative novelty where sufficient longitudinal history exists;
+* alternative treatment of persistent versus changed portions of the MD&A;
+* explicit flags for major accounting, segment, or disclosure-structure changes.
+
+The three-firm exercise should be treated as a methodological diagnostic rather than evidence for the paper's hypotheses.
+
 ## Open empirical decisions
 
 The main remaining design decisions are:
