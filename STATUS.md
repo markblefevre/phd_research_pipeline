@@ -1,6 +1,6 @@
 # Paper 2 — Current Status
 
-**Last updated:** 2026-09-19
+**Last updated:** 2026-09-20
 
 ## Current thesis
 
@@ -69,7 +69,7 @@ The Paper 2 data pipeline has advanced substantially.
 
 - **Stage 1 — EDINET acquisition:** operational and effectively complete for the current corpus.
 - The canonical filing manifest now contains **37,807 Annual Securities Reports**, with **37,807 unique document IDs**, **4,448 unique EDINET codes**, and **4,448 unique securities codes**.
-- The manifest contains **37,724 unique firm-years** and **83 duplicate firm-year observations** requiring later review.
+- A calendar-year summary initially showed **37,724 unique `edinetCode × periodEnd.year` combinations** and **83 apparent duplicate firm-years**. Stage 3 later showed that these were legitimate reporting-period transitions, mainly fiscal-year-end changes, rather than true duplicate reporting periods.
 - Submission-date coverage extends from **2016-09-20 through 2026-09-18**, while fiscal-period coverage extends from **2015-07-31 through 2026-06-30**.
 - The damaged/truncated filing manifest was reconstructed from the EDINET listing API, validated with the filing-summary utility, and then extended through the current scan window.
 - The final manifest row count of **37,807** matches the count of downloaded non-empty raw EDINET ZIP files, providing a strong corpus-integrity cross-check.
@@ -140,6 +140,55 @@ Successful MD&A text length has a median of approximately **6,216 characters**, 
 
 Stage 2 should now be treated as **complete and frozen**. Generated MD&A text files and extraction manifests are pipeline artifacts and are not committed to Git; the extraction logic, QC utility, configuration, and explicit manual-recovery script are version controlled.
 
+### Longitudinal matching
+
+Stage 3 — longitudinal matching — is now implemented, validated, and should be treated as **complete and frozen**.
+
+The stage combines the canonical Stage 1 filing metadata with successful Stage 2 MD&A extractions and works directly with actual reporting-period start/end dates. An initial implementation defined firm-years using `periodEnd.year`, which incorrectly treated legitimate fiscal-year-end changes as duplicate firm-years. Manual review showed that the 83 apparent duplicate groups were typically consecutive reporting periods ending in the same calendar year, often a normal annual period followed by a shortened transition period.
+
+The production Stage 3 logic therefore:
+
+1. joins successful Stage 2 MD&A observations to Stage 1 filing metadata;
+2. orders filings within each EDINET issuer by actual reporting period;
+3. identifies only true duplicate reporting periods using `edinetCode + periodStart + periodEnd`;
+4. constructs adjacent within-firm reporting-period pairs;
+5. flags whether reporting periods are contiguous;
+6. classifies contiguous pairs as standard annual or transition-period pairs based on reporting-period duration;
+7. retains noncontiguous observations separately for audit rather than silently treating them as year-over-year pairs.
+
+Final Stage 3 results are:
+
+- **37,757 matched panel rows**, exactly matching the number of successful Stage 2 extractions;
+- **4,441 matched EDINET codes**;
+- **0 true duplicate reporting-period groups**;
+- **33,316 adjacent reporting-period pairs**;
+- **33,046 standard annual pairs**;
+- **268 contiguous transition-period pairs**;
+- **2 noncontiguous pairs**.
+
+The two noncontiguous cases were manually investigated and found to reflect genuine issuer/listing discontinuities rather than matching failures:
+
+- **SBI Shinsei Bank** — gap associated with its 2023 delisting;
+- **Sony Financial Group** — gap associated with Sony's 2020 full acquisition / privatization and later 2025 relisting through the partial spin-off.
+
+These checks provide strong validation that Stage 3 is identifying genuine longitudinal relationships rather than forcing observations into artificial calendar-year buckets.
+
+Canonical Stage 3 outputs are written under:
+
+```text
+data/interim/paper2/longitudinal/
+    longitudinal_panel.csv
+    duplicate_reporting_periods.csv
+    adjacent_period_pairs.csv
+    standard_annual_pairs.csv
+    transition_period_pairs.csv
+    noncontiguous_pairs.csv
+    summary.json
+```
+
+The baseline Stage 4 novelty analysis should begin from the **33,046 standard annual pairs**. Transition-period pairs should be retained as a diagnostic or robustness sample rather than automatically discarded.
+
+
 ## Current hypothesis structure
 
 ### H1 — Conditional contextual advantage
@@ -167,7 +216,7 @@ Model-ranking changes should be treated as an empirical implication of H1 rather
 
 ## Preliminary novelty sniff tests
 
-Before formalizing Stage 3, consecutive-year MD&A disclosures were examined for three large Japanese firms with very different business models: Toyota, MUFG, and Sony.
+Before formalizing Stage 4 novelty measurement, consecutive-year MD&A disclosures were examined for three large Japanese firms with very different business models: Toyota, MUFG, and Sony.
 
 The purpose was not to establish the final novelty methodology, but to determine whether simple year-over-year textual similarity produces economically interpretable variation before committing to full-sample implementation.
 
@@ -184,7 +233,7 @@ Several preliminary lessons emerged:
 
 These observations strengthen the motivation for including **industry fixed effects** in the empirical specification. They also suggest that absolute textual novelty may not be directly comparable across all industries because normal disclosure persistence appears to differ systematically by business type.
 
-Accordingly, Stage 3 should preserve a simple absolute novelty measure as the baseline while also retaining the possibility of robustness specifications based on:
+Accordingly, Stage 4 should preserve a simple absolute novelty measure as the baseline while also retaining the possibility of robustness specifications based on:
 
 * numerical normalization;
 * industry-relative novelty;
@@ -211,74 +260,75 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1. **Write the formal hypothesis-development section.**
+1. **Freeze and document Stage 3.**
+   - Treat `standard_annual_pairs.csv` as the canonical baseline pair manifest for novelty construction.
+   - Retain transition-period and noncontiguous-pair outputs as audit/robustness artifacts.
+   - Avoid using calendar-year labels as the longitudinal matching key.
+
+2. **Define the Stage 4 baseline novelty variable precisely.**
+   - Choose the baseline Japanese text representation and tokenizer.
+   - Use a corpus-wide TF-IDF vocabulary / IDF weighting as the primary design.
+   - Compare word-tokenized TF-IDF with character n-gram TF-IDF as a tokenizer-robust alternative.
+   - Compute both raw-text and number-normalized variants.
+   - Define textual novelty as an inverse similarity measure.
+
+3. **Run full-corpus novelty diagnostics before sentiment integration.**
+   - Examine similarity / novelty distributions overall, by year, firm, and industry.
+   - Reproduce the Toyota, MUFG, and Sony examples under the corpus-wide representation.
+   - Measure correlations among global, firm-specific, and alternative-tokenization novelty measures.
+   - Investigate the tails and known structural-change observations.
+
+4. **Write the formal hypothesis-development section.**
    - Develop H1 from the contextual-capacity mechanism.
    - Develop H2 from the textual-change literature.
    - State competing interpretation: lexical methods may remain equally or more informative even in novel text.
 
-2. **Define the novelty variable precisely.**
-   - Choose baseline similarity metric(s).
-   - Decide current-report versus prior-report comparison unit.
-   - Specify treatment of numbers and boilerplate.
-
-3. **Write the empirical specification before coding.**
+5. **Write the empirical specification before coding the final regressions.**
    - Baseline sentiment regressions.
    - Novelty main effect.
    - Sentiment × novelty interaction.
    - Relative model comparisons.
+   - Industry and year fixed effects, with firm-/industry-relative novelty reserved for robustness unless full-corpus diagnostics motivate otherwise.
 
-4. **Separate core tests from robustness tests.**
-   - Core: LMMD / BERT / GPT + novelty interaction.
-   - Secondary: persistent vs novel text, sentiment innovation, numerical-change robustness, alternative similarity measures.
-
-5. **Construct the longitudinal MD&A panel and textual-novelty dataset.**
-   - Join successful Stage 2 MD&A observations to the canonical filing metadata.
-   - Order disclosures by firm and fiscal period.
-   - Identify valid consecutive-year MD&A pairs.
-   - Resolve the 83 duplicate firm-year observations during sample construction.
-   - Produce basic text-length and longitudinal coverage diagnostics.
-   - Freeze the eligible novelty-pair manifest before estimating similarity measures.
-
-6. **Implement the baseline textual-novelty measure.**
-   - Define the baseline year-over-year text representation.
-   - Compute similarity between each firm's current and prior MD&A.
-   - Define textual novelty as an inverse similarity measure.
-   - Examine the cross-sectional and time-series distribution of novelty before introducing sentiment interactions.
-   - Retain alternative similarity definitions for robustness analysis.
+6. **Implement sentiment measurement.**
+   - LMMD / domain-specific lexical measure.
+   - Japanese Financial BERT / contextual measure.
+   - GPT / generative measure.
+   - Preserve comparable document-level outputs for each model.
 
 7. **Adapt the Paper 1 market-data and regression infrastructure.**
    - Reuse event-study and regression infrastructure where possible.
    - Preserve historical sample construction without filtering on current EDINET listing status.
-   - Revisit EDINET share-count issues only if Paper 2 requires reconstructing shares outstanding, market capitalization, or per-share measures from EDINET rather than using external market data.
 
 8. **Update the Introduction and Abstract later.**
    - The current abstract still reflects the older lexical-versus-GPT framing and should not be treated as final.
 
 ## Current bottleneck
 
-The literature review and MD&A extraction stages are no longer the primary bottlenecks.
+The literature review, MD&A extraction, and longitudinal matching stages are no longer the primary bottlenecks.
 
 The bottleneck has shifted to:
 
-> **constructing the longitudinal firm-year text panel, defining textual novelty precisely, and integrating novelty with the sentiment and market-reaction specifications**
+> **defining and validating the Stage 4 textual-novelty measure, then integrating novelty with sentiment and market reactions**
 
-Stage 2 extraction is complete and QC-validated. The immediate empirical task is therefore to determine the usable number of consecutive-year MD&A pairs, examine longitudinal text characteristics, and implement the baseline novelty measure.
+Stages 1–3 are now complete and QC-validated. The immediate empirical task is to construct corpus-wide novelty measures for the 33,046 standard annual pairs, examine their distributions and robustness to Japanese tokenization / numerical normalization, and then integrate novelty with the sentiment models.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately 45%
+**Overall paper:** approximately 48–50%
 
 Approximate status by component:
 
 - Related Work / research gap: 80–85%
 - Research question / hypotheses: 65–75%
-- Empirical design: 40–45%
+- Empirical design: 45–50%
 - Data acquisition / reference-data infrastructure: 95%
-- Coding / pipeline adaptation: 65–70%
+- Coding / pipeline adaptation: 70–75%
 - MD&A extraction core / batch pipeline: 100%
-- Novelty implementation: 15–20%
+- Longitudinal matching: 100%
+- Novelty implementation: 20–25%
 - Main results: 0–10%
 - Robustness tests: 0%
 - Final Introduction / Abstract / Conclusion: 20–30%

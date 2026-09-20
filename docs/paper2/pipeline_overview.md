@@ -1,12 +1,13 @@
 # Paper 2 Pipeline Overview
 
-This document summarizes the implemented data pipeline for Paper 2 through the completion of Stage 2. It is intended as project documentation for the EDINET acquisition and MD&A extraction workflow before Stage 3 longitudinal matching and novelty measurement begin.
+This document summarizes the implemented data pipeline for Paper 2 through the completion of Stage 3. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 will construct textual-novelty measures from the validated longitudinal pair manifest.
 
 ## Current Pipeline Status
 
 - **Stage 1 — EDINET acquisition and filing manifest:** complete and frozen.
 - **Stage 2 — MD&A extraction and quality control:** complete and frozen.
-- **Stage 3 — Longitudinal matching and textual novelty:** next.
+- **Stage 3 — Longitudinal reporting-period matching:** complete and frozen.
+- **Stage 4 — Textual novelty measurement:** next.
 
 The current corpus contains **37,807 Annual Securities Reports** and **37,757 successfully extracted MD&A sections**.
 
@@ -41,7 +42,10 @@ flowchart TD
     N[Manual recovery<br/>S100QGPT] --> I
     N --> J
 
-    M --> O[Stage 3<br/>Longitudinal matching + novelty]
+    M --> O[Stage 3<br/>Longitudinal matching]
+    C --> O
+    O --> P[Validated reporting-period pairs]
+    P --> Q[Stage 4<br/>Textual novelty measurement]
 ```
 
 ---
@@ -127,8 +131,8 @@ Final validated counts:
 | Filing rows | 37,807 |
 | Unique `docID` values | 37,807 |
 | Unique EDINET/security-code combinations | 4,448 |
-| Unique firm-years | 37,724 |
-| Duplicate firm-years requiring later review | 83 |
+| Unique `edinetCode × periodEnd.year` combinations | 37,724 |
+| Apparent duplicate calendar-year groups | 83 |
 
 Submission-date coverage:
 
@@ -147,6 +151,8 @@ through
 ```
 
 The raw ZIP count matches the filing-manifest row count.
+
+The 83 apparent duplicate calendar-year groups were later resolved in Stage 3. They were not true duplicate reporting periods; they primarily reflected legitimate fiscal-year-end changes that produced two reporting periods ending in the same calendar year.
 
 ## Important Design Decision: Listing Status
 
@@ -444,64 +450,188 @@ Git should contain:
 
 ---
 
-# Pipeline Boundary After Stage 2
+# Stage 3 — Longitudinal Reporting-Period Matching
 
-The output of Stage 2 is a validated corpus of canonical Japanese MD&A text plus filing and extraction metadata.
+## Purpose
 
-Stage 3 should consume these outputs without modifying them.
+Stage 3 creates the canonical longitudinal MD&A pair sample used by Stage 4.
 
-Conceptually:
+The stage is intentionally mechanical. It does not compute TF-IDF, cosine similarity, sentiment, or novelty. Its job is to determine which extracted disclosures are genuinely adjacent reporting periods for the same issuer and to preserve unusual reporting structures explicitly rather than hiding them inside a calendar-year convention.
+
+## Main Components
+
+```text
+src/mdna_analysis/longitudinal_match.py
+src/pipeline/stages/longitudinal_match.py
+scripts/paper2/run_pipeline.py
+```
+
+The Stage 3 adapter inherits its input paths from the configured outputs of the prior stages by default, while preserving explicit override support.
+
+## Why Reporting Periods, Not Calendar Years
+
+An initial diagnostic defined a firm-year using:
+
+```text
+edinetCode + year(periodEnd)
+```
+
+This produced 83 apparent duplicate firm-years.
+
+Manual inspection showed that these were largely legitimate cases in which a company changed its fiscal year-end. A typical sequence looked like:
+
+```text
+normal annual period
+2024-04-01 -> 2025-03-31
+
+transition period
+2025-04-01 -> 2025-08-31
+```
+
+Both periods end in calendar year 2025, but they are distinct and contiguous reporting periods. Stage 3 therefore works directly with `periodStart` and `periodEnd`.
+
+## Matching Logic
+
+Within each `edinetCode`, filings are ordered by actual reporting period.
+
+For each adjacent observation, Stage 3 computes:
+
+```text
+prev_period_days
+curr_period_days
+period_end_gap_days
+start_after_prev_end_days
+periods_contiguous
+prev_standard_period
+curr_standard_period
+standard_annual_pair
+pair_status
+```
+
+Two periods are contiguous when:
+
+```text
+curr_periodStart == prev_periodEnd + 1 day
+```
+
+A standard annual reporting period currently has duration between 300 and 430 days.
+
+Adjacent pairs are classified as:
+
+```text
+standard_annual
+transition_period
+noncontiguous
+```
+
+`transition_period` means the periods are genuinely contiguous but at least one period has nonstandard duration, as often occurs when an issuer changes fiscal year-end.
+
+`noncontiguous` means the next available filing does not begin immediately after the prior reporting period and therefore should not be treated as an ordinary year-over-year novelty comparison.
+
+## Stage 3 Outputs
+
+```text
+data/interim/paper2/longitudinal/
+    longitudinal_panel.csv
+    duplicate_reporting_periods.csv
+    adjacent_period_pairs.csv
+    standard_annual_pairs.csv
+    transition_period_pairs.csv
+    noncontiguous_pairs.csv
+    summary.json
+```
+
+## Final Stage 3 Results
+
+| Metric | Count |
+|---|---:|
+| Stage 1 filing rows | 37,807 |
+| Stage 2 manifest rows | 37,807 |
+| Successful Stage 2 extractions | 37,757 |
+| Matched Stage 3 panel rows | 37,757 |
+| Matched EDINET codes | 4,441 |
+| True duplicate reporting-period groups | 0 |
+| Adjacent reporting-period pairs | 33,316 |
+| Standard annual pairs | 33,046 |
+| Transition-period pairs | 268 |
+| Noncontiguous pairs | 2 |
+
+The exact one-to-one match between successful Stage 2 extractions and Stage 3 panel rows provides a strong join-integrity check.
+
+The absence of true duplicate reporting periods confirms that the earlier 83 apparent duplicate firm-years were an artifact of using calendar-year labels rather than actual reporting periods.
+
+## Noncontiguous-Pair Validation
+
+Only two adjacent available observations were classified as noncontiguous.
+
+Manual investigation showed that both reflect genuine issuer/listing discontinuities rather than matching failures:
+
+- **SBI Shinsei Bank:** the gap follows its 2023 delisting.
+- **Sony Financial Group:** the gap reflects Sony's 2020 full acquisition / privatization and the later 2025 relisting associated with the partial spin-off.
+
+These cases are retained for auditability but excluded from ordinary year-over-year novelty comparisons.
+
+## Stage 3 Flow
 
 ```mermaid
-flowchart LR
+flowchart TD
 
-    A[Stage 1<br/>Canonical filing metadata]
-    B[Stage 2<br/>Canonical MD&A corpus]
+    A[Stage 1<br/>filings.csv]
+    B[Stage 2<br/>extraction_manifest.csv]
 
-    A --> C[Stage 3A<br/>Longitudinal matching]
+    A --> C[Join successful extractions]
     B --> C
 
-    C --> D[Consecutive firm-year pairs]
+    C --> D[Order by EDINET issuer<br/>and reporting period]
+    D --> E[Construct adjacent period pairs]
 
-    D --> E[Stage 3B<br/>Textual representation + similarity]
+    E --> F{Periods contiguous?}
 
-    E --> F[Novelty measures]
+    F -- No --> G[noncontiguous_pairs.csv]
+    F -- Yes --> H{Both periods<br/>300-430 days?}
+
+    H -- Yes --> I[standard_annual_pairs.csv]
+    H -- No --> J[transition_period_pairs.csv]
+
+    I --> K[Stage 4 baseline<br/>novelty measurement]
+    J --> L[Stage 4 diagnostics / robustness]
 ```
+
+Stage 3 should now be treated as **complete and frozen**.
 
 ---
 
-# Stage 3 Handoff
+# Stage 4 — Textual Novelty Measurement
 
-Before computing textual similarity, Stage 3A should first construct a clean longitudinal panel.
+Stage 4 begins from the frozen Stage 3 pair manifests and introduces the first methodological text-representation choices.
 
-Required tasks include:
+The baseline sample should begin with:
 
-1. merge successful Stage 2 extractions with Stage 1 filing metadata;
-2. order reports by firm and fiscal period;
-3. investigate the **83 duplicate firm-year observations** rather than automatically dropping them;
-4. identify valid consecutive-year filing pairs;
-5. inspect fiscal-period spacing and unusual reporting periods;
-6. attach text-length and extraction metadata;
-7. freeze the eligible firm-year pair manifest.
+```text
+data/interim/paper2/longitudinal/standard_annual_pairs.csv
+```
 
-Only after the longitudinal panel is validated should Stage 3B construct novelty measures.
+Current methodological candidates include:
 
-Current methodological candidates for Stage 3B include:
-
-- corpus-wide TF-IDF cosine similarity;
-- numerical-normalized TF-IDF similarity;
+- corpus-wide TF-IDF cosine similarity as the primary representation;
+- raw-text and number-normalized variants;
 - Japanese word-tokenized TF-IDF;
 - character n-gram TF-IDF as a tokenizer-robust alternative;
-- firm-specific TF-IDF as a diagnostic or robustness measure;
-- industry-relative and firm-relative novelty transformations.
+- firm-specific TF-IDF as a diagnostic / robustness measure;
+- firm-relative or industry-relative transformations of the global novelty score;
+- later robustness separating persistent and changed portions of MD&A.
 
-The baseline design should remain simple, with alternative representations retained for robustness analysis rather than multiplying primary hypotheses.
+The exploratory Toyota, MUFG, and Sony tests indicate that baseline textual persistence can differ substantially across firms and industries. This motivates industry controls and makes relative novelty measures worth examining as robustness specifications, but the baseline should remain a simple common corpus-wide measure.
+
+The three-firm exercise also showed that TF-IDF results depend on representation choices. In Japanese, word segmentation is not mechanically determined by whitespace, so tokenization must be treated as an explicit methodological dimension rather than hidden preprocessing.
+
+Stage 4 should therefore compute multiple novelty variants on the same frozen pair manifest before selecting the final baseline.
 
 ---
 
 # Design Principles Established So Far
 
-The first two stages establish several project-wide principles:
+The first three stages establish several project-wide principles:
 
 - preserve raw source material;
 - maintain canonical manifests between stages;
@@ -513,4 +643,4 @@ The first two stages establish several project-wide principles:
 - freeze completed stages before downstream modeling;
 - separate mechanical data construction from methodological choices.
 
-These principles should continue through Stage 3 and later empirical stages.
+These principles should continue through Stage 4 and later empirical stages.
