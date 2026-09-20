@@ -41,7 +41,7 @@ download_csv = false
 
 ## STAGE 2 MDNA_EXTRACT
 [mdna_extract]
-limit = 25
+#limit = 25
 filings_csv = "data/interim/paper2/edinet/filings.csv"
 raw_dir = "data/raw/paper2/edinet"
 output_dir = "data/interim/paper2/mdna"
