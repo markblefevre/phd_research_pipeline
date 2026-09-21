@@ -11,9 +11,9 @@ import pandas as pd
 
 NUM_TOKEN = "<NUM>"
 
-NUMERIC_RE = re.compile(
-    r"""
-    ^[+-]?
+# Arabic numeric atom after Stage 4 NFKC normalization.
+NUMERIC_ATOM = r"""
+    [+-]?
     (?:
         \d{1,3}(?:,\d{3})+(?:\.\d+)?
         |
@@ -21,8 +21,41 @@ NUMERIC_RE = re.compile(
         |
         \.\d+
     )
-    %?$
-    """,
+"""
+
+# Japanese scale markers are part of numeric magnitude, not semantic units.
+# Consecutive markers are allowed because forms such as 百万, 千万, 千億 occur.
+SCALE_MARKERS = ("十", "百", "千", "万", "億", "兆")
+_SCALE_PATTERN = "|".join(re.escape(x) for x in SCALE_MARKERS)
+
+# Examples matched:
+#   123
+#   1億
+#   1億2万
+#   3百万
+#   1,002億7千7百万
+#   1兆1千億
+#   1万1,400
+NUMERIC_MAGNITUDE_PATTERN = rf"""
+    (?:
+        {NUMERIC_ATOM}(?:(?:{_SCALE_PATTERN}))+ 
+    )*
+    {NUMERIC_ATOM}?
+"""
+
+NUMERIC_MAGNITUDE_RE = re.compile(
+    rf"^(?={NUMERIC_ATOM}|.*(?:{_SCALE_PATTERN}))"
+    rf"(?:{NUMERIC_MAGNITUDE_PATTERN})$",
+    re.VERBOSE,
+)
+
+PERCENT_RE = re.compile(
+    rf"^(?P<magnitude>{NUMERIC_MAGNITUDE_PATTERN})(?:%|％)$",
+    re.VERBOSE,
+)
+
+YEN_RE = re.compile(
+    rf"^(?P<magnitude>{NUMERIC_MAGNITUDE_PATTERN})円$",
     re.VERBOSE,
 )
 
@@ -32,13 +65,52 @@ def _utc_now() -> str:
 
 
 def is_numeric_token(token: str) -> bool:
-    """Return True when the entire token is numeric under the Stage 4 rule."""
-    return bool(NUMERIC_RE.fullmatch(token))
+    """Return True when the entire token is a numeric magnitude."""
+    if not token:
+        return False
+    return bool(NUMERIC_MAGNITUDE_RE.fullmatch(token))
 
 
 def normalize_numeric_token(token: str) -> str:
-    """Replace a fully numeric token with <NUM>; otherwise leave it unchanged."""
-    return NUM_TOKEN if is_numeric_token(token) else token
+    """
+    Collapse numeric expressions to semantic placeholders.
+
+    Any numeric magnitude:
+        123                 -> <NUM>
+        1億                 -> <NUM>
+        1億2万              -> <NUM>
+        1,002億7千7百万     -> <NUM>
+
+    Any percentage:
+        12%                 -> <NUM>%
+        12.5％              -> <NUM>%
+
+    Any yen-denominated amount:
+        100円               -> <NUM>円
+        3百万円             -> <NUM>円
+        1億2万円            -> <NUM>円
+
+    Other mixed expressions are left unchanged.
+    """
+    if token and PERCENT_RE.fullmatch(token):
+        return f"{NUM_TOKEN}%"
+
+    if token and YEN_RE.fullmatch(token):
+        return f"{NUM_TOKEN}円"
+
+    if is_numeric_token(token):
+        return NUM_TOKEN
+
+    return token
+
+
+def is_normalized_numeric_token(token: str) -> bool:
+    """Return True for tokens produced by numeric normalization."""
+    return token in {
+        NUM_TOKEN,
+        f"{NUM_TOKEN}%",
+        f"{NUM_TOKEN}円",
+    }
 
 
 def _normalize_document(job: dict, overwrite: bool = False) -> dict:
@@ -74,7 +146,7 @@ def _normalize_document(job: dict, overwrite: bool = False) -> dict:
                 for line in f:
                     token = line.rstrip("\n")
                     token_count += 1
-                    if token == NUM_TOKEN:
+                    if is_normalized_numeric_token(token):
                         replacement_count += 1
 
             replacement_pct = replacement_count / token_count if token_count else 0.0
