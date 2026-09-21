@@ -5,7 +5,8 @@ run_id = "auto"
 [stages]
 edinet_download = false
 mdna_extract = false
-longitudinal_match = true
+longitudinal_match = false
+text_tokenization = true
 
 text_stats = false
 textual_novelty = false
@@ -58,3 +59,15 @@ output_dir = "data/interim/paper2/longitudinal"
 # rather than silently included in the novelty sample.
 min_period_end_gap_days = 300
 max_period_end_gap_days = 430
+
+## STAGE 4 MDNA_TOKENIZE
+[text_tokenization]
+output_dir = "data/interim/paper2/tokens"
+max_workers = 8 # Seems to be sweet spot for M1Max
+overwrite = false
+# Following are optional, allow use of local SSD for speed
+source_root = "~/paper2_stage4/mdna"
+work_output_dir = "~/paper2_stage4/tokens"
+variants = ["sudachi_a_raw", "sudachi_b_raw", "sudachi_c_raw"]
+derive_num_variants = true
+run_qc = true
