@@ -303,7 +303,43 @@ status = passed
 documentCount = 37,473
 ```
 
-Stage 4 token preparation should therefore now be treated as **complete and validated**. The next methodological task is to construct TF-IDF representations and adjacent-period cosine-similarity / novelty measures from these frozen token artifacts.
+Stage 4 token preparation should therefore now be treated as **complete and validated**.
+
+### Stage 5 — TF-IDF / cosine textual novelty
+
+Stage 5 is now implemented and has been run across the complete six-variant Stage 4 token family.
+
+The stage:
+
+1. reads one validated token variant at a time;
+2. fits a corpus-wide TF-IDF representation over the common 37,473-document universe;
+3. computes cosine similarity for the 33,046 research-eligible adjacent annual-report pairs;
+4. defines document-level textual novelty as:
+
+```text
+novelty = 1 - cosine_similarity
+```
+
+5. writes variant-specific similarity / novelty outputs and TF-IDF metadata.
+
+All six variants have now been processed:
+
+```text
+sudachi_a_raw
+sudachi_a_num
+sudachi_b_raw
+sudachi_b_num
+sudachi_c_raw
+sudachi_c_num
+```
+
+This changes the role of the six Stage 4 representations. They are no longer merely preprocessing candidates; they now form an explicit sensitivity analysis for the baseline novelty construction.
+
+The first benchmark inspected in detail, `sudachi_c_num`, used the full **37,473-document** corpus and produced **33,046 adjacent-period similarity observations**. Its TF-IDF vocabulary contained approximately **241 thousand features**, with mean cosine similarity around **0.913**, corresponding to mean textual novelty around **0.087**.
+
+These results are preliminary diagnostics rather than final empirical evidence. The next task is to compare the six variants systematically before selecting the primary word-token specification and robustness variants.
+
+One preprocessing issue remains open: the current numeric normalization replaces fully numeric tokens with `<NUM>`, but numbers attached to units or other characters may require additional treatment. Because Stage 5 is fast relative to the earlier corpus-construction stages, this issue can be evaluated after the six-variant comparison rather than by prematurely changing Stage 4.
 
 #### Local SSD scratch design
 
@@ -403,12 +439,12 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1. **Construct corpus-wide TF-IDF representations and novelty measures.**
-   - Use the validated six-variant Stage 4 token family.
-   - Begin with corpus-wide word-token TF-IDF.
-   - Compute adjacent-period cosine similarity for the 33,046 research-eligible pairs.
-   - Define textual novelty as an inverse similarity measure.
-   - Retain raw and `<NUM>` variants and compare Sudachi A/B/C sensitivity.
+1. **Compare the completed six-variant word-token TF-IDF novelty results.**
+   - Compare Sudachi A/B/C under identical document and pair universes.
+   - Compare raw versus `<NUM>` normalization.
+   - Inspect vocabulary size, similarity / novelty distributions, pair coverage, and cross-variant correlations.
+   - Select a defensible primary word-token specification and designate the remaining variants as sensitivity / robustness checks.
+   - Decide only after this comparison whether numeric normalization needs another preprocessing iteration.
 
 2. **Add the character n-gram robustness branch.**
    - Compute Japanese character 3–5-gram TF-IDF directly from canonical MD&A text.
@@ -450,9 +486,9 @@ The literature review, MD&A extraction, and longitudinal matching stages are no 
 
 The bottleneck has shifted to:
 
-> **constructing and validating full-sample TF-IDF / cosine-similarity novelty measures from the completed Stage 4 token representations, then integrating novelty with sentiment and market reactions**
+> **comparing and validating the completed six-variant full-sample TF-IDF / cosine-similarity novelty measures, then selecting the primary novelty specification and integrating it with sentiment and market reactions**
 
-Stages 1–3 and the Stage 4 token-preparation layer are now complete and QC-validated. The immediate empirical task is to construct corpus-wide TF-IDF and cosine-similarity novelty measures for the 33,046 research-eligible domestic standard annual pairs, examine their distributions and robustness to Japanese tokenization / numerical normalization, and then integrate novelty with the sentiment models.
+Stages 1–3 and the Stage 4 token-preparation layer are complete and QC-validated. Stage 5 word-token TF-IDF / cosine novelty has now been executed for all six Sudachi/raw-number variants. The immediate empirical task is therefore no longer basic novelty construction, but systematic cross-variant comparison: distributions, correlations, tokenization sensitivity, numerical-normalization sensitivity, and identification of the primary versus robustness specifications.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
@@ -469,7 +505,7 @@ Approximate status by component:
 - Coding / pipeline adaptation: 80–85%
 - MD&A extraction core / batch pipeline: 100%
 - Longitudinal matching: 100%
-- Novelty implementation: 35–40%
+- Novelty implementation: 55–60%
 - Main results: 0–10%
 - Robustness tests: 0%
 - Final Introduction / Abstract / Conclusion: 20–30%

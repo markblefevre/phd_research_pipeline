@@ -1,13 +1,14 @@
 # Paper 2 Pipeline Overview
 
-This document summarizes the implemented Paper 2 data pipeline through the validated Stage 4 token-representation layer. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 now prepares multiple Japanese token representations and numeric-normalized variants that will feed the subsequent TF-IDF / cosine-similarity novelty calculations.
+This document summarizes the implemented Paper 2 data pipeline through Stage 5 word-token textual-novelty construction. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 prepares six validated Japanese token representations. Stage 5 fits corpus-wide TF-IDF representations and computes adjacent-period cosine similarity / textual novelty for each variant.
 
 ## Current Pipeline Status
 
 - **Stage 1 — EDINET acquisition and filing manifest:** complete and frozen.
 - **Stage 2 — MD&A extraction and quality control:** complete and frozen.
 - **Stage 3 — Longitudinal reporting-period matching:** complete and frozen.
-- **Stage 4 — Token representation construction and QC:** complete and validated through the token-preparation layer; TF-IDF / cosine novelty calculation is next.
+- **Stage 4 — Token representation construction and QC:** complete and validated.
+- **Stage 5 — Word-token TF-IDF / cosine textual novelty:** implemented and run for all six Stage 4 variants; cross-variant comparison and final baseline selection are next.
 
 The current corpus contains **37,807 Annual Securities Reports** and **37,757 successfully extracted MD&A sections**.
 
@@ -48,7 +49,9 @@ flowchart TD
     P --> Q[Stage 4A<br/>Sudachi tokenization]
     Q --> R[Stage 4B<br/>&lt;NUM&gt; normalization]
     R --> S[Stage 4C<br/>Token QC]
-    S --> T[TF-IDF / cosine novelty]
+    S --> T[Stage 5<br/>TF-IDF / cosine novelty]
+    T --> U[Six-variant novelty outputs]
+    U --> V[Cross-variant comparison<br/>and baseline selection]
 ```
 
 ---
@@ -673,7 +676,7 @@ Stage 4 is divided into three internal phases:
 4C — cross-variant QC
 ```
 
-The downstream TF-IDF / cosine-similarity calculation will use the validated Stage 4 artifacts rather than repeating tokenization.
+Stage 5 uses the validated Stage 4 artifacts directly rather than repeating tokenization.
 
 ## Stage 4A — Raw Sudachi Tokenization
 
@@ -891,25 +894,89 @@ data/interim/paper2/tokens/
 
 Generated token files are pipeline artifacts and should remain outside Git.
 
+# Stage 5 — Word-Token TF-IDF and Textual Novelty
+
+## Purpose
+
+Stage 5 converts each validated Stage 4 token representation into a corpus-wide TF-IDF representation and measures textual similarity between adjacent annual-report MD&A disclosures.
+
+For each token variant, the stage operates on the same **37,473-document** universe and the same **33,046 research-eligible adjacent standard annual pairs**. This ensures that differences across Stage 5 outputs reflect representation choices rather than sample changes.
+
+The baseline pair-level measure is:
+
+```text
+cosine_similarity = cosine(TFIDF_previous, TFIDF_current)
+textual_novelty = 1 - cosine_similarity
+```
+
+The stage has now been run for all six token variants:
+
+```text
+sudachi_a_raw
+sudachi_a_num
+sudachi_b_raw
+sudachi_b_num
+sudachi_c_raw
+sudachi_c_num
+```
+
+The architecture is deliberately variant-agnostic. Stage 5 does not hard-code a single baseline representation; the configured token variant determines the input artifact family, while the TF-IDF and pairwise cosine logic remains identical.
+
+## Stage 5 Flow
+
+```mermaid
+flowchart TD
+
+    A[Validated Stage 4 token variant] --> B[Load 37,473 tokenized MD&A documents]
+    B --> C[Fit corpus-wide TF-IDF]
+    C --> D[Document-term TF-IDF representation]
+    E[research_eligible_pairs.csv<br/>33,046 pairs] --> F[Join previous/current document vectors]
+    D --> F
+    F --> G[Cosine similarity]
+    G --> H[Novelty = 1 - similarity]
+    H --> I[Variant-specific novelty output]
+    C --> J[TF-IDF metadata]
+```
+
+## Current Diagnostic Status
+
+All six word-token variants have completed. The first benchmark inspected in detail, `sudachi_c_num`, produced:
+
+- **37,473 documents** in the fitted TF-IDF corpus;
+- approximately **241 thousand TF-IDF features**;
+- **33,046** adjacent-period pair observations;
+- mean cosine similarity of approximately **0.913**;
+- mean textual novelty of approximately **0.087**.
+
+These values are diagnostic rather than final paper results. The next methodological step is to compare the six completed variants systematically before selecting the primary word-token novelty specification.
+
+The comparison should examine:
+
+- vocabulary dimensionality;
+- similarity and novelty distributions;
+- raw versus `<NUM>` sensitivity;
+- Sudachi A/B/C sensitivity;
+- pairwise correlations among novelty measures;
+- extreme observations and structural-change cases;
+- whether the current fully-numeric-token normalization misses economically meaningful numeric forms attached to units or other characters.
+
 ## Next Novelty Step
 
-The next step is no longer tokenization. It is to build full-corpus TF-IDF representations and compute cosine similarity for the **33,046 research-eligible adjacent annual-report pairs**.
+The next step is no longer TF-IDF construction itself. It is to evaluate the six completed word-token novelty specifications and choose a defensible primary specification plus robustness alternatives.
 
-The primary methodological comparisons now include:
+After that comparison, the planned novelty robustness work includes:
 
-- Sudachi A/B/C tokenization;
-- raw versus `<NUM>` normalization;
-- corpus-wide word-token TF-IDF;
-- character 3–5-gram TF-IDF as a tokenizer-robust alternative;
-- later firm- or industry-relative novelty transformations as robustness analyses.
+- Japanese character 3–5-gram TF-IDF as a tokenizer-robust alternative;
+- possible refinements to numeric normalization;
+- later firm- or industry-relative novelty transformations.
 
-The validated six-variant token family allows these representation choices to be compared on an identical document universe.
+The validated six-variant design allows these representation choices to be evaluated on an identical document and pair universe.
 
 ---
 
 # Design Principles Established So Far
 
-The first three stages establish several project-wide principles:
+The implemented stages establish several project-wide principles:
 
 - preserve raw source material;
 - maintain canonical manifests between stages;
