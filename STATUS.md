@@ -1,6 +1,6 @@
 # Paper 2 — Current Status
 
-**Last updated:** 2026-09-20
+**Last updated:** 2026-09-21
 
 ## Current thesis
 
@@ -220,6 +220,118 @@ data/interim/paper2/longitudinal/research_eligible_pairs.csv
 ```
 
 
+
+### Stage 4 — token representation construction
+
+Stage 4 has now been implemented and QC-validated through the token-representation layer. It begins from the frozen Stage 3 research-eligible pair manifest and constructs the unique document universe required for novelty measurement.
+
+The Stage 3 research sample contains **33,046 adjacent standard annual pairs**, corresponding to **37,473 unique MD&A documents**.
+
+Stage 4 is organized into three internal substages:
+
+1. **4A — raw Japanese tokenization**
+2. **4B — numeric normalization**
+3. **4C — cross-variant quality control**
+
+#### Stage 4A — raw tokenization
+
+The production tokenizer uses Sudachi with NFKC normalization, natural-boundary chunking, raw numbers retained, and whitespace-only / punctuation-symbol-only tokens removed after tokenization.
+
+Three Sudachi split modes are generated from the identical 37,473-document universe:
+
+| Variant | Documents | Total tokens | Mean tokens/document |
+|---|---:|---:|---:|
+| `sudachi_a_raw` | 37,473 | 113,574,929 | 3,030.8 |
+| `sudachi_b_raw` | 37,473 | 109,407,286 | 2,919.6 |
+| `sudachi_c_raw` | 37,473 | 105,993,616 | 2,828.5 |
+
+All three variants completed with **37,473/37,473 successful documents**, no duplicate `(edinetCode, docID)` keys, and no missing token files.
+
+The expected Sudachi segmentation relationship holds for every document:
+
+```text
+tokenCount(A) >= tokenCount(B) >= tokenCount(C)
+```
+
+with **zero A<B violations** and **zero B<C violations**.
+
+#### Stage 4B — numeric normalization
+
+Each raw token variant is deterministically transformed into a corresponding number-normalized representation:
+
+```text
+sudachi_a_raw -> sudachi_a_num
+sudachi_b_raw -> sudachi_b_num
+sudachi_c_raw -> sudachi_c_num
+```
+
+Fully numeric tokens are replaced with the literal token `<NUM>`. The transformation is deliberately one-input-token to one-output-token, so raw and number-normalized token counts must remain identical document by document.
+
+Final numeric replacement totals are:
+
+| Variant | Replacements | Share of tokens |
+|---|---:|---:|
+| `sudachi_a_num` | 5,329,886 | 4.69% |
+| `sudachi_b_num` | 5,329,860 | 4.87% |
+| `sudachi_c_num` | 5,329,555 | 5.03% |
+
+All three numeric variants contain **37,473 documents**, all completed successfully, and raw-versus-`<NUM>` token-count mismatches are **zero** for A, B, and C.
+
+#### Stage 4C — QC
+
+Stage 4 now runs an explicit validator over the complete six-variant output family. The validator confirms:
+
+- identical 37,473-document universes across all variants;
+- zero duplicate document keys;
+- zero missing token files;
+- consistent raw-source metadata;
+- zero failed or zero-token documents;
+- `A >= B >= C` token-count ordering for raw and numeric variants;
+- exact raw / `<NUM>` token-count equality for each Sudachi mode;
+- internally valid numeric replacement counts.
+
+The QC result is written to:
+
+```text
+data/interim/paper2/tokens/qc_summary.json
+```
+
+and currently reports:
+
+```text
+status = passed
+documentCount = 37,473
+```
+
+Stage 4 token preparation should therefore now be treated as **complete and validated**. The next methodological task is to construct TF-IDF representations and adjacent-period cosine-similarity / novelty measures from these frozen token artifacts.
+
+#### Local SSD scratch design
+
+Stage 4 also exposed a significant infrastructure issue: tens of thousands of small files are slow to process directly over the NAS. The canonical corpus remains on the NAS, but high-I/O stages can use a configurable local SSD scratch directory.
+
+The Stage 4 pipeline therefore distinguishes between:
+
+```text
+canonical logical paths:
+data/interim/paper2/...
+
+physical scratch paths:
+~/paper2_stage4/...
+```
+
+Manifests continue to store canonical repo-relative paths rather than machine-specific scratch paths.
+
+This design improved Sudachi tokenization throughput dramatically. On the M1 Max, the best practical worker setting was **8 processes**:
+
+| Workers | Throughput |
+|---:|---:|
+| 6 | 569.1 docs/s |
+| 8 | 744.3 docs/s |
+| 10 | 751.1 docs/s |
+
+The 8-worker setting captures essentially all available speedup while avoiding unnecessary process overhead. Future stages that perform heavy small-file I/O should reuse the same canonical-NAS / local-scratch pattern.
+
+
 ## Current hypothesis structure
 
 ### H1 — Conditional contextual advantage
@@ -291,35 +403,33 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1. **Freeze and document Stage 3.**
-   - Treat `research_eligible_pairs.csv` as the canonical baseline pair manifest for novelty construction; it currently contains the same 33,046 observations as `standard_annual_pairs.csv`.
-   - Retain transition-period and noncontiguous-pair outputs as audit/robustness artifacts.
-   - Avoid using calendar-year labels as the longitudinal matching key.
-
-2. **Define the Stage 4 baseline novelty variable precisely.**
-   - Choose the baseline Japanese text representation and tokenizer.
-   - Use a corpus-wide TF-IDF vocabulary / IDF weighting as the primary design.
-   - Compare word-tokenized TF-IDF with character n-gram TF-IDF as a tokenizer-robust alternative.
-   - Compute both raw-text and number-normalized variants.
+1. **Construct corpus-wide TF-IDF representations and novelty measures.**
+   - Use the validated six-variant Stage 4 token family.
+   - Begin with corpus-wide word-token TF-IDF.
+   - Compute adjacent-period cosine similarity for the 33,046 research-eligible pairs.
    - Define textual novelty as an inverse similarity measure.
+   - Retain raw and `<NUM>` variants and compare Sudachi A/B/C sensitivity.
 
-3. **Run full-corpus novelty diagnostics before sentiment integration.**
+2. **Add the character n-gram robustness branch.**
+   - Compute Japanese character 3–5-gram TF-IDF directly from canonical MD&A text.
+   - Compare character-based novelty with word-token novelty.
+
+3. **Run full-corpus novelty diagnostics.**
    - Examine similarity / novelty distributions overall, by year, firm, and industry.
-   - Reproduce the Toyota, MUFG, and Sony examples under the corpus-wide representation.
-   - Measure correlations among global, firm-specific, and alternative-tokenization novelty measures.
-   - Investigate the tails and known structural-change observations.
+   - Reproduce Toyota, MUFG, and Sony examples under corpus-wide weighting.
+   - Investigate tails, structural-change observations, and tokenization sensitivity.
 
 4. **Write the formal hypothesis-development section.**
    - Develop H1 from the contextual-capacity mechanism.
    - Develop H2 from the textual-change literature.
-   - State competing interpretation: lexical methods may remain equally or more informative even in novel text.
+   - State the competing interpretation that lexical methods may remain equally or more informative even in novel text.
 
-5. **Write the empirical specification before coding the final regressions.**
+5. **Write the empirical specification before final regression coding.**
    - Baseline sentiment regressions.
    - Novelty main effect.
    - Sentiment × novelty interaction.
    - Relative model comparisons.
-   - Industry and year fixed effects, with firm-/industry-relative novelty reserved for robustness unless full-corpus diagnostics motivate otherwise.
+   - Industry and year fixed effects.
 
 6. **Implement sentiment measurement.**
    - LMMD / domain-specific lexical measure.
@@ -340,9 +450,9 @@ The literature review, MD&A extraction, and longitudinal matching stages are no 
 
 The bottleneck has shifted to:
 
-> **defining and validating the Stage 4 textual-novelty measure, then integrating novelty with sentiment and market reactions**
+> **constructing and validating full-sample TF-IDF / cosine-similarity novelty measures from the completed Stage 4 token representations, then integrating novelty with sentiment and market reactions**
 
-Stages 1–3 are now complete and QC-validated. The immediate empirical task is to construct corpus-wide novelty measures for the 33,046 research-eligible domestic standard annual pairs, examine their distributions and robustness to Japanese tokenization / numerical normalization, and then integrate novelty with the sentiment models.
+Stages 1–3 and the Stage 4 token-preparation layer are now complete and QC-validated. The immediate empirical task is to construct corpus-wide TF-IDF and cosine-similarity novelty measures for the 33,046 research-eligible domestic standard annual pairs, examine their distributions and robustness to Japanese tokenization / numerical normalization, and then integrate novelty with the sentiment models.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
@@ -356,10 +466,10 @@ Approximate status by component:
 - Research question / hypotheses: 65–75%
 - Empirical design: 45–50%
 - Data acquisition / reference-data infrastructure: 95%
-- Coding / pipeline adaptation: 70–75%
+- Coding / pipeline adaptation: 80–85%
 - MD&A extraction core / batch pipeline: 100%
 - Longitudinal matching: 100%
-- Novelty implementation: 20–25%
+- Novelty implementation: 35–40%
 - Main results: 0–10%
 - Robustness tests: 0%
 - Final Introduction / Abstract / Conclusion: 20–30%

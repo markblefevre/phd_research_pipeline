@@ -1,13 +1,13 @@
 # Paper 2 Pipeline Overview
 
-This document summarizes the implemented data pipeline for Paper 2 through the completion of Stage 3. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 will construct textual-novelty measures from the validated longitudinal pair manifest.
+This document summarizes the implemented Paper 2 data pipeline through the validated Stage 4 token-representation layer. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 now prepares multiple Japanese token representations and numeric-normalized variants that will feed the subsequent TF-IDF / cosine-similarity novelty calculations.
 
 ## Current Pipeline Status
 
 - **Stage 1 — EDINET acquisition and filing manifest:** complete and frozen.
 - **Stage 2 — MD&A extraction and quality control:** complete and frozen.
 - **Stage 3 — Longitudinal reporting-period matching:** complete and frozen.
-- **Stage 4 — Textual novelty measurement:** next.
+- **Stage 4 — Token representation construction and QC:** complete and validated through the token-preparation layer; TF-IDF / cosine novelty calculation is next.
 
 The current corpus contains **37,807 Annual Securities Reports** and **37,757 successfully extracted MD&A sections**.
 
@@ -45,7 +45,10 @@ flowchart TD
     M --> O[Stage 3<br/>Longitudinal matching]
     C --> O
     O --> P[Validated reporting-period pairs]
-    P --> Q[Stage 4<br/>Textual novelty measurement]
+    P --> Q[Stage 4A<br/>Sudachi tokenization]
+    Q --> R[Stage 4B<br/>&lt;NUM&gt; normalization]
+    R --> S[Stage 4C<br/>Token QC]
+    S --> T[TF-IDF / cosine novelty]
 ```
 
 ---
@@ -650,33 +653,257 @@ Stage 3 should now be treated as **complete and frozen**.
 
 ---
 
-# Stage 4 — Textual Novelty Measurement
+# Stage 4 — Token Representation Construction
 
-Stage 4 begins from the frozen Stage 3 pair manifests and introduces the first methodological text-representation choices.
+Stage 4 begins from the frozen Stage 3 research-eligible pair manifest and introduces the first explicit text-representation choices.
 
-The canonical baseline input is the research-eligible domestic sample produced at the end of Stage 3. At present it contains **33,046 pairs**, exactly matching the standard annual-pair count because no foreign-company filing survived Stage 2 extraction.
-
-The baseline sample should begin with:
+The canonical Stage 4 pair input is:
 
 ```text
 data/interim/paper2/longitudinal/research_eligible_pairs.csv
 ```
 
-Current methodological candidates include:
+This file contains **33,046 research-eligible adjacent standard annual pairs**. The union of documents appearing in those pairs contains **37,473 unique MD&A documents**.
 
-- corpus-wide TF-IDF cosine similarity as the primary representation;
-- raw-text and number-normalized variants;
-- Japanese word-tokenized TF-IDF;
-- character n-gram TF-IDF as a tokenizer-robust alternative;
-- firm-specific TF-IDF as a diagnostic / robustness measure;
-- firm-relative or industry-relative transformations of the global novelty score;
-- later robustness separating persistent and changed portions of MD&A.
+Stage 4 is divided into three internal phases:
 
-The exploratory Toyota, MUFG, and Sony tests indicate that baseline textual persistence can differ substantially across firms and industries. This motivates industry controls and makes relative novelty measures worth examining as robustness specifications, but the baseline should remain a simple common corpus-wide measure.
+```text
+4A — raw Sudachi tokenization
+4B — numeric normalization
+4C — cross-variant QC
+```
 
-The three-firm exercise also showed that TF-IDF results depend on representation choices. In Japanese, word segmentation is not mechanically determined by whitespace, so tokenization must be treated as an explicit methodological dimension rather than hidden preprocessing.
+The downstream TF-IDF / cosine-similarity calculation will use the validated Stage 4 artifacts rather than repeating tokenization.
 
-Stage 4 should therefore compute multiple novelty variants on the same frozen pair manifest before selecting the final baseline.
+## Stage 4A — Raw Sudachi Tokenization
+
+The production tokenization stage uses:
+
+- Unicode NFKC normalization;
+- SudachiPy morphological tokenization;
+- natural-boundary chunking for large texts;
+- raw numbers retained;
+- punctuation/symbol-only tokens removed after tokenization;
+- one token per output line.
+
+Three Sudachi segmentation modes are generated:
+
+```text
+sudachi_a_raw
+sudachi_b_raw
+sudachi_c_raw
+```
+
+Final validated counts are:
+
+| Variant | Documents | Total tokens | Mean tokens/document |
+|---|---:|---:|---:|
+| `sudachi_a_raw` | 37,473 | 113,574,929 | 3,030.8 |
+| `sudachi_b_raw` | 37,473 | 109,407,286 | 2,919.6 |
+| `sudachi_c_raw` | 37,473 | 105,993,616 | 2,828.5 |
+
+The expected segmentation relationship holds for every document:
+
+```text
+tokenCount(A) >= tokenCount(B) >= tokenCount(C)
+```
+
+with zero violations.
+
+Each raw variant is stored under:
+
+```text
+data/interim/paper2/tokens/
+    sudachi_a_raw/
+    sudachi_b_raw/
+    sudachi_c_raw/
+```
+
+Each variant directory contains its own `manifest.csv`.
+
+## Stage 4B — Numeric Normalization
+
+Numeric normalization is implemented as a deterministic transformation of the existing raw token files rather than by rerunning Sudachi.
+
+Fully numeric tokens are replaced with:
+
+```text
+<NUM>
+```
+
+The transformation is strictly one-input-token to one-output-token, so the number-normalized variants must preserve document-level token counts exactly.
+
+The derived variants are:
+
+```text
+sudachi_a_num
+sudachi_b_num
+sudachi_c_num
+```
+
+Final replacement statistics are:
+
+| Variant | Replacements | Share of tokens |
+|---|---:|---:|
+| `sudachi_a_num` | 5,329,886 | 4.69% |
+| `sudachi_b_num` | 5,329,860 | 4.87% |
+| `sudachi_c_num` | 5,329,555 | 5.03% |
+
+All three numeric variants contain **37,473 documents**, and document-level token counts match the corresponding raw variants exactly.
+
+## Stage 4C — Quality Control
+
+Stage 4 runs a dedicated cross-variant validator over all requested token representations.
+
+The validator checks:
+
+- manifest existence and required fields;
+- duplicate `(edinetCode, docID)` keys;
+- identical document universes across variants;
+- failed or zero-token documents;
+- physical token-file existence;
+- consistent source metadata across raw variants;
+- `A >= B >= C` token-count ordering;
+- exact raw / `<NUM>` token-count equality;
+- internally valid numeric replacement statistics.
+
+The current QC summary reports:
+
+```text
+status = passed
+documentCount = 37,473
+missingFiles = 0
+raw A<B violations = 0
+raw B<C violations = 0
+A raw/num token-count mismatches = 0
+B raw/num token-count mismatches = 0
+C raw/num token-count mismatches = 0
+num A<B violations = 0
+num B<C violations = 0
+```
+
+The machine-readable QC artifact is:
+
+```text
+data/interim/paper2/tokens/qc_summary.json
+```
+
+The Stage 4 token-preparation layer should therefore now be treated as **complete and validated**.
+
+## Stage 4 Flow
+
+```mermaid
+flowchart TD
+
+    A[research_eligible_pairs.csv<br/>33,046 pairs]
+    A --> B[Build unique document universe<br/>37,473 MD&A documents]
+
+    B --> C1[Sudachi SplitMode A]
+    B --> C2[Sudachi SplitMode B]
+    B --> C3[Sudachi SplitMode C]
+
+    C1 --> D1[sudachi_a_raw]
+    C2 --> D2[sudachi_b_raw]
+    C3 --> D3[sudachi_c_raw]
+
+    D1 --> E1[Replace numeric tokens with &lt;NUM&gt;]
+    D2 --> E2[Replace numeric tokens with &lt;NUM&gt;]
+    D3 --> E3[Replace numeric tokens with &lt;NUM&gt;]
+
+    E1 --> F1[sudachi_a_num]
+    E2 --> F2[sudachi_b_num]
+    E3 --> F3[sudachi_c_num]
+
+    D1 --> G[Stage 4C QC]
+    D2 --> G
+    D3 --> G
+    F1 --> G
+    F2 --> G
+    F3 --> G
+
+    G --> H[qc_summary.json]
+    G --> I[Validated token representations]
+
+    I --> J[Next: corpus-wide TF-IDF]
+    J --> K[Adjacent-period cosine similarity]
+    K --> L[Textual novelty]
+```
+
+## Local SSD Scratch Architecture
+
+Stage 4 exposed a practical infrastructure constraint: directly reading and writing tens of thousands of small files over the NAS is substantially slower than local SSD I/O.
+
+The pipeline now supports an optional local scratch layout:
+
+```text
+canonical repository / NAS paths:
+data/interim/paper2/...
+
+physical scratch paths:
+~/paper2_stage4/...
+```
+
+Canonical manifests continue to record repo-relative logical paths. Machine-specific scratch paths are used only for physical I/O and are not persisted as canonical identifiers.
+
+For Stage 4 tokenization on the M1 Max, local SSD processing improved throughput dramatically. Worker-count testing produced:
+
+| Workers | Throughput |
+|---:|---:|
+| 6 | 569.1 docs/s |
+| 8 | 744.3 docs/s |
+| 10 | 751.1 docs/s |
+
+The production setting is therefore **8 workers**, which captures nearly all available throughput without unnecessary process overhead.
+
+Completed scratch artifacts are synchronized back to the canonical NAS location after validation.
+
+## Stage 4 Outputs
+
+```text
+data/interim/paper2/tokens/
+    sudachi_a_raw/
+        manifest.csv
+        <edinetCode>/
+            <docID>.tokens.txt
+
+    sudachi_b_raw/
+        manifest.csv
+        ...
+
+    sudachi_c_raw/
+        manifest.csv
+        ...
+
+    sudachi_a_num/
+        manifest.csv
+        ...
+
+    sudachi_b_num/
+        manifest.csv
+        ...
+
+    sudachi_c_num/
+        manifest.csv
+        ...
+
+    qc_summary.json
+```
+
+Generated token files are pipeline artifacts and should remain outside Git.
+
+## Next Novelty Step
+
+The next step is no longer tokenization. It is to build full-corpus TF-IDF representations and compute cosine similarity for the **33,046 research-eligible adjacent annual-report pairs**.
+
+The primary methodological comparisons now include:
+
+- Sudachi A/B/C tokenization;
+- raw versus `<NUM>` normalization;
+- corpus-wide word-token TF-IDF;
+- character 3–5-gram TF-IDF as a tokenizer-robust alternative;
+- later firm- or industry-relative novelty transformations as robustness analyses.
+
+The validated six-variant token family allows these representation choices to be compared on an identical document universe.
 
 ---
 
