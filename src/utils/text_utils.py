@@ -1,7 +1,18 @@
-from sudachipy import dictionary, tokenizer
+from sudachipy import Dictionary, SplitMode
 import unicodedata
 
-_TOK = dictionary.Dictionary().create()
+_SUDACHI_DICT = Dictionary()
+_SUDACHI_TOKENIZERS = {}
+
+
+def _get_sudachi_tokenizer(split_mode: SplitMode):
+    """Return a cached Sudachi tokenizer for the requested split mode."""
+    key = str(split_mode)
+
+    if key not in _SUDACHI_TOKENIZERS:
+        _SUDACHI_TOKENIZERS[key] = _SUDACHI_DICT.create(split_mode)
+
+    return _SUDACHI_TOKENIZERS[key]
 
 
 def normalize_ja(text: str) -> str:
@@ -97,7 +108,7 @@ def _slice_at_natural_boundary(
 
 def tokenize_ja_safe(
     text: str,
-    split_mode: tokenizer.Tokenizer.SplitMode = tokenizer.Tokenizer.SplitMode.C,
+    split_mode: SplitMode = SplitMode.C,
     max_bytes: int = 48000,  # stay below Sudachi hard limit (~49149)
     normalize: bool = True,
     prefer_natural_boundaries: bool = False,
@@ -133,8 +144,9 @@ def tokenize_ja_safe(
                 "Internal chunking error: UTF-8 chunk exceeds max_bytes"
             )
 
+        sudachi_tokenizer = _get_sudachi_tokenizer(split_mode)
         tokens.extend(
-            [m.surface() for m in _TOK.tokenize(chunk, split_mode)]
+            [m.surface() for m in sudachi_tokenizer.tokenize(chunk)]
         )
         start = next_start
 
