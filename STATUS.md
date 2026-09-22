@@ -1,6 +1,6 @@
 # Paper 2 — Current Status
 
-**Last updated:** 2026-09-21
+**Last updated:** 2026-09-22
 
 ## Current thesis
 
@@ -265,17 +265,19 @@ sudachi_b_raw -> sudachi_b_num
 sudachi_c_raw -> sudachi_c_num
 ```
 
-Fully numeric tokens are replaced with the literal token `<NUM>`. The transformation is deliberately one-input-token to one-output-token, so raw and number-normalized token counts must remain identical document by document.
+The final number-normalized representations use semantic numeric normalization:
 
-Final numeric replacement totals are:
+```text
+numeric magnitudes        -> <NUM>
+percentages               -> <NUM>%
+yen-denominated amounts   -> <NUM>円
+```
 
-| Variant | Replacements | Share of tokens |
-|---|---:|---:|
-| `sudachi_a_num` | 5,329,886 | 4.69% |
-| `sudachi_b_num` | 5,329,860 | 4.87% |
-| `sudachi_c_num` | 5,329,555 | 5.03% |
+Japanese scale markers such as `万`, `億`, and `兆` are treated as part of numeric magnitude, while semantically meaningful mixed expressions such as `3Q`, `1人`, and `100年企業` are intentionally retained.
 
-All three numeric variants contain **37,473 documents**, all completed successfully, and raw-versus-`<NUM>` token-count mismatches are **zero** for A, B, and C.
+The transformation remains one-input-token to one-output-token, so raw and number-normalized token counts remain identical document by document.
+
+All three numeric variants contain **37,473 documents**, all completed successfully, and raw-versus-normalized token-count mismatches are **zero** for A, B, and C.
 
 #### Stage 4C — QC
 
@@ -307,39 +309,55 @@ Stage 4 token preparation should therefore now be treated as **complete and vali
 
 ### Stage 5 — TF-IDF / cosine textual novelty
 
-Stage 5 is now implemented and has been run across the complete six-variant Stage 4 token family.
+Stage 5 is now **complete, validated, and frozen**.
 
-The stage:
+The stage fits corpus-wide TF-IDF on the common **37,473-document** universe and computes adjacent-period cosine similarity / novelty for the same **33,046 research-eligible annual-report pairs** across all six Stage 4 representations.
 
-1. reads one validated token variant at a time;
-2. fits a corpus-wide TF-IDF representation over the common 37,473-document universe;
-3. computes cosine similarity for the 33,046 research-eligible adjacent annual-report pairs;
-4. defines document-level textual novelty as:
+Final novelty summaries are:
+
+| Variant | Mean novelty | Median novelty |
+|---|---:|---:|
+| `sudachi_a_raw` | 0.106852 | 0.088598 |
+| `sudachi_b_raw` | 0.109630 | 0.091106 |
+| `sudachi_c_raw` | 0.111810 | 0.093010 |
+| `sudachi_a_num` | 0.049687 | 0.034892 |
+| `sudachi_b_num` | 0.051269 | 0.036312 |
+| `sudachi_c_num` | 0.052434 | 0.037234 |
+
+The Sudachi A/B/C variants are nearly identical within the raw and normalized families, with pairwise correlations around 0.997–0.999. Raw versus normalized novelty remains strongly related but meaningfully different: Pearson correlations are roughly 0.88 and Spearman correlations are around 0.71.
+
+The primary specification is `sudachi_c_num`. The main representation robustness alternative is `sudachi_c_raw`. Sudachi A/B variants remain secondary robustness checks.
+
+Stage 5 also produces a representation-independent `pair_diagnostics.csv` using the exact Stage 3 MD&A character counts. It contains `prevMdnaLength`, `currMdnaLength`, `lengthRatio`, `logLengthChange`, and `absLogLengthChange`.
+
+The baseline C-num novelty measure is strongly related to absolute MD&A length change:
 
 ```text
-novelty = 1 - cosine_similarity
+Pearson corr(novelty, absLogLengthChange)  = 0.797
+Spearman corr(novelty, absLogLengthChange) = 0.592
 ```
 
-5. writes variant-specific similarity / novelty outputs and TF-IDF metadata.
+The relationship remains material after trimming extreme length changes:
 
-All six variants have now been processed:
+| Sample | Pearson | Spearman |
+|---|---:|---:|
+| Full sample | 0.797 | 0.592 |
+| Drop top 1% | 0.758 | 0.580 |
+| Drop top 5% | 0.633 | 0.526 |
+| Drop top 10% | 0.491 | 0.454 |
 
-```text
-sudachi_a_raw
-sudachi_a_num
-sudachi_b_raw
-sudachi_b_num
-sudachi_c_raw
-sudachi_c_num
-```
+Source-text spot checks show that absolute-maximum novelty cases can reflect large but genuine changes in disclosure scope or structure, while observations around the 99th percentile generally contain coherent and economically meaningful textual change rather than extraction failure.
 
-This changes the role of the six Stage 4 representations. They are no longer merely preprocessing candidates; they now form an explicit sensitivity analysis for the baseline novelty construction.
+The empirical treatment is now fixed:
 
-The first benchmark inspected in detail, `sudachi_c_num`, used the full **37,473-document** corpus and produced **33,046 adjacent-period similarity observations**. Its TF-IDF vocabulary contained approximately **241 thousand features**, with mean cosine similarity around **0.913**, corresponding to mean textual novelty around **0.087**.
+- keep C-num novelty intact as the main measure;
+- include `absLogLengthChange` as a main control;
+- use signed `logLengthChange` as a robustness specification;
+- rerun key models after excluding the top 5% and top 10% of absolute length changes;
+- do not residualize novelty against document length;
+- do not winsorize the baseline novelty measure at this stage.
 
-These results are preliminary diagnostics rather than final empirical evidence. The next task is to compare the six variants systematically before selecting the primary word-token specification and robustness variants.
-
-One preprocessing issue remains open: the current numeric normalization replaces fully numeric tokens with `<NUM>`, but numbers attached to units or other characters may require additional treatment. Because Stage 5 is fast relative to the earlier corpus-construction stages, this issue can be evaluated after the six-variant comparison rather than by prematurely changing Stage 4.
+Final Stage 5 validation confirms **33,046 rows**, **0 duplicate pairs**, **0 missing diagnostic values**, and exact reproduction of all six variant summary statistics after code cleanup.
 
 #### Local SSD scratch design
 
@@ -426,58 +444,51 @@ The three-firm exercise should be treated as a methodological diagnostic rather 
 
 The main remaining design decisions are:
 
-- exact textual novelty measure
-- whether novelty is document-level, sentence-level, or both
-- how to define persistent versus novel text
-- whether the main specification uses a continuous interaction or grouped novelty portfolios/bins
-- how LMMD, Japanese Financial BERT, and GPT sentiment are normalized for comparison
-- exact market-reaction window
-- controls and fixed effects
-- whether numerical changes receive separate treatment
-- which analyses are core and which are robustness
-- novelty may be sensitive not only to number handling and corpus-wide versus firm-specific IDF, but also to Japanese tokenization/representation choice
+- whether sentence-level or changed-text analyses are needed beyond the frozen document-level baseline;
+- how to define persistent versus novel portions of text in secondary analyses;
+- whether grouped novelty portfolios/bins add value beyond the planned continuous interaction;
+- how LMMD, Japanese Financial BERT, and GPT sentiment are normalized for comparison;
+- exact market-reaction window;
+- the remaining control set and fixed-effects structure;
+- which robustness analyses are sufficiently informative to include in the final paper;
+- whether firm- or industry-relative novelty transformations improve interpretation beyond the absolute baseline.
 
 ## Immediate next steps
 
-1. **Compare the completed six-variant word-token TF-IDF novelty results.**
-   - Compare Sudachi A/B/C under identical document and pair universes.
-   - Compare raw versus `<NUM>` normalization.
-   - Inspect vocabulary size, similarity / novelty distributions, pair coverage, and cross-variant correlations.
-   - Select a defensible primary word-token specification and designate the remaining variants as sensitivity / robustness checks.
-   - Decide only after this comparison whether numeric normalization needs another preprocessing iteration.
+1. **Build the regression-ready panel.**
+   - Merge baseline `sudachi_c_num` novelty and `sudachi_c_raw` robustness novelty.
+   - Merge `absLogLengthChange` and signed length-change diagnostics.
+   - Preserve firm, reporting-period, industry, and fixed-effect identifiers.
 
-2. **Add the character n-gram robustness branch.**
-   - Compute Japanese character 3–5-gram TF-IDF directly from canonical MD&A text.
-   - Compare character-based novelty with word-token novelty.
-
-3. **Run full-corpus novelty diagnostics.**
-   - Examine similarity / novelty distributions overall, by year, firm, and industry.
-   - Reproduce Toyota, MUFG, and Sony examples under corpus-wide weighting.
-   - Investigate tails, structural-change observations, and tokenization sensitivity.
-
-4. **Write the formal hypothesis-development section.**
-   - Develop H1 from the contextual-capacity mechanism.
-   - Develop H2 from the textual-change literature.
-   - State the competing interpretation that lexical methods may remain equally or more informative even in novel text.
-
-5. **Write the empirical specification before final regression coding.**
-   - Baseline sentiment regressions.
-   - Novelty main effect.
-   - Sentiment × novelty interaction.
-   - Relative model comparisons.
-   - Industry and year fixed effects.
-
-6. **Implement sentiment measurement.**
+2. **Implement sentiment measurement.**
    - LMMD / domain-specific lexical measure.
    - Japanese Financial BERT / contextual measure.
    - GPT / generative measure.
    - Preserve comparable document-level outputs for each model.
 
-7. **Adapt the Paper 1 market-data and regression infrastructure.**
-   - Reuse event-study and regression infrastructure where possible.
-   - Preserve historical sample construction without filtering on current EDINET listing status.
+3. **Write and freeze the empirical specification.**
+   - Baseline sentiment effects.
+   - Novelty main effect.
+   - Sentiment × novelty interaction.
+   - `absLogLengthChange` main control.
+   - Industry and year fixed effects.
+   - Length-tail and representation robustness specifications.
 
-8. **Update the Introduction and Abstract later.**
+4. **Adapt the Paper 1 market-data and regression infrastructure.**
+   - Reuse event-study and regression code where appropriate.
+   - Preserve historical sample construction without filtering on current listing status.
+
+5. **Add selected novelty robustness branches.**
+   - Japanese character 3–5-gram TF-IDF.
+   - Optional firm- or industry-relative novelty.
+   - Tail exclusions and signed-length-change specifications.
+
+6. **Write the formal hypothesis-development section.**
+   - Develop H1 from the contextual-capacity mechanism.
+   - Develop H2 from the textual-change literature.
+   - State the competing interpretation that lexical methods may remain equally or more informative even in novel text.
+
+7. **Update the Introduction and Abstract later.**
    - The current abstract still reflects the older lexical-versus-GPT framing and should not be treated as final.
 
 ## Current bottleneck
@@ -486,26 +497,26 @@ The literature review, MD&A extraction, and longitudinal matching stages are no 
 
 The bottleneck has shifted to:
 
-> **comparing and validating the completed six-variant full-sample TF-IDF / cosine-similarity novelty measures, then selecting the primary novelty specification and integrating it with sentiment and market reactions**
+> **integrating the frozen novelty specification with sentiment measures and market-reaction outcomes in a regression-ready panel**
 
-Stages 1–3 and the Stage 4 token-preparation layer are complete and QC-validated. Stage 5 word-token TF-IDF / cosine novelty has now been executed for all six Sudachi/raw-number variants. The immediate empirical task is therefore no longer basic novelty construction, but systematic cross-variant comparison: distributions, correlations, tokenization sensitivity, numerical-normalization sensitivity, and identification of the primary versus robustness specifications.
+Stages 1–5 are now complete through the baseline word-token novelty layer. The immediate empirical task is no longer novelty construction or representation selection. It is panel integration, sentiment measurement, and implementation of the main sentiment × novelty specification.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately 48–50%
+**Overall paper:** approximately 53–56%
 
 Approximate status by component:
 
 - Related Work / research gap: 80–85%
 - Research question / hypotheses: 65–75%
-- Empirical design: 45–50%
+- Empirical design: 60–65%
 - Data acquisition / reference-data infrastructure: 95%
-- Coding / pipeline adaptation: 80–85%
+- Coding / pipeline adaptation: 85–90%
 - MD&A extraction core / batch pipeline: 100%
 - Longitudinal matching: 100%
-- Novelty implementation: 55–60%
+- Novelty implementation: 90–95%
 - Main results: 0–10%
 - Robustness tests: 0%
 - Final Introduction / Abstract / Conclusion: 20–30%

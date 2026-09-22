@@ -8,7 +8,7 @@ This document summarizes the implemented Paper 2 data pipeline through Stage 5 w
 - **Stage 2 — MD&A extraction and quality control:** complete and frozen.
 - **Stage 3 — Longitudinal reporting-period matching:** complete and frozen.
 - **Stage 4 — Token representation construction and QC:** complete and validated.
-- **Stage 5 — Word-token TF-IDF / cosine textual novelty:** implemented and run for all six Stage 4 variants; cross-variant comparison and final baseline selection are next.
+- **Stage 5 — Word-token TF-IDF / cosine textual novelty:** complete, validated, and frozen. The primary specification is `sudachi_c_num`; `sudachi_c_raw` is the main representation robustness alternative, while Sudachi A/B variants are secondary robustness checks.
 
 The current corpus contains **37,807 Annual Securities Reports** and **37,757 successfully extracted MD&A sections**.
 
@@ -52,6 +52,8 @@ flowchart TD
     S --> T[Stage 5<br/>TF-IDF / cosine novelty]
     T --> U[Six-variant novelty outputs]
     U --> V[Cross-variant comparison<br/>and baseline selection]
+    V --> W[Pair-level length diagnostics]
+    W --> X[Frozen Stage 5 handoff<br/>to panel / sentiment integration]
 ```
 
 ---
@@ -728,13 +730,19 @@ Each variant directory contains its own `manifest.csv`.
 
 Numeric normalization is implemented as a deterministic transformation of the existing raw token files rather than by rerunning Sudachi.
 
-Fully numeric tokens are replaced with:
+The final semantic normalization collapses numeric magnitude while preserving economically meaningful number classes:
 
 ```text
-<NUM>
+numeric magnitudes        -> <NUM>
+percentages               -> <NUM>%
+yen-denominated amounts   -> <NUM>円
 ```
 
-The transformation is strictly one-input-token to one-output-token, so the number-normalized variants must preserve document-level token counts exactly.
+Japanese scale markers such as `十`, `百`, `千`, `万`, `億`, and `兆` are treated as part of numeric magnitude rather than as independent semantic content. Thus expressions such as `1億`, `1億2万`, and `1兆1千億` collapse to `<NUM>`, while yen amounts collapse to `<NUM>円`.
+
+Mixed alphanumeric or semantically meaningful expressions such as `3Q`, `2025年問題`, `1人`, and `100年企業` are intentionally retained.
+
+The transformation remains one-input-token to one-output-token, so the number-normalized variants preserve document-level token counts exactly.
 
 The derived variants are:
 
@@ -743,14 +751,6 @@ sudachi_a_num
 sudachi_b_num
 sudachi_c_num
 ```
-
-Final replacement statistics are:
-
-| Variant | Replacements | Share of tokens |
-|---|---:|---:|
-| `sudachi_a_num` | 5,329,886 | 4.69% |
-| `sudachi_b_num` | 5,329,860 | 4.87% |
-| `sudachi_c_num` | 5,329,555 | 5.03% |
 
 All three numeric variants contain **37,473 documents**, and document-level token counts match the corresponding raw variants exactly.
 
@@ -858,7 +858,7 @@ For Stage 4 tokenization on the M1 Max, local SSD processing improved throughput
 
 The production setting is therefore **8 workers**, which captures nearly all available throughput without unnecessary process overhead.
 
-Completed scratch artifacts are synchronized back to the canonical NAS location after validation.
+Completed scratch artifacts are archived and transferred back to the canonical NAS location after validation. For large trees of small files, `tar.gz` plus SSH streaming is preferred for bulk movement, with `rsync -n` available as a verification pass.
 
 ## Stage 4 Outputs
 
@@ -938,39 +938,116 @@ flowchart TD
     C --> J[TF-IDF metadata]
 ```
 
-## Current Diagnostic Status
+## Final Stage 5 Results
 
-All six word-token variants have completed. The first benchmark inspected in detail, `sudachi_c_num`, produced:
+All six word-token variants completed on the identical **37,473-document** corpus and **33,046-pair** research sample.
 
-- **37,473 documents** in the fitted TF-IDF corpus;
-- approximately **241 thousand TF-IDF features**;
-- **33,046** adjacent-period pair observations;
-- mean cosine similarity of approximately **0.913**;
-- mean textual novelty of approximately **0.087**.
+Final pair-level novelty summaries are:
 
-These values are diagnostic rather than final paper results. The next methodological step is to compare the six completed variants systematically before selecting the primary word-token novelty specification.
+| Variant | Mean novelty | Median novelty |
+|---|---:|---:|
+| `sudachi_a_raw` | 0.106852 | 0.088598 |
+| `sudachi_b_raw` | 0.109630 | 0.091106 |
+| `sudachi_c_raw` | 0.111810 | 0.093010 |
+| `sudachi_a_num` | 0.049687 | 0.034892 |
+| `sudachi_b_num` | 0.051269 | 0.036312 |
+| `sudachi_c_num` | 0.052434 | 0.037234 |
 
-The comparison should examine:
+The Sudachi A/B/C choices are extremely similar within the raw family and within the number-normalized family. Pairwise correlations are approximately 0.997–0.999 within each family, indicating that segmentation mode has little effect on the ranking of firm-year novelty.
 
-- vocabulary dimensionality;
-- similarity and novelty distributions;
-- raw versus `<NUM>` sensitivity;
-- Sudachi A/B/C sensitivity;
-- pairwise correlations among novelty measures;
-- extreme observations and structural-change cases;
-- whether the current fully-numeric-token normalization misses economically meaningful numeric forms attached to units or other characters.
+Raw versus number-normalized novelty is meaningfully different. Pearson correlations remain high at roughly 0.88, while Spearman correlations are around 0.71. Number normalization therefore changes not only the level of novelty but also the ranking of some firm-year observations.
 
-## Next Novelty Step
+The primary word-token novelty specification is now:
 
-The next step is no longer TF-IDF construction itself. It is to evaluate the six completed word-token novelty specifications and choose a defensible primary specification plus robustness alternatives.
+```text
+baseline_variant = sudachi_c_num
+```
 
-After that comparison, the planned novelty robustness work includes:
+The main representation robustness alternative is:
 
-- Japanese character 3–5-gram TF-IDF as a tokenizer-robust alternative;
-- possible refinements to numeric normalization;
-- later firm- or industry-relative novelty transformations.
+```text
+sudachi_c_raw
+```
 
-The validated six-variant design allows these representation choices to be evaluated on an identical document and pair universe.
+Sudachi A/B variants are retained as secondary robustness checks rather than equally weighted candidate baselines.
+
+## Pair-Level Length Diagnostics
+
+Stage 5 also writes a representation-independent:
+
+```text
+data/interim/paper2/novelty/pair_diagnostics.csv
+```
+
+derived directly from the Stage 3 `prev_textChars` and `curr_textChars` fields.
+
+The diagnostics include:
+
+```text
+prevMdnaLength
+currMdnaLength
+lengthRatio
+logLengthChange
+absLogLengthChange
+```
+
+For the 33,046 research-eligible pairs:
+
+- median `lengthRatio` is approximately **1.013**;
+- median `absLogLengthChange` is approximately **0.059**;
+- the 95th percentile of `absLogLengthChange` is approximately **1.130**;
+- the 99th percentile is approximately **1.798**.
+
+Length change is strongly related to baseline C-num novelty. In the full sample:
+
+```text
+Pearson corr(novelty, absLogLengthChange)  = 0.797
+Spearman corr(novelty, absLogLengthChange) = 0.592
+```
+
+The relationship remains meaningful after excluding extreme length changes:
+
+| Sample | Pearson | Spearman |
+|---|---:|---:|
+| Full sample | 0.797 | 0.592 |
+| Drop top 1% absolute length change | 0.758 | 0.580 |
+| Drop top 5% | 0.633 | 0.526 |
+| Drop top 10% | 0.491 | 0.454 |
+
+This indicates that disclosure expansion/contraction is an important systematic component of textual novelty, not merely an artifact of a few extreme filings.
+
+The empirical design will therefore keep the novelty measure intact and use `absLogLengthChange` as a main control. Signed `logLengthChange` and exclusions of extreme length-change observations will be used as robustness specifications. Novelty will not be residualized against length, and no baseline winsorization is currently planned.
+
+## Stage 5 Validation and Freeze
+
+Source-text spot checks were performed on absolute-maximum novelty cases and on observations around the 99th percentile.
+
+The extreme maximum tail includes genuine but unusually large changes in disclosure scope or structure, including major expansions and contractions of the MD&A section. Around the 99th percentile, high novelty generally corresponds to coherent, economically meaningful disclosure changes rather than extraction failure.
+
+The final Stage 5 validation reports:
+
+```text
+pair rows = 33,046
+duplicate pairs = 0
+missing pair-diagnostic values = 0
+```
+
+All six variant means and medians reproduce exactly after the Stage 5 code cleanup.
+
+Stage 5 should therefore now be treated as **complete, validated, and frozen**.
+
+## Next Pipeline Step
+
+The next substantive step is to build the regression-ready panel by integrating:
+
+- baseline `sudachi_c_num` novelty;
+- `sudachi_c_raw` and other representation robustness measures;
+- `absLogLengthChange` and signed length-change diagnostics;
+- sentiment outputs;
+- market-reaction outcomes;
+- firm/year/industry identifiers and fixed-effect variables.
+
+Character 3–5-gram novelty remains a planned tokenizer-robustness branch rather than a blocker for the main panel construction.
 
 ---
 
