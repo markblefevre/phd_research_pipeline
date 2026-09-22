@@ -5,7 +5,10 @@ import time
 from pathlib import Path
 from typing import Any, Dict
 
-from src.mdna_analysis.textual_novelty import run_textual_novelty
+from src.mdna_analysis.textual_novelty import (
+    run_pair_diagnostics,
+    run_textual_novelty,
+)
 
 
 def _repo_root() -> Path:
@@ -58,6 +61,7 @@ def run_stage_textual_novelty(
             if source_root_cfg
             else canonical_token_root
         )
+
 
         output_dir = root / novelty_cfg.get(
             "output_dir",
@@ -121,6 +125,23 @@ def run_stage_textual_novelty(
             raise FileNotFoundError(
                 f"Missing Stage 3 research-eligible pairs: {pairs_csv}"
             )
+
+        logger.info("[RUN] textual_novelty pair diagnostics")
+        diagnostics = run_pair_diagnostics(
+            pairs_csv=pairs_csv,
+            output_dir=output_dir,
+            work_output_dir=work_output_dir,
+        )
+        logger.info(
+            "textual_novelty pair diagnostics produced %s rows",
+            len(diagnostics),
+        )
+        logger.info(
+            "textual_novelty length diagnostics: "
+            "median ratio=%.6f median abs log change=%.6f",
+            diagnostics["lengthRatio"].median(),
+            diagnostics["absLogLengthChange"].median(),
+        )
 
         for variant in variants:
             logger.info(

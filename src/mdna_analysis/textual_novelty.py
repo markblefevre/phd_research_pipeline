@@ -117,6 +117,127 @@ def _build_token_file_list(
     return files
 
 
+
+def run_pair_diagnostics(
+    *,
+    pairs_csv: str | Path,
+    output_dir: str | Path,
+    work_output_dir: str | Path | None = None,
+) -> pd.DataFrame:
+    """
+    Compute representation-independent pair diagnostics from the frozen Stage 3
+    research-eligible pair manifest.
+
+    Stage 3 already carries exact extracted MD&A character counts in
+    ``prev_textChars`` and ``curr_textChars``.  Stage 5 therefore derives its
+    length diagnostics directly from those columns rather than rereading the
+    Stage 2 text files.
+
+    Output columns added:
+
+        prevMdnaLength
+        currMdnaLength
+        lengthRatio
+        logLengthChange
+        absLogLengthChange
+
+    where:
+
+        lengthRatio = currMdnaLength / prevMdnaLength
+        logLengthChange = log(currMdnaLength) - log(prevMdnaLength)
+    """
+    pairs_csv = Path(pairs_csv).expanduser().resolve()
+    output_dir = Path(output_dir)
+
+    physical_output_root = (
+        Path(work_output_dir).expanduser().resolve()
+        if work_output_dir is not None
+        else output_dir
+    )
+    physical_output_root.mkdir(parents=True, exist_ok=True)
+
+    pairs = pd.read_csv(
+        pairs_csv,
+        dtype={
+            "edinetCode": "string",
+            "prev_docID": "string",
+            "curr_docID": "string",
+        },
+        low_memory=False,
+    )
+
+    required_pair_cols = {
+        "edinetCode",
+        "prev_docID",
+        "curr_docID",
+        "prev_textChars",
+        "curr_textChars",
+    }
+    missing = required_pair_cols - set(pairs.columns)
+    if missing:
+        raise ValueError(
+            f"Missing required columns in {pairs_csv}: {sorted(missing)}"
+        )
+
+    duplicate_pairs = int(
+        pairs.duplicated(
+            ["edinetCode", "prev_docID", "curr_docID"]
+        ).sum()
+    )
+    if duplicate_pairs:
+        raise ValueError(
+            f"Pair manifest contains {duplicate_pairs:,} duplicate pair row(s)"
+        )
+
+    prev_lengths = pd.to_numeric(
+        pairs["prev_textChars"],
+        errors="coerce",
+    )
+    curr_lengths = pd.to_numeric(
+        pairs["curr_textChars"],
+        errors="coerce",
+    )
+
+    invalid_prev = int(prev_lengths.isna().sum() + (prev_lengths <= 0).sum())
+    invalid_curr = int(curr_lengths.isna().sum() + (curr_lengths <= 0).sum())
+    if invalid_prev or invalid_curr:
+        raise ValueError(
+            "Stage 3 text-character counts must be positive numeric values: "
+            f"invalid_prev={invalid_prev:,}, invalid_curr={invalid_curr:,}"
+        )
+
+    result = pairs.copy()
+    result["prevMdnaLength"] = prev_lengths.astype(np.int64)
+    result["currMdnaLength"] = curr_lengths.astype(np.int64)
+    result["lengthRatio"] = (
+        result["currMdnaLength"] / result["prevMdnaLength"]
+    )
+    result["logLengthChange"] = (
+        np.log(result["currMdnaLength"])
+        - np.log(result["prevMdnaLength"])
+    )
+    result["absLogLengthChange"] = result["logLengthChange"].abs()
+
+    diagnostics_output = physical_output_root / "pair_diagnostics.csv"
+    result.to_csv(
+        diagnostics_output,
+        index=False,
+        encoding="utf-8",
+    )
+
+    print(
+        f"Pair diagnostics written: {diagnostics_output} "
+        f"rows={len(result):,}"
+    )
+    print(
+        "Length diagnostics: "
+        f"median_ratio={result['lengthRatio'].median():.6f} "
+        f"median_abs_log_change={result['absLogLengthChange'].median():.6f} "
+        f"p99_abs_log_change={result['absLogLengthChange'].quantile(0.99):.6f}"
+    )
+
+    return result
+
 def run_textual_novelty(
     *,
     pairs_csv: str | Path,
@@ -339,7 +460,8 @@ def run_textual_novelty(
             "norm": "l2",
             "lowercase": False,
             "numberHandling": (
-                "numeric tokens replaced with <NUM>"
+                "numeric magnitudes collapsed to <NUM>; "
+                "percentages to <NUM>%; yen amounts to <NUM>円"
                 if variant.endswith("_num")
                 else "raw numeric tokens retained"
             ),

@@ -6,10 +6,10 @@ run_id = "auto"
 edinet_download = false
 mdna_extract = false
 longitudinal_match = false
-text_tokenization = true
+text_tokenization = false
+textual_novelty = true
 
 text_stats = false
-textual_novelty = false
 sentiment = false
 build_panel = false
 regression = false
@@ -71,3 +71,17 @@ work_output_dir = "~/paper2_stage4/tokens"
 variants = ["sudachi_a_raw", "sudachi_b_raw", "sudachi_c_raw"]
 derive_num_variants = true
 run_qc = true
+
+## STAGE 5 TEXTUAL_NOVELTY
+[textual_novelty]
+output_dir = "data/interim/paper2/novelty"
+source_root = "~/paper2_stage4/tokens"
+work_output_dir = "~/paper2_stage5/novelty"
+baseline_variant = "sudachi_c_num"
+min_df = 2
+max_df = 1.0
+ngram_min = 1
+ngram_max = 1
+sublinear_tf = false
+variants = ["sudachi_a_raw", "sudachi_b_raw", "sudachi_c_raw",
+    "sudachi_a_num", "sudachi_b_num", "sudachi_c_num"]
