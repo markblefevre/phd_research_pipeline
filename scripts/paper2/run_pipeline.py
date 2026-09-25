@@ -5,7 +5,6 @@ import sys
 import json
 import logging
 import subprocess
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -23,6 +22,8 @@ from src.pipeline.stages.edinet_download import run_stage_edinet_download
 from src.pipeline.stages.mdna_extract import run_stage_mdna_extract
 from src.pipeline.stages.longitudinal_match import run_stage_longitudinal_match
 from src.pipeline.stages.tokenize_mdna import run_stage_text_tokenization
+from src.pipeline.stages.textual_novelty import run_stage_textual_novelty
+from src.pipeline.stages.novelty_plots import run_stage_novelty_plots
 
 from src.prices.fetch_jpx_prices import run_fetch_jpx_prices
 from src.prices.compute_lagged_rolling_vol_csv import compute_lagged_rolling_vol_csv
@@ -860,6 +861,18 @@ def main() -> int:
         logger.info("Stage text_tokenization disabled")
 
     
+    # Stage 5: Corpus-wide TF-IDF textual novelty
+    if bool(stages.get("textual_novelty", False)):
+        run_stage_textual_novelty(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage textual_novelty disabled")
+
+    # Stage 5 visualization / QC (consumes frozen Stage 3 + Stage 5 outputs)
+    if bool(stages.get("novelty_plots", False)):
+        run_stage_novelty_plots(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage novelty_plots disabled")
+
     if bool(stages.get("price_data", False)):
         run_stage_price_data(paper=paper, cfg=cfg, logger=logger)
     else:

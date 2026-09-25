@@ -1,6 +1,6 @@
 # Paper 2 Pipeline Overview
 
-This document summarizes the implemented Paper 2 data pipeline through Stage 5 word-token textual-novelty construction. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 prepares six validated Japanese token representations. Stage 5 fits corpus-wide TF-IDF representations and computes adjacent-period cosine similarity / textual novelty for each variant.
+This document summarizes the implemented Paper 2 data pipeline through the frozen Stage 5 word-token textual-novelty layer and its reproducible visualization/QC outputs. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 prepares six validated Japanese token representations. Stage 5 fits corpus-wide TF-IDF representations, computes adjacent-period cosine similarity / textual novelty for each variant, and produces descriptive and diagnostic novelty figures. The next substantive pipeline step is Stage 6 analysis-panel integration and sentiment measurement.
 
 ## Current Pipeline Status
 
@@ -9,6 +9,8 @@ This document summarizes the implemented Paper 2 data pipeline through Stage 5 w
 - **Stage 3 — Longitudinal reporting-period matching:** complete and frozen.
 - **Stage 4 — Token representation construction and QC:** complete and validated.
 - **Stage 5 — Word-token TF-IDF / cosine textual novelty:** complete, validated, and frozen. The primary specification is `sudachi_c_num`; `sudachi_c_raw` is the main representation robustness alternative, while Sudachi A/B variants are secondary robustness checks.
+- **Stage 5 visualization / QC:** implemented for reproducible publication and diagnostic plots, including temporal novelty diagnostics and novelty-versus-length analysis.
+- **Stage 6 — Analysis panel and sentiment integration:** next substantive stage; begin with a canonical regression-ready panel foundation before attaching sentiment and market-reaction outputs.
 
 The current corpus contains **37,807 Annual Securities Reports** and **37,757 successfully extracted MD&A sections**.
 
@@ -1036,15 +1038,39 @@ All six variant means and medians reproduce exactly after the Stage 5 code clean
 
 Stage 5 should therefore now be treated as **complete, validated, and frozen**.
 
-## Next Pipeline Step
+## Stage 5 Visualization / QC Layer
 
-The next substantive step is to build the regression-ready panel by integrating:
+A separate plotting layer generates reproducible descriptive and diagnostic outputs from the frozen Stage 5 artifacts. Plotting is intentionally separated from TF-IDF/novelty computation so that figures can be regenerated without recomputing the text representations.
+
+The planned/generated figure family includes:
+
+```text
+outputs/paper2/figures/novelty/
+    annual_novelty_summary.csv
+    paper/
+        novelty_distribution.pdf / .png
+        novelty_by_fiscal_year.pdf / .png
+    diagnostics/
+        novelty_raw_vs_normalized_scatter.pdf / .png
+        novelty_raw_vs_normalized_by_year.pdf / .png
+        novelty_vs_length_change.pdf / .png
+        novelty_by_year_boxplot.pdf / .png
+```
+
+The annual summary exposes a pronounced 2018 discontinuity. C-num novelty for fiscal-year 2018 reports has a mean of approximately **0.146** and median of approximately **0.134**, versus approximately **0.052** and **0.038** in 2019. The broad-based shift coincides with the Japanese FSA narrative-disclosure reform effective for fiscal years ending on or after March 31, 2018. The baseline sample retains 2018, while an exclusion of the 2018 regulatory-transition observations is planned as a robustness specification.
+
+The novelty-versus-length visualization documents the strong relationship already quantified in `pair_diagnostics.csv`. This figure should be retained as a candidate appendix or main-text diagnostic because it motivates the `absLogLengthChange` control and the planned length-tail robustness tests. A further diagnostic should assess whether the 2018 novelty discontinuity remains after accounting for MD&A length change.
+
+## Next Pipeline Step — Stage 6
+
+Stage 6 should begin with an analysis-panel foundation before sentiment models are run. The canonical panel should establish one auditable row per research-eligible adjacent annual pair and integrate:
 
 - baseline `sudachi_c_num` novelty;
 - `sudachi_c_raw` and other representation robustness measures;
 - `absLogLengthChange` and signed length-change diagnostics;
-- sentiment outputs;
-- market-reaction outcomes;
+- identifiers and dates needed for subsequent sentiment and market-data joins;
+- sentiment outputs (Stage 6B);
+- market-reaction outcomes (subsequent integration);
 - firm/year/industry identifiers and fixed-effect variables.
 
 Character 3–5-gram novelty remains a planned tokenizer-robustness branch rather than a blocker for the main panel construction.

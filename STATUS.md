@@ -1,6 +1,6 @@
 # Paper 2 — Current Status
 
-**Last updated:** 2026-09-22
+**Last updated:** 2026-09-25
 
 ## Current thesis
 
@@ -359,6 +359,18 @@ The empirical treatment is now fixed:
 
 Final Stage 5 validation confirms **33,046 rows**, **0 duplicate pairs**, **0 missing diagnostic values**, and exact reproduction of all six variant summary statistics after code cleanup.
 
+#### Stage 5 visualization and temporal diagnostics
+
+A dedicated Stage 5 visualization/QC layer has now been added so that descriptive figures are generated reproducibly from the frozen novelty outputs rather than assembled manually. The plotting stage keeps computation separate from presentation and writes publication-oriented and diagnostic figures, together with an annual novelty summary.
+
+The figure set includes the baseline/raw novelty distributions, C-num versus C-raw comparison, novelty by fiscal year, raw versus normalized novelty by year, novelty versus absolute log MD&A length change, and year-by-year novelty distributions.
+
+The annual diagnostics reveal a pronounced 2018 discontinuity. For fiscal-year 2018 reports, mean C-num novelty is approximately **0.146** and the median is approximately **0.134**, compared with approximately **0.052** and **0.038** in 2019. The increase is broad-based rather than being driven only by extreme observations. Its timing coincides with the Japanese FSA narrative-disclosure reform effective for fiscal years ending on or after March 31, 2018, which reorganized MD&A-related disclosure content and increased the emphasis on management-perspective analysis. This provides institutional face validity for the novelty measure, while also identifying 2018 as a regulatory-transition year that requires explicit robustness treatment.
+
+The current empirical treatment is to retain 2018 in the baseline with year fixed effects and rerun key specifications excluding the 2018 regulatory-transition observations. A further diagnostic should test how much of the 2018 novelty spike is explained by contemporaneous MD&A length changes and whether 2018 remains unusually novel conditional on length change.
+
+The novelty-versus-length diagnostic is also now treated as a potential paper/appendix figure rather than only internal QC because the strong relationship directly anticipates a likely measurement concern.
+
 #### Local SSD scratch design
 
 Stage 4 also exposed a significant infrastructure issue: tens of thousands of small files are slow to process directly over the NAS. The canonical corpus remains on the NAS, but high-I/O stages can use a configurable local SSD scratch directory.
@@ -455,12 +467,12 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1. **Build the regression-ready panel.**
+1. **Stage 6A — Build the regression-ready analysis-panel foundation.**
    - Merge baseline `sudachi_c_num` novelty and `sudachi_c_raw` robustness novelty.
    - Merge `absLogLengthChange` and signed length-change diagnostics.
    - Preserve firm, reporting-period, industry, and fixed-effect identifiers.
 
-2. **Implement sentiment measurement.**
+2. **Stage 6B — Implement sentiment measurement.**
    - LMMD / domain-specific lexical measure.
    - Japanese Financial BERT / contextual measure.
    - GPT / generative measure.

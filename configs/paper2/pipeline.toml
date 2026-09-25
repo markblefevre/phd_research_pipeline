@@ -7,7 +7,8 @@ edinet_download = false
 mdna_extract = false
 longitudinal_match = false
 text_tokenization = false
-textual_novelty = true
+textual_novelty = false
+novelty_plots = true
 
 text_stats = false
 sentiment = false
@@ -76,6 +77,7 @@ run_qc = true
 [textual_novelty]
 output_dir = "data/interim/paper2/novelty"
 source_root = "~/paper2_stage4/tokens"
+mdna_source_root = "~/paper2_stage2/mdna"
 work_output_dir = "~/paper2_stage5/novelty"
 baseline_variant = "sudachi_c_num"
 min_df = 2
@@ -85,3 +87,15 @@ ngram_max = 1
 sublinear_tf = false
 variants = ["sudachi_a_raw", "sudachi_b_raw", "sudachi_c_raw",
     "sudachi_a_num", "sudachi_b_num", "sudachi_c_num"]
+
+
+## STAGE 5 VISUALIZATION / QC
+[novelty_plots]
+# Defaults to textual_novelty.work_output_dir when omitted.
+source_root = "~/paper2_stage5/novelty"
+output_dir = "outputs/paper2/figures/novelty"
+baseline_variant = "sudachi_c_num"
+raw_variant = "sudachi_c_raw"
+formats = ["png", "pdf"]
+# Avoid sparse boundary-year publication plots without hard-coding years.
+min_year_observations = 25
