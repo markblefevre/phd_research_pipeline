@@ -1,6 +1,6 @@
 # Paper 2 Pipeline Overview
 
-This document summarizes the implemented Paper 2 data pipeline through the frozen Stage 5 word-token textual-novelty layer and its reproducible visualization/QC outputs. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 prepares six validated Japanese token representations. Stage 5 fits corpus-wide TF-IDF representations, computes adjacent-period cosine similarity / textual novelty for each variant, and produces descriptive and diagnostic novelty figures. The next substantive pipeline step is Stage 6 analysis-panel integration and sentiment measurement.
+This document summarizes the implemented Paper 2 data pipeline through the completed Stage 6A analysis-panel foundation, including the frozen Stage 5 word-token textual-novelty layer and its reproducible visualization/QC outputs. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 prepares six validated Japanese token representations. Stage 5 fits corpus-wide TF-IDF representations, computes adjacent-period cosine similarity / textual novelty for each variant, and produces descriptive and diagnostic novelty figures. Stage 6A now provides the canonical pair-level analysis-panel foundation; the next substantive step is Stage 6B sentiment measurement.
 
 ## Current Pipeline Status
 
@@ -10,7 +10,8 @@ This document summarizes the implemented Paper 2 data pipeline through the froze
 - **Stage 4 — Token representation construction and QC:** complete and validated.
 - **Stage 5 — Word-token TF-IDF / cosine textual novelty:** complete, validated, and frozen. The primary specification is `sudachi_c_num`; `sudachi_c_raw` is the main representation robustness alternative, while Sudachi A/B variants are secondary robustness checks.
 - **Stage 5 visualization / QC:** implemented for reproducible publication and diagnostic plots, including temporal novelty diagnostics and novelty-versus-length analysis.
-- **Stage 6 — Analysis panel and sentiment integration:** next substantive stage; begin with a canonical regression-ready panel foundation before attaching sentiment and market-reaction outputs.
+- **Stage 6A — Analysis-panel foundation:** complete and validated; 33,046 rows × 41 columns, with zero missing joins across baseline/raw novelty and length diagnostics.
+- **Stage 6B — Sentiment measurement:** next substantive stage; begin with LMMD dictionary/token compatibility QC, followed by Japanese Financial BERT and GPT document-level sentiment.
 
 The current corpus contains **37,807 Annual Securities Reports** and **37,757 successfully extracted MD&A sections**.
 
@@ -1092,3 +1093,64 @@ The implemented stages establish several project-wide principles:
 - separate mechanical data construction from methodological choices.
 
 These principles should continue through Stage 4 and later empirical stages.
+
+# Stage 6A — Analysis-Panel Foundation
+
+## Purpose
+
+Stage 6A creates the canonical pair-level foundation for subsequent sentiment, market-reaction, and regression work. It deliberately starts from the frozen Stage 3 research-eligible pair manifest rather than treating a Stage 5 variant output as the authoritative sample.
+
+The stage joins Stage 5 measures strictly on:
+
+```text
+edinetCode + prev_docID + curr_docID
+```
+
+and preserves the full Stage 3 pair metadata.
+
+## Inputs and Measures
+
+Stage 6A incorporates:
+
+```text
+baseline novelty:    sudachi_c_num
+robustness novelty:  sudachi_c_raw
+
+pair diagnostics:
+    prevMdnaLength
+    currMdnaLength
+    lengthRatio
+    logLengthChange
+    absLogLengthChange
+```
+
+The canonical output is:
+
+```text
+data/interim/paper2/analysis/analysis_panel.csv
+```
+
+with a companion metadata JSON recording inputs, join diagnostics, dimensions, and novelty summaries.
+
+## Validation
+
+The completed Stage 6A panel contains:
+
+| Metric | Result |
+|---|---:|
+| Rows | 33,046 |
+| Columns | 41 |
+| Missing C-num novelty/cosine joins | 0 |
+| Missing C-raw novelty/cosine joins | 0 |
+| Missing length-diagnostic joins | 0 |
+
+The C-num and C-raw novelty means and medians exactly reproduce the frozen Stage 5 summaries, providing an additional end-to-end integrity check.
+
+Stage 6A should therefore be treated as **complete and validated**. Later sentiment and market-reaction measures should be produced independently and joined to this canonical foundation.
+
+# Next — Stage 6B Sentiment Measurement
+
+The immediate next task is document-level sentiment measurement. The first substep is an LMMD dictionary/token compatibility diagnostic using the validated Stage 4 `sudachi_c_raw` representation. This will measure actual Japanese dictionary coverage before full-sample LMMD scoring. The Paper 1 lexical scoring concept can then be retained while the surrounding implementation is adapted to the Paper 2 `edinetCode + docID` architecture.
+
+Japanese Financial BERT and GPT sentiment should follow as independent document-level measures, with comparable outputs suitable for joining to the Stage 6A panel.
+

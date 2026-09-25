@@ -24,6 +24,7 @@ from src.pipeline.stages.longitudinal_match import run_stage_longitudinal_match
 from src.pipeline.stages.tokenize_mdna import run_stage_text_tokenization
 from src.pipeline.stages.textual_novelty import run_stage_textual_novelty
 from src.pipeline.stages.novelty_plots import run_stage_novelty_plots
+from src.pipeline.stages.analysis_panel import run_stage_analysis_panel
 
 from src.prices.fetch_jpx_prices import run_fetch_jpx_prices
 from src.prices.compute_lagged_rolling_vol_csv import compute_lagged_rolling_vol_csv
@@ -872,6 +873,12 @@ def main() -> int:
         run_stage_novelty_plots(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage novelty_plots disabled")
+
+    # Stage 6A: frozen pair-level analysis-panel foundation
+    if bool(stages.get("analysis_panel", False)):
+        run_stage_analysis_panel(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage analysis_panel disabled")
 
     if bool(stages.get("price_data", False)):
         run_stage_price_data(paper=paper, cfg=cfg, logger=logger)

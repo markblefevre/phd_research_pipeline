@@ -8,7 +8,8 @@ mdna_extract = false
 longitudinal_match = false
 text_tokenization = false
 textual_novelty = false
-novelty_plots = true
+novelty_plots = false
+analysis_panel = true
 
 text_stats = false
 sentiment = false
@@ -99,3 +100,13 @@ raw_variant = "sudachi_c_raw"
 formats = ["png", "pdf"]
 # Avoid sparse boundary-year publication plots without hard-coding years.
 min_year_observations = 25
+
+
+## STAGE 6A ANALYSIS PANEL
+[analysis_panel]
+# Stage 6A joins the frozen Stage 3 pair manifest to the primary/robustness
+# Stage 5 novelty measures and pair-level length diagnostics.
+novelty_source_root = "~/paper2_stage5/novelty"
+output_csv = "data/interim/paper2/analysis/analysis_panel.csv"
+baseline_variant = "sudachi_c_num"
+raw_variant = "sudachi_c_raw"

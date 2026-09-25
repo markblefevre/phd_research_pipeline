@@ -398,6 +398,28 @@ This design improved Sudachi tokenization throughput dramatically. On the M1 Max
 The 8-worker setting captures essentially all available speedup while avoiding unnecessary process overhead. Future stages that perform heavy small-file I/O should reuse the same canonical-NAS / local-scratch pattern.
 
 
+
+### Stage 6A — analysis-panel foundation
+
+Stage 6A is now **complete and validated**. It begins from the frozen Stage 3 research-eligible pair manifest and creates the canonical pair-level analysis-panel foundation without recomputing upstream text measures.
+
+The stage performs strict one-to-one joins on `edinetCode + prev_docID + curr_docID` and incorporates:
+
+- baseline `sudachi_c_num` cosine similarity and textual novelty;
+- robustness `sudachi_c_raw` cosine similarity and textual novelty;
+- `prevMdnaLength`, `currMdnaLength`, `lengthRatio`, `logLengthChange`, and `absLogLengthChange`.
+
+The canonical output is:
+
+```text
+data/interim/paper2/analysis/analysis_panel.csv
+```
+
+Final Stage 6A validation confirms **33,046 rows × 41 columns**, exactly preserving the frozen research sample. All nine joined Stage 5 novelty and length-diagnostic fields have **zero missing values**. The resulting C-num and C-raw novelty means and medians exactly reproduce the frozen Stage 5 summaries.
+
+Stage 6A should therefore be treated as **complete and frozen as the initial analysis-panel foundation**. Sentiment measures and later market-reaction variables should be constructed independently and joined to this foundation rather than embedded in the upstream novelty stages.
+
+
 ## Current hypothesis structure
 
 ### H1 — Conditional contextual advantage
@@ -467,18 +489,13 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1. **Stage 6A — Build the regression-ready analysis-panel foundation.**
-   - Merge baseline `sudachi_c_num` novelty and `sudachi_c_raw` robustness novelty.
-   - Merge `absLogLengthChange` and signed length-change diagnostics.
-   - Preserve firm, reporting-period, industry, and fixed-effect identifiers.
+1. **Stage 6B — Implement sentiment measurement.**
+   - Begin with LMMD dictionary/token compatibility QC against the validated Stage 4 `sudachi_c_raw` representation.
+   - Preserve the Paper 1 LMMD lexical scoring concept while adapting the implementation to the Paper 2 `edinetCode + docID` document architecture.
+   - Then implement Japanese Financial BERT and GPT sentiment as independent document-level outputs.
+   - Preserve comparable document-level outputs for later joining to the Stage 6A analysis-panel foundation.
 
-2. **Stage 6B — Implement sentiment measurement.**
-   - LMMD / domain-specific lexical measure.
-   - Japanese Financial BERT / contextual measure.
-   - GPT / generative measure.
-   - Preserve comparable document-level outputs for each model.
-
-3. **Write and freeze the empirical specification.**
+2. **Write and freeze the empirical specification.**
    - Baseline sentiment effects.
    - Novelty main effect.
    - Sentiment × novelty interaction.
@@ -486,21 +503,21 @@ The main remaining design decisions are:
    - Industry and year fixed effects.
    - Length-tail and representation robustness specifications.
 
-4. **Adapt the Paper 1 market-data and regression infrastructure.**
+3. **Adapt the Paper 1 market-data and regression infrastructure.**
    - Reuse event-study and regression code where appropriate.
    - Preserve historical sample construction without filtering on current listing status.
 
-5. **Add selected novelty robustness branches.**
+4. **Add selected novelty robustness branches.**
    - Japanese character 3–5-gram TF-IDF.
    - Optional firm- or industry-relative novelty.
    - Tail exclusions and signed-length-change specifications.
 
-6. **Write the formal hypothesis-development section.**
+5. **Write the formal hypothesis-development section.**
    - Develop H1 from the contextual-capacity mechanism.
    - Develop H2 from the textual-change literature.
    - State the competing interpretation that lexical methods may remain equally or more informative even in novel text.
 
-7. **Update the Introduction and Abstract later.**
+6. **Update the Introduction and Abstract later.**
    - The current abstract still reflects the older lexical-versus-GPT framing and should not be treated as final.
 
 ## Current bottleneck
@@ -511,7 +528,7 @@ The bottleneck has shifted to:
 
 > **integrating the frozen novelty specification with sentiment measures and market-reaction outcomes in a regression-ready panel**
 
-Stages 1–5 are now complete through the baseline word-token novelty layer. The immediate empirical task is no longer novelty construction or representation selection. It is panel integration, sentiment measurement, and implementation of the main sentiment × novelty specification.
+Stages 1–5 are now complete through the baseline word-token novelty layer. The immediate empirical task is no longer novelty construction or representation selection. The canonical Stage 6A panel foundation is now complete. The immediate bottleneck is sentiment measurement—beginning with LMMD dictionary/token compatibility QC—followed by integration of sentiment and market-reaction outcomes and implementation of the main sentiment × novelty specification.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
