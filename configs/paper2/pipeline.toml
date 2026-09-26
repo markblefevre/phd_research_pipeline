@@ -9,7 +9,11 @@ longitudinal_match = false
 text_tokenization = false
 textual_novelty = false
 novelty_plots = false
-analysis_panel = true
+analysis_panel = false
+# We ran a standalone LMMD QC check
+lmmd_sentiment = true
+lmmd_plots = true
+
 
 text_stats = false
 sentiment = false
@@ -110,3 +114,19 @@ novelty_source_root = "~/paper2_stage5/novelty"
 output_csv = "data/interim/paper2/analysis/analysis_panel.csv"
 baseline_variant = "sudachi_c_num"
 raw_variant = "sudachi_c_raw"
+
+
+## STAGE 6B LMMD SENTIMENT
+[lmmd_sentiment]
+# Production scoring preserves the Paper 1 translated-LMMD methodology but
+# consumes the frozen Stage 4 Sudachi C raw tokens rather than retokenizing MD&A.
+variant = "sudachi_c_raw"
+token_root = "~/paper2_stage4/tokens"
+lmmd_dict_csv = "data/curated/paper1/lmmd/Loughran-McDonald_MasterDictionary_GPT_20251229_v2.csv"
+token_col = "GPT_JA"
+output_csv = "data/interim/paper2/sentiment/lmmd/lmmd_sentiment.csv"
+## STAGE 6B LMMD VISUALIZATION / QC
+[lmmd_plots]
+output_dir = "outputs/paper2/figures/sentiment/lmmd"
+formats = ["png", "pdf"]
+min_year_observations = 25

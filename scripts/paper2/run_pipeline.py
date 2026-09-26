@@ -25,6 +25,8 @@ from src.pipeline.stages.tokenize_mdna import run_stage_text_tokenization
 from src.pipeline.stages.textual_novelty import run_stage_textual_novelty
 from src.pipeline.stages.novelty_plots import run_stage_novelty_plots
 from src.pipeline.stages.analysis_panel import run_stage_analysis_panel
+from src.pipeline.stages.lmmd_sentiment import run_stage_lmmd_sentiment
+from src.pipeline.stages.lmmd_plots import run_stage_lmmd_plots
 
 from src.prices.fetch_jpx_prices import run_fetch_jpx_prices
 from src.prices.compute_lagged_rolling_vol_csv import compute_lagged_rolling_vol_csv
@@ -879,6 +881,20 @@ def main() -> int:
         run_stage_analysis_panel(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage analysis_panel disabled")
+
+    # Stage 6B: document-level LMMD lexical sentiment benchmark
+    if bool(stages.get("lmmd_sentiment", False)):
+        run_stage_lmmd_sentiment(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage lmmd_sentiment disabled")
+    # Add after lmmd_sentiment execution:
+    if bool(stages.get("lmmd_plots", False)):
+        run_stage_lmmd_plots(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage lmmd_plots disabled")
+
+
+
 
     if bool(stages.get("price_data", False)):
         run_stage_price_data(paper=paper, cfg=cfg, logger=logger)
