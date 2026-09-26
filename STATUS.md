@@ -1,6 +1,6 @@
 # Paper 2 — Current Status
 
-**Last updated:** 2026-09-25
+**Last updated:** 2026-09-26
 
 ## Current thesis
 
@@ -420,6 +420,27 @@ Final Stage 6A validation confirms **33,046 rows × 41 columns**, exactly preser
 Stage 6A should therefore be treated as **complete and frozen as the initial analysis-panel foundation**. Sentiment measures and later market-reaction variables should be constructed independently and joined to this foundation rather than embedded in the upstream novelty stages.
 
 
+### Stage 6B — LMMD sentiment QC
+
+Stage 6B sentiment work is now underway. The initial **LMMD dictionary/token compatibility QC is complete and accepted**, using the translated Paper 1 LMMD resource against the validated Stage 4 `sudachi_c_raw` corpus.
+
+Key dictionary results:
+
+- **86,553** total LMMD rows;
+- **2,692** sentiment-bearing source rows: 347 positive and 2,345 negative;
+- **2,689 / 2,692 (99.89%)** sentiment-bearing rows have Japanese `GPT_JA` translations;
+- **1,827** unique translated Japanese sentiment terms;
+- **582** Japanese translations correspond to multiple English source entries;
+- one positive/negative translated-term collision: `決定的に`.
+
+The three untranslated sentiment-bearing entries are `AVERSELY`, `BRIBERIES`, and `CLAIMING`. They are intentionally left untranslated rather than manually imputed after observing the corpus. Diagnostic searches found negligible plausible usage for the first two; `CLAIMING` is semantically ambiguous in Japanese financial text, with `請求` occurring 1,122 times but often carrying ordinary claims/billing meanings rather than unambiguously negative sentiment.
+
+Corpus compatibility is strong at the document level. QC read all **37,473** Stage 4 C-raw documents, found **0 missing token files**, and observed exactly **105,993,616 tokens**. Of 1,827 unique translated sentiment terms, 466 occur in the corpus (**25.51% dictionary-term coverage**), while **99.9546% of documents contain at least one sentiment hit**. Positive and negative document coverage are **99.6798%** and **99.7331%**, respectively. The corpus contains **1,230,083 positive hits** and **1,094,758 negative hits**, with a median of **56 sentiment hits per document**.
+
+Manual inspection of frequent matches identified both plausible financial sentiment terms and expected translation-induced semantic broadening, including `BREAKDOWN -> 内訳`, `CONFINES -> 領域`, `EXCEPTIONALLY -> 特に`, and `PERSISTENT -> 持続的`. These are documented as limitations of the translated lexical benchmark rather than corrected post hoc, avoiding corpus-driven dictionary tuning and preserving continuity with Paper 1.
+
+The LMMD compatibility QC is therefore treated as **passed**. Production LMMD scoring should reuse the validated Stage 4 `sudachi_c_raw` tokens rather than retokenizing raw MD&A text independently.
+
 ## Current hypothesis structure
 
 ### H1 — Conditional contextual advantage
@@ -528,7 +549,7 @@ The bottleneck has shifted to:
 
 > **integrating the frozen novelty specification with sentiment measures and market-reaction outcomes in a regression-ready panel**
 
-Stages 1–5 are now complete through the baseline word-token novelty layer. The immediate empirical task is no longer novelty construction or representation selection. The canonical Stage 6A panel foundation is now complete. The immediate bottleneck is sentiment measurement—beginning with LMMD dictionary/token compatibility QC—followed by integration of sentiment and market-reaction outcomes and implementation of the main sentiment × novelty specification.
+Stages 1–5 are now complete through the baseline word-token novelty layer. The immediate empirical task is no longer novelty construction or representation selection. The canonical Stage 6A panel foundation is now complete. The immediate bottleneck is production sentiment measurement—beginning with LMMD document-level scoring now that dictionary/token compatibility QC has passed—followed by Japanese Financial BERT and GPT sentiment, integration of market-reaction outcomes, and implementation of the main sentiment × novelty specification.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 

@@ -11,7 +11,7 @@ This document summarizes the implemented Paper 2 data pipeline through the compl
 - **Stage 5 — Word-token TF-IDF / cosine textual novelty:** complete, validated, and frozen. The primary specification is `sudachi_c_num`; `sudachi_c_raw` is the main representation robustness alternative, while Sudachi A/B variants are secondary robustness checks.
 - **Stage 5 visualization / QC:** implemented for reproducible publication and diagnostic plots, including temporal novelty diagnostics and novelty-versus-length analysis.
 - **Stage 6A — Analysis-panel foundation:** complete and validated; 33,046 rows × 41 columns, with zero missing joins across baseline/raw novelty and length diagnostics.
-- **Stage 6B — Sentiment measurement:** next substantive stage; begin with LMMD dictionary/token compatibility QC, followed by Japanese Financial BERT and GPT document-level sentiment.
+- **Stage 6B — Sentiment measurement:** in progress. LMMD dictionary/token compatibility QC is complete; next is production LMMD document-level scoring, followed by Japanese Financial BERT and GPT sentiment.
 
 The current corpus contains **37,807 Annual Securities Reports** and **37,757 successfully extracted MD&A sections**.
 
@@ -1147,6 +1147,66 @@ The completed Stage 6A panel contains:
 The C-num and C-raw novelty means and medians exactly reproduce the frozen Stage 5 summaries, providing an additional end-to-end integrity check.
 
 Stage 6A should therefore be treated as **complete and validated**. Later sentiment and market-reaction measures should be produced independently and joined to this canonical foundation.
+
+
+# Stage 6B — Sentiment Measurement
+
+## LMMD Dictionary / Token Compatibility QC
+
+Before production LMMD scoring, the translated Loughran–McDonald dictionary was checked against the validated Stage 4 `sudachi_c_raw` token corpus. This QC is deliberately separate from production scoring so that dictionary compatibility decisions are documented before sentiment is joined to the analysis panel.
+
+The Paper 1 LMMD resource contains **86,553 dictionary rows**, of which **2,692** are sentiment-bearing: **347 positive** and **2,345 negative** source entries. There are no English source entries classified simultaneously as positive and negative.
+
+Of the 2,692 sentiment-bearing entries, **2,689 have a `GPT_JA` translation (99.89%)**. The translated sentiment vocabulary collapses to **1,827 unique Japanese terms**, reflecting many-to-one translation. There are **582 Japanese translations shared by more than one English source entry**. One translated term, `決定的に`, is produced by source entries with opposite polarity and therefore belongs to both the positive and negative translated sets under the existing Paper 1 set-based scoring logic.
+
+Three sentiment-bearing source entries lack a Japanese translation:
+
+```text
+AVERSELY
+BRIBERIES
+CLAIMING
+```
+
+These missing translations were not manually imputed. A diagnostic search of plausible Japanese equivalents in the full Stage 4 C-raw corpus found:
+
+| Source concept | Diagnostic Japanese term | Corpus count |
+|---|---|---:|
+| AVERSELY | `反対` | 88 |
+| AVERSELY | `不利` | 225 |
+| AVERSELY | `嫌う` | 0 |
+| BRIBERIES | `贈賄` | 3 |
+| BRIBERIES | `賄賂` | 0 |
+| CLAIMING | `主張` | 54 |
+| CLAIMING | `請求` | 1,122 |
+
+The first two missing translations therefore have negligible potential corpus impact. `CLAIMING` is more consequential only under some possible translations, but Japanese terms such as `請求` are context-dependent and can denote ordinary claims, billing, or requests for payment. Automatically assigning all such occurrences negative polarity would risk introducing more measurement error than leaving the source entry untranslated. To avoid post-hoc corpus-driven tuning, all three entries remain missing.
+
+The corpus compatibility check read all **37,473 Stage 4 C-raw documents**, with **0 missing token files** and **105,993,616 tokens**, exactly reproducing the validated Stage 4 C-raw token total.
+
+Of the **1,827 unique translated sentiment terms**, **466 (25.51%)** occur at least once in the MD&A corpus. Although dictionary-term realization is sparse because many translated LMMD terms are absent from Japanese annual-report language, document-level coverage is essentially universal:
+
+| Metric | Result |
+|---|---:|
+| Documents with any sentiment hit | 99.9546% |
+| Documents with positive hit | 99.6798% |
+| Documents with negative hit | 99.7331% |
+| Positive token hits | 1,230,083 |
+| Negative token hits | 1,094,758 |
+| Total sentiment-token hits | 2,324,841 |
+| Median sentiment hits/document | 56 |
+| Mean sentiment hits/document | 62.04 |
+| Median LMMD net sentiment | 0.001538 |
+| Mean LMMD net sentiment | 0.000992 |
+
+Inspection of the highest-frequency matched terms confirmed that many important financial-polarity translations behave plausibly, including `減少`, `損失`, `減損`, `悪化`, and `厳しい` on the negative side and `利益`, `収益`, `強化`, `向上`, `改善`, `回復`, and `達成` on the positive side.
+
+The inspection also identified translation-induced semantic broadening. Examples include `BREAKDOWN -> 内訳`, `CONFINES -> 領域`, `EXCEPTIONALLY -> 特に`, and `PERSISTENT -> 持続的`. These Japanese translations can be neutral, or have a different contextual valence, in Japanese financial disclosure even though the corresponding English source word is classified directionally by LMMD.
+
+These cases are treated as a **documented limitation of the translated lexical benchmark rather than corrected post hoc**. Manually editing individual terms after observing their corpus frequency would create a corpus-tuned dictionary and weaken comparability with the Paper 1 benchmark. The production LMMD measure will therefore preserve the translated dictionary and the existing lexical scoring concept, while interpreting it as a benchmark rather than ground-truth sentiment.
+
+The single positive/negative translation collision (`決定的に`) is likewise retained under the existing set-based Paper 1 logic: an occurrence contributes to both positive and negative counts and therefore has zero net contribution to `lmmdNet`. This preserves reproducibility without introducing a post-hoc polarity decision.
+
+**QC conclusion:** LMMD dictionary/token compatibility is accepted for Stage 6B. Production scoring should use the already validated Stage 4 `sudachi_c_raw` tokens rather than independently retokenizing the MD&A text.
 
 # Next — Stage 6B Sentiment Measurement
 
