@@ -420,9 +420,9 @@ Final Stage 6A validation confirms **33,046 rows × 41 columns**, exactly preser
 Stage 6A should therefore be treated as **complete and frozen as the initial analysis-panel foundation**. Sentiment measures and later market-reaction variables should be constructed independently and joined to this foundation rather than embedded in the upstream novelty stages.
 
 
-### Stage 6B — LMMD sentiment QC
+### Stage 6B — LMMD lexical sentiment benchmark
 
-Stage 6B sentiment work is now underway. The initial **LMMD dictionary/token compatibility QC is complete and accepted**, using the translated Paper 1 LMMD resource against the validated Stage 4 `sudachi_c_raw` corpus.
+Stage 6B sentiment work is now underway. The **LMMD lexical benchmark is complete and frozen**, including dictionary/token compatibility QC, full-sample document scoring, distribution/time-series diagnostics, and a focused investigation of the FY2017→FY2018 structural break. The implementation uses the translated Paper 1 LMMD resource against the validated Stage 4 `sudachi_c_raw` corpus.
 
 Key dictionary results:
 
@@ -439,7 +439,17 @@ Corpus compatibility is strong at the document level. QC read all **37,473** Sta
 
 Manual inspection of frequent matches identified both plausible financial sentiment terms and expected translation-induced semantic broadening, including `BREAKDOWN -> 内訳`, `CONFINES -> 領域`, `EXCEPTIONALLY -> 特に`, and `PERSISTENT -> 持続的`. These are documented as limitations of the translated lexical benchmark rather than corrected post hoc, avoiding corpus-driven dictionary tuning and preserving continuity with Paper 1.
 
-The LMMD compatibility QC is therefore treated as **passed**. Production LMMD scoring should reuse the validated Stage 4 `sudachi_c_raw` tokens rather than retokenizing raw MD&A text independently.
+The LMMD compatibility QC is therefore treated as **passed**. Production scoring reuses the validated Stage 4 `sudachi_c_raw` tokens rather than retokenizing raw MD&A text independently.
+
+Production LMMD scoring has now completed for all **37,473** unique research-universe documents and exactly reproduces the standalone QC totals. The full sample contains **1,230,083 positive hits** and **1,094,758 negative hits**, with mean `lmmdNet = 0.000992` and median `lmmdNet = 0.001538`. The production output is keyed by `edinetCode + docID` and retains token counts, positive/negative counts and rates, and net sentiment.
+
+Reproducible LMMD distribution and fiscal-year diagnostics reveal a pronounced FY2017→FY2018 break. Mean LMMD sentiment changes from approximately **−0.00536** in FY2017 to **+0.00298** in FY2018; the median changes from approximately **−0.00442** to **+0.00361**.
+
+A standalone matched-firm diagnostic confirms that this is not a sample-composition artifact. Among **3,362 firms** observed once in both years, mean within-firm sentiment changes by **+0.00833**, median sentiment changes by **+0.00756**, and **84.98%** of firms become more positive. Positive-word incidence rises by **0.00371** on average while negative-word incidence falls by **0.00461**. Median log token-count change is approximately **1.028** (roughly **2.8×** the prior token count), but the correlation between sentiment change and log token-count change is only **0.239**.
+
+Term decomposition shows that `実績` (positive) and `減少` (negative) explain much of the measured break. In document-level leave-one-term-out tests, excluding both reduces the mean within-firm FY2017→FY2018 change from **0.00833** to **0.00230**, a reduction of approximately **72%**. The median change remains **+0.00192**, and **67.67%** of firms still become more positive. The break is therefore broad-based but substantially amplified by two context-insensitive lexical classifications.
+
+The LMMD dictionary will **not** be edited post hoc. Preserving the Paper 1 specification avoids corpus-driven tuning and makes the observed behavior an informative limitation of the lexical benchmark rather than something optimized away. The planned empirical treatment is to retain year fixed effects, include an FY2018-exclusion robustness specification, and test whether Japanese Financial BERT and GPT exhibit a comparable 2018 discontinuity. This diagnostic directly strengthens the motivation for comparing context-insensitive and contextual sentiment methods.
 
 ## Current hypothesis structure
 
@@ -510,11 +520,12 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1. **Stage 6B — Implement sentiment measurement.**
-   - Begin with LMMD dictionary/token compatibility QC against the validated Stage 4 `sudachi_c_raw` representation.
-   - Preserve the Paper 1 LMMD lexical scoring concept while adapting the implementation to the Paper 2 `edinetCode + docID` document architecture.
-   - Then implement Japanese Financial BERT and GPT sentiment as independent document-level outputs.
-   - Preserve comparable document-level outputs for later joining to the Stage 6A analysis-panel foundation.
+1. **Stage 6B — Continue sentiment measurement with Japanese Financial BERT.**
+   - Treat the LMMD lexical benchmark as complete and frozen.
+   - Implement Japanese Financial BERT as the next independent document-level sentiment measure.
+   - Follow with GPT sentiment using the same document universe and comparable output architecture.
+   - Preserve sentiment construction independently of novelty and market outcomes; join measures to Stage 6A only after construction/validation.
+   - Compare annual distributions across models, with explicit attention to whether the FY2018 LMMD discontinuity also appears in contextual measures.
 
 2. **Write and freeze the empirical specification.**
    - Baseline sentiment effects.
@@ -549,7 +560,7 @@ The bottleneck has shifted to:
 
 > **integrating the frozen novelty specification with sentiment measures and market-reaction outcomes in a regression-ready panel**
 
-Stages 1–5 are now complete through the baseline word-token novelty layer. The immediate empirical task is no longer novelty construction or representation selection. The canonical Stage 6A panel foundation is now complete. The immediate bottleneck is production sentiment measurement—beginning with LMMD document-level scoring now that dictionary/token compatibility QC has passed—followed by Japanese Financial BERT and GPT sentiment, integration of market-reaction outcomes, and implementation of the main sentiment × novelty specification.
+Stages 1–5 are now complete through the baseline word-token novelty layer. The immediate empirical task is no longer novelty construction or representation selection. The canonical Stage 6A panel foundation is now complete, and the LMMD lexical benchmark is now complete and frozen. The immediate bottleneck is contextual sentiment measurement—beginning with Japanese Financial BERT, followed by GPT sentiment—then integration of sentiment and market-reaction outcomes into the Stage 6A foundation and implementation of the main sentiment × novelty specification.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
