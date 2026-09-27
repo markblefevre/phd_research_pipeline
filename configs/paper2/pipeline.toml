@@ -11,8 +11,9 @@ textual_novelty = false
 novelty_plots = false
 analysis_panel = false
 # We ran a standalone LMMD QC check
-lmmd_sentiment = true
-lmmd_plots = true
+lmmd_sentiment = false
+lmmd_plots = false
+financial_bert_sentiment = true  # enable only after the two fine-tuned models pass validation
 
 
 text_stats = false
@@ -130,3 +131,56 @@ output_csv = "data/interim/paper2/sentiment/lmmd/lmmd_sentiment.csv"
 output_dir = "outputs/paper2/figures/sentiment/lmmd"
 formats = ["png", "pdf"]
 min_year_observations = 25
+
+# STAGE 6C — JAPANESE FINANCIAL BERT SENTIMENT
+[financial_bert_sentiment]
+backbone_model = "izumi-lab/bert-base-japanese-fin-additional"
+
+# REQUIRED. These are separate binary classifiers fine-tuned on chABSA from
+# the Izumi financial BERT backbone, following Nakatsuka & Suimon (2024).
+positive_model = "models/paper2/financial_bert_sentiment/positive/final"
+negative_model = "models/paper2/financial_bert_sentiment/negative/final"
+
+# Stage 4 defines the exact same 37,473-document research universe. BERT then
+# re-reads original MD&A text and applies the backbone's own Japanese tokenizer.
+universe_variant = "sudachi_c_raw"
+
+# Optional local SSD copy for fast small-file I/O. Remove to fall back to
+# [mdna_extract].output_dir.
+source_root = "~/paper2_stage4/mdna"
+
+output_csv = "data/interim/paper2/sentiment/financial_bert/financial_bert_sentiment.csv"
+
+# Sentence-level scoring matches the chABSA fine-tuning task. Overlong source
+# sentences are split into model pieces and re-aggregated before classification;
+# they are never silently truncated.
+min_chars = 2
+max_length = 512
+threshold = 0.5
+
+# Tune these for the machine. On Apple Silicon, auto selects MPS if available.
+inference_batch_size = 32
+document_block_size = 16
+device = "auto"
+resume = true
+overwrite = false
+
+# Optional smoke-test limiter; leave commented for production.
+# max_documents = 100
+
+# Normally inferred from Paper 2 checkpoints (0=absent, 1=present).
+# Configure all four only for external checkpoints with generic label names.
+# positive_absent_id = 0
+# positive_present_id = 1
+# negative_absent_id = 0
+# negative_present_id = 1
+
+# Optional plotting/QC stage after production scoring.
+# Add under [stages]: financial_bert_plots = false
+[financial_bert_plots]
+output_dir = "outputs/paper2/figures/sentiment/financial_bert"
+formats = ["pdf", "png"]
+dpi = 180
+min_year_observations = 25
+# If [lmmd_sentiment].output_csv is not available in config, set explicitly:
+# lmmd_csv = "data/interim/paper2/sentiment/lmmd/lmmd_sentiment.csv"

@@ -27,6 +27,8 @@ from src.pipeline.stages.novelty_plots import run_stage_novelty_plots
 from src.pipeline.stages.analysis_panel import run_stage_analysis_panel
 from src.pipeline.stages.lmmd_sentiment import run_stage_lmmd_sentiment
 from src.pipeline.stages.lmmd_plots import run_stage_lmmd_plots
+from src.pipeline.stages.financial_bert_sentiment import run_stage_financial_bert_sentiment
+from src.pipeline.stages.financial_bert_plots import run_stage_financial_bert_plots
 
 from src.prices.fetch_jpx_prices import run_fetch_jpx_prices
 from src.prices.compute_lagged_rolling_vol_csv import compute_lagged_rolling_vol_csv
@@ -887,12 +889,20 @@ def main() -> int:
         run_stage_lmmd_sentiment(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage lmmd_sentiment disabled")
-    # Add after lmmd_sentiment execution:
     if bool(stages.get("lmmd_plots", False)):
         run_stage_lmmd_plots(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage lmmd_plots disabled")
 
+    # Stage 6C: Japanese Financial BERT sentiment
+    if stages.get("financial_bert_sentiment", False):
+        run_stage_financial_bert_sentiment(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage financial_bert_sentiment disabled")
+    if stages.get("financial_bert_plots", False):
+        run_stage_financial_bert_plots(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage financial_bert_plots disabled")
 
 
 
