@@ -837,9 +837,9 @@ coefficient is **0.912 (t = 6.65)**; excluding FY2018 it remains **0.879
 (t = 5.25)**.
 
 Directional disagreement behaves differently. Raw sign disagreement is
-**26.20%** and declines with novelty, but a pre-specified near-zero
-diagnostic shows that much of this reflects weak sentiment signals.
-Requiring both standardized sentiment magnitudes to exceed **0.50**
+**26.20%** and declines with novelty. A centered standardized-magnitude
+diagnostic shows that much of this is concentrated among relatively weak
+signals. Requiring both centered standardized magnitudes to exceed **0.50**
 reduces sign disagreement to **15.04%**, with rates broadly stable
 across novelty deciles (approximately **13.7%--16.3%**).
 
@@ -951,6 +951,83 @@ specifications based on:
 The three-firm exercise should be treated as a methodological diagnostic
 rather than evidence for the paper's hypotheses.
 
+
+### Stage 7 --- Market-reaction construction
+
+Stage 7 has now begun with a focused market-data and sample-coverage
+diagnostic based on the Paper 1 event-study architecture. This work is
+currently **exploratory/QC and not yet formalized as a production
+pipeline stage**.
+
+The raw J-Quants stock-price archive is stored under:
+
+``` text
+data/raw/paper2/prices/
+```
+
+The available monthly Stock Prices (OHLC) files provide continuous
+coverage from **2016-09 through 2026-08**, supplemented by September 2026
+daily files. The current archive contains no internal monthly gaps over
+the 120-month monthly-history block.
+
+Using the frozen **33,046 research-eligible filing pairs**, an event-level
+price-coverage diagnostic applies the Paper 1 market-model requirements
+provisionally:
+
+``` text
+estimation window = [-120, -20] trading days
+minimum usable estimation observations = 60
+```
+
+Current coverage is:
+
+-   **32,126** events with full estimation-window history;
+-   **8** additional events with partial history but at least 60 usable
+    estimation observations;
+-   **72** events with insufficient estimation history;
+-   **814** events whose security code is absent from the J-Quants stock
+    price universe;
+-   **26** events with no stock price on or after the filing date under
+    the preliminary date-only alignment rule;
+-   **32,134 / 33,046 = 97.24%** currently satisfy the minimum
+    estimation-observation requirement before final event-time handling.
+
+The historical-depth constraint is therefore immaterial for the large
+majority of the sample and does not justify weakening the Paper 1
+`[-120,-20]` specification.
+
+The **814 J-Quants-missing events** were investigated separately. They
+correspond to **108 unique securities / 108 EDINET issuers**. Historical
+exchange information was extracted from the corresponding EDINET XBRL
+filings using the standardized exchange-name disclosure fact. Successful
+event-level extractions identify only regional-exchange listings
+(Nagoya, Fukuoka, or Sapporo), with **no TSE cases** among the
+successfully classified observations. Filing-level extraction gaps were
+resolved by other annual filings for the same security; the final
+previously unresolved code **8171** was independently confirmed as a
+Nagoya Stock Exchange Second Section listing.
+
+Thus all **108 / 108** securities absent from the J-Quants stock-price
+universe are explained as **non-TSE regional-exchange securities** rather
+than identifier failures. The intended production exclusion reason is:
+
+``` text
+non_TSE_regional_exchange
+```
+
+The exploratory Stage 7 utilities are version controlled under `tests/`
+to preserve the audit trail for market-data entitlement, raw-file
+coverage, event-level price coverage, missing-security diagnostics, and
+EDINET XBRL exchange classification.
+
+The next implementation task is to consolidate this validated logic into
+a formal **Stage 7A market-event / price-coverage pipeline stage**, then
+construct **Stage 7B timestamp-aware event trading dates** from
+`curr_submitDateTime`. TOPIX ingestion and event-specific market-model
+estimation will follow. Stage 6D GPT sentiment is intentionally deferred
+until the Mac Stage 6C run finishes and the full Mac/Windows BERT outputs
+can be compared.
+
 ## Open empirical decisions
 
 The main remaining design decisions are:
@@ -972,27 +1049,35 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1.  **Stage 6D --- Design and implement GPT / generative sentiment.**
-    -   Use the same 37,473-document research universe.
+1.  **Formalize Stage 7A --- market-event universe and price coverage.**
+    -   Move the validated exploratory logic into the Paper 2 production
+        pipeline.
+    -   Preserve explicit event-level inclusion/exclusion reasons,
+        including `non_TSE_regional_exchange`, insufficient estimation
+        history, and unavailable event-window prices.
+    -   Produce canonical coverage and QC artifacts from the frozen
+        33,046-pair research universe.
+2.  **Stage 7B --- construct timestamp-aware event trading dates.**
+    -   Use `curr_submitDateTime` rather than the Paper 1 date-only rule.
+    -   Freeze the treatment of during-session, after-close, weekend, and
+        exchange-holiday filings.
+3.  **Stage 7C onward --- TOPIX, event-specific market models, and CARs.**
+    -   Prepare TOPIX market returns.
+    -   Preserve the Paper 1 `[-120,-20]` estimation window and minimum
+        60-observation rule unless later evidence requires otherwise.
+    -   Compute the planned short-window market reactions.
+4.  **Complete the optional Stage 6C computational reproducibility check.**
+    -   When the Mac MPS run finishes, compare all 37,473 Mac and
+        Windows/CUDA outputs.
+    -   Treat this as implementation reproducibility only; do not retune
+        the frozen BERT model.
+5.  **Stage 6D --- GPT / generative sentiment.**
+    -   Resume after the Mac/Windows Stage 6C comparison.
     -   Freeze model/version, prompt, chunking/context strategy,
         aggregation rule, and structured output schema before production
         scoring.
-    -   Preserve sentiment construction independently of novelty and
-        market outcomes.
-2.  **Optional Stage 6C computational reproducibility check.**
-    -   When the Mac MPS run is complete, compare all 37,473 Mac and
-        Windows/CUDA outputs.
-    -   Treat this as an implementation reproducibility check, not an
-        opportunity to retune the frozen sentiment model.
-3.  **Write and freeze the empirical specification.**
-    -   Baseline sentiment effects; novelty main effect; sentiment ×
-        novelty interaction; `absLogLengthChange`; industry and year
-        fixed effects; planned robustness specifications.
-4.  **Adapt the Paper 1 market-data and regression infrastructure.**
-5.  **Add selected novelty robustness branches after the primary
-    specification is fixed.**
-6.  **Write the formal hypothesis-development section and later update
-    the Introduction/Abstract.**
+6.  **Then finalize the empirical specification, robustness suite, and
+    hypothesis-development / paper-writing tasks.**
 
 ## Current bottleneck
 
@@ -1006,10 +1091,13 @@ The bottleneck has shifted to:
 
 Stages 1--5 are complete through the baseline word-token novelty layer.
 Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen,
-and Stage 6C Financial BERT is now complete, full-corpus scored,
-diagnostically validated, and frozen. The immediate bottleneck is Stage
-6D GPT/generative sentiment, followed by market-reaction integration and
-implementation of the main sentiment × novelty specification.
+and Stage 6C Financial BERT is complete, full-corpus scored,
+diagnostically validated, and frozen on Windows/CUDA pending an optional
+full Mac/Windows reproducibility comparison. Stage 7 market-reaction
+construction has now begun and preliminary price-coverage / exchange
+diagnostics are complete. The immediate bottleneck is formalizing Stage
+7A/7B and constructing market-reaction outcomes; Stage 6D GPT sentiment is
+temporarily deferred until the Mac Stage 6C run finishes.
 
 Further literature review should now be driven primarily by unresolved
 methodological or theoretical questions that emerge from the empirical
@@ -1017,14 +1105,14 @@ work rather than by broad literature searching.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately 60--65%
+**Overall paper:** approximately 62--66%
 
 Approximate status by component:
 
 -   Related Work / research gap: 80--85%
 -   Research question / hypotheses: 65--75%
 -   Empirical design: 60--65%
--   Data acquisition / reference-data infrastructure: 95%
+-   Data acquisition / reference-data infrastructure: 97%
 -   Coding / pipeline adaptation: 95%
 -   MD&A extraction core / batch pipeline: 100%
 -   Longitudinal matching: 100%

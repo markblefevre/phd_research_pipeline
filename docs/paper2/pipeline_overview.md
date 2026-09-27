@@ -1,7 +1,8 @@
 # Paper 2 Pipeline Overview
 
 This document summarizes the implemented Paper 2 data pipeline through
-Stage 6C contextual sentiment. Stages 1--3 cover EDINET acquisition,
+Stage 6C contextual sentiment and the validated exploratory foundation
+for Stage 7 market-reaction construction. Stages 1--3 cover EDINET acquisition,
 MD&A extraction, and longitudinal reporting-period matching. Stage 4
 prepares six validated Japanese token representations. Stage 5 fits
 corpus-wide TF-IDF representations, computes adjacent-period cosine
@@ -40,8 +41,13 @@ diagnostics are complete.
     complete, full-corpus scored, diagnostically validated, and frozen
     for all 37,473 research-universe documents. Full-sample LMMD
     comparison and novelty-disagreement diagnostics are complete.
--   **Stage 6D --- GPT / generative sentiment:** not yet implemented;
-    design follows completion/freeze of Stage 6C.
+-   **Stage 6D --- GPT / generative sentiment:** not yet implemented and
+    temporarily deferred pending the full Mac/Windows Stage 6C
+    reproducibility comparison.
+-   **Stage 7 --- Market-reaction construction:** exploratory/QC work has
+    begun. J-Quants price coverage, estimation-window availability, and
+    regional-exchange exclusions have been validated; production pipeline
+    formalization is the next implementation task.
 
 The current corpus contains **37,807 Annual Securities Reports** and
 **37,757 successfully extracted MD&A sections**.
@@ -1792,10 +1798,10 @@ finds that continuous standardized BERT/LMMD disagreement increases
 modestly with C-num novelty and survives `absLogLengthChange`,
 fiscal-year fixed effects, and exclusion of FY2018. With length and year
 controls the novelty coefficient is **0.912 (t = 6.65)**; excluding
-FY2018 it is **0.879 (t = 5.25)**. Sign disagreement is largely a
-weak-signal phenomenon: requiring both standardized sentiment magnitudes
-to exceed **0.50** reduces sign disagreement to **15.04%**, broadly
-stable across novelty deciles.
+FY2018 it is **0.879 (t = 5.25)**. Sign disagreement is concentrated more heavily among relatively weak
+signals in a centered standardized-magnitude diagnostic: requiring both
+centered standardized magnitudes to exceed **0.50** reduces sign
+disagreement to **15.04%**, broadly stable across novelty deciles.
 
 The frozen interpretation is that greater textual novelty is associated
 with somewhat greater divergence in **sentiment intensity**, while
@@ -1807,10 +1813,180 @@ Stage 6C is therefore **complete, full-corpus scored, diagnostically
 validated, and frozen**. A later full Mac MPS versus Windows CUDA
 comparison may be retained as a computational-reproducibility check.
 
-# Next --- Stage 6D GPT / Generative Sentiment
 
-After Stage 6C production scoring and diagnostics are frozen, the next
-sentiment layer is GPT / generative sentiment. It should use the same
+# Stage 7 --- Market-Reaction Construction
+
+## Status
+
+Stage 7 has begun with **validated exploratory/QC work** but has not yet
+been consolidated into the production `run_pipeline.py` path. The purpose
+of the exploratory work was to establish data availability, identify
+sample exclusions, and verify that the Paper 1 event-study architecture
+can be carried forward without weakening its estimation-window design.
+
+## Raw Stock-Price Data
+
+Raw J-Quants Stock Prices (OHLC) files are stored under:
+
+``` text
+data/raw/paper2/prices/
+```
+
+The available monthly archive runs continuously from **2016-09 through
+2026-08**, with September 2026 supplemented by daily files. A dedicated
+file-coverage utility confirms **120 monthly files with zero internal
+monthly gaps** over the monthly block.
+
+The Stage 7 market-reaction sample begins from the frozen Stage 3
+research universe:
+
+``` text
+data/interim/paper2/longitudinal/research_eligible_pairs.csv
+```
+
+containing **33,046** standard annual adjacent filing pairs.
+
+## Provisional Paper 1 Event-Study Carryover
+
+The Paper 1 market model is provisionally retained:
+
+``` text
+R_i,t = alpha_i + beta_i * R_m,t + epsilon_i,t
+
+estimation window = [-120, -20] trading days
+minimum estimation observations = 60
+market benchmark = TOPIX
+```
+
+The Paper 1 CAR machinery used event-specific alpha/beta estimates and
+short event windows. Stage 7 will preserve that architecture while
+improving event-date assignment using the Paper 2 EDINET submission
+timestamp.
+
+## Event-Level Price-Coverage Diagnostic
+
+A Stage 7 exploratory utility reads only security codes and dates from
+the compressed J-Quants files and checks each of the **33,046** filing
+events against the provisional Paper 1 estimation-window requirements.
+
+Current results are:
+
+| Coverage status | Events |
+|---|---:|
+| Full `[-120,-20]` history | 32,126 |
+| Partial history but >=60 observations | 8 |
+| Insufficient estimation history | 72 |
+| Security absent from J-Quants prices | 814 |
+| No price on/after event under preliminary date-only alignment | 26 |
+| **Meets >=60-observation requirement** | **32,134 (97.24%)** |
+
+The September 2016 J-Quants history boundary therefore affects only a
+small number of events and does **not** justify changing the Paper 1
+estimation window or minimum-observation threshold.
+
+The `no price on/after event` category is still preliminary because the
+current diagnostic deliberately uses a Paper 1-style date-only alignment.
+Stage 7B will replace this with an explicit timestamp-aware trading-date
+rule.
+
+## Regional-Exchange Reconciliation
+
+The **814** events whose `secCode` is absent from the J-Quants stock-price
+files correspond to **108 unique securities and 108 unique EDINET
+issuers**.
+
+These cases were investigated from the firms' own historical EDINET XBRL
+filings. The diagnostic extracts the standardized disclosure fact for the
+financial instruments exchange on which the securities are listed and
+classifies the reported venue.
+
+Successful event-level XBRL extractions identify only:
+
+``` text
+Nagoya Stock Exchange
+Fukuoka Stock Exchange
+Sapporo Securities Exchange
+```
+
+and identify **no TSE cases** among successfully classified missing-price
+events.
+
+Where an individual filing's exchange fact could not be extracted, other
+annual filings for the same security resolve the venue. The one security
+initially unresolved across the extracted filings, code **8171**, was
+independently confirmed as a **Nagoya Stock Exchange Second Section**
+listing.
+
+The resulting conclusion is therefore:
+
+``` text
+108 / 108 J-Quants-missing securities
+= non-TSE regional-exchange securities
+```
+
+The intended canonical Stage 7 exclusion reason is:
+
+``` text
+non_TSE_regional_exchange
+```
+
+This is a market-data/sample-construction exclusion rather than an EDINET
+identifier-matching failure.
+
+## Stage 7 Exploratory / QC Utilities
+
+The following independent utilities are retained under `tests/` as an
+audit trail:
+
+``` text
+test_jquants_history.py
+check_jquants_price_files.py
+check_stage7_price_coverage.py
+diagnose_stage7_missing_securities.py
+build_missing_security_exchange_check.py
+```
+
+They document:
+
+- J-Quants API/history entitlement testing;
+- raw monthly price-file completeness;
+- event-level estimation-window coverage;
+- missing-security isolation;
+- historical exchange classification from EDINET XBRL.
+
+These utilities are useful reproducibility/QC tools even after the
+validated logic is moved into the production Stage 7 pipeline.
+
+## Planned Production Structure
+
+Stage 7 should be formalized as:
+
+``` text
+7A  Market-event universe / price coverage
+7B  Timestamp-aware event trading-date construction
+7C  TOPIX ingestion and market-return preparation
+7D  Event-specific market-model estimation
+7E  Abnormal-return / CAR computation
+7F  Final market-reaction table and QC
+```
+
+Stage 7A should produce a canonical event-level coverage table with an
+explicit inclusion/exclusion reason for every research-eligible pair.
+
+Stage 7B will use `curr_submitDateTime` to improve on Paper 1's date-only
+event alignment, explicitly handling during-session filings, after-close
+filings, weekends, and exchange holidays before assigning
+`eventTradingDate`.
+
+TOPIX should then be ingested as the primary market benchmark before
+event-specific alpha/beta estimation and CAR construction.
+
+
+# Stage 6D --- GPT / Generative Sentiment (temporarily deferred)
+
+Stage 6D remains the next sentiment layer, but it is temporarily deferred
+while the Mac Stage 6C run finishes and the full Mac/Windows BERT outputs
+are compared. It should use the same
 research-universe documents, be constructed independently of novelty and
 market outcomes, and preserve a comparable document-level output
 architecture. Model/version, prompt, context/chunking strategy,
