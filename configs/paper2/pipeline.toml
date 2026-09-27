@@ -13,8 +13,9 @@ analysis_panel = false
 # We ran a standalone LMMD QC check
 lmmd_sentiment = false
 lmmd_plots = false
-financial_bert_sentiment = true  # enable only after the two fine-tuned models pass validation
-
+financial_bert_sentiment = false
+financial_bert_plots = true
+market_reaction_eligibility = true
 
 text_stats = false
 sentiment = false
@@ -184,3 +185,8 @@ dpi = 180
 min_year_observations = 25
 # If [lmmd_sentiment].output_csv is not available in config, set explicitly:
 # lmmd_csv = "data/interim/paper2/sentiment/lmmd/lmmd_sentiment.csv"
+
+## STAGE 7A MARKET-REACTION EVENT ELIGIBILITY
+[market_reaction_eligibility]
+output_dir = "data/interim/paper2/market_reaction"
+skip_if_exists = false

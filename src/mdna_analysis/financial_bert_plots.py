@@ -122,7 +122,7 @@ def generate_financial_bert_plots(
     groups = [df.loc[df["fiscalYear"].eq(y), "bertNet"].dropna().values for y in years]
     if years:
         fig, ax = plt.subplots(figsize=(8.5, 4.8))
-        ax.boxplot(groups, labels=years, showfliers=False)
+        ax.boxplot(groups, tick_labels=years, showfliers=False)
         ax.axhline(0.0, linewidth=1)
         ax.set_xlabel("Fiscal year (period end)")
         ax.set_ylabel("Financial BERT sentiment")

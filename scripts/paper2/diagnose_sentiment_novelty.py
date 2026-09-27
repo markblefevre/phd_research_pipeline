@@ -17,11 +17,11 @@ LMMD = Path(
 )
 BERT = Path(
     "data/interim/paper2/sentiment/financial_bert/"
-    "windows_4080_full/financial_bert_sentiment.csv"
+    "financial_bert_sentiment.csv"
 )
 OUT = Path(
     "data/interim/paper2/sentiment/financial_bert/"
-    "windows_4080_full/diagnostics/novelty_disagreement"
+    "diagnostics/novelty_disagreement"
 )
 
 
