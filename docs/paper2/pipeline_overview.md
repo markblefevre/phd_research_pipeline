@@ -1,8 +1,8 @@
 # Paper 2 Pipeline Overview
 
 This document summarizes the implemented Paper 2 data pipeline through
-Stage 6C contextual sentiment and the validated exploratory foundation
-for Stage 7 market-reaction construction. Stages 1--3 cover EDINET acquisition,
+Stage 6C contextual sentiment and the completed Stage 7A--7B foundation
+for market-reaction construction. Stages 1--3 cover EDINET acquisition,
 MD&A extraction, and longitudinal reporting-period matching. Stage 4
 prepares six validated Japanese token representations. Stage 5 fits
 corpus-wide TF-IDF representations, computes adjacent-period cosine
@@ -44,10 +44,14 @@ diagnostics are complete.
 -   **Stage 6D --- GPT / generative sentiment:** not yet implemented and
     intentionally deferred while Stage 7 market-reaction construction proceeds.
 -   **Stage 7A --- Market-event eligibility and price coverage:** complete,
-    validated, and wired into the production pipeline. Of 33,046
-    research-eligible filing events, 32,134 (97.24%) satisfy the TSE
-    listing-history and estimation-window requirements. Stage 7B
-    timestamp-aware event-date construction is next.
+    validated, and frozen. Of 33,046 research-eligible filing events,
+    32,134 (97.24%) satisfy the TSE listing-history and estimation-window
+    requirements.
+-   **Stage 7B --- Timestamp-aware event trading dates:** complete,
+    validated, and frozen for all 32,134 Stage 7A-eligible events. The
+    canonical assignment uses the EDINET submission timestamp, the observed
+    TSE trading calendar, and regime-specific 15:00 / 15:30 JST close times.
+    Stage 7C TOPIX market-return preparation is next.
 
 The current corpus contains **37,807 Annual Securities Reports** and
 **37,757 successfully extracted MD&A sections**.
@@ -1825,9 +1829,11 @@ Hardware-specific run directories are not part of the active pipeline.
 
 ## Status
 
-Stage 7A --- market-event eligibility and price coverage --- is **complete, validated, and wired into the production pipeline**. It begins from the frozen **33,046 research-eligible filing events** and determines whether each event has sufficient Tokyo Stock Exchange price history to support the Paper 1 event-study architecture.
+Stages 7A and 7B are now **complete, validated, and frozen**.
 
-The validated Stage 7A result retains **32,134 / 33,046 = 97.24%** of research events. The remaining 912 observations are excluded for explicit, documented listing-history reasons rather than general data unavailability.
+Stage 7A begins from the frozen **33,046 research-eligible filing events** and determines whether each event has sufficient Tokyo Stock Exchange listing and price history to support the Paper 1 event-study architecture. It retains **32,134 / 33,046 = 97.24%** of research events.
+
+Stage 7B then assigns a timestamp-aware canonical `eventTradingDate` to all **32,134** eligible events using the EDINET submission timestamp and the observed TSE trading calendar.
 
 ## Raw Stock-Price Data
 
@@ -1837,15 +1843,7 @@ Raw J-Quants Stock Prices (OHLC) files are stored under:
 data/raw/paper2/prices/
 ```
 
-The archive covers September 2016 through September 2026 and is sufficient to classify the full research-event universe without weakening the Paper 1 estimation-window design.
-
-The Stage 7 market-reaction sample begins from:
-
-``` text
-data/interim/paper2/longitudinal/research_eligible_pairs.csv
-```
-
-containing **33,046** research-eligible annual filing events.
+The archive contains **136** compressed daily-price files covering September 2016 through September 2026.
 
 ## Paper 1 Event-Study Carryover
 
@@ -1872,24 +1870,7 @@ Paper 1 used event-specific alpha/beta estimates and short event windows. Stage 
 | TSE delisted before event | **26** |
 | **Total research-eligible events** | **33,046** |
 
-The **814** regional-exchange exclusions correspond to securities listed on the Nagoya, Fukuoka, or Sapporo exchanges rather than the TSE. Historical exchange information from EDINET filings reconciles all 108 unique securities, including security code 8171, which was confirmed as a Nagoya Stock Exchange Second Section listing.
-
-The **72** observations initially classified as having insufficient price history were investigated individually and resolve to:
-
-``` text
-57  not_in_TSE_price_universe_at_event
-15  insufficient_post_listing_estimation_history
-```
-
-For all 15 short-history securities, the first J-Quants date coincides with actual TSE entry. These observations consist of IPOs and transfers or entries from regional exchanges; none reflects inadequate J-Quants subscription history.
-
-The **26** observations with no price on or after the preliminary event date collapse to 17 unique securities whose J-Quants history ends with their final TSE trading period. They are therefore classified as:
-
-``` text
-TSE_delisted_before_event
-```
-
-rather than as missing market data.
+The 912 exclusions were reconciled to explicit listing-history reasons rather than general data unavailability.
 
 ## Canonical Stage 7A Outputs
 
@@ -1901,8 +1882,6 @@ data/interim/paper2/market_reaction/
     diagnostics/
 ```
 
-`stage7_event_eligibility.csv` is authoritative and contains all **33,046** research events with explicit eligibility and exclusion status. `stage7_exclusion_audit.csv` contains the **912** excluded events only. The diagnostics directory preserves the underlying coverage, exchange, listing-history, and delisting audit trail.
-
 The production implementation is:
 
 ``` text
@@ -1910,24 +1889,71 @@ src/market_reaction/event_eligibility.py
 src/pipeline/stages/market_reaction_eligibility.py
 ```
 
-and is wired into `run_pipeline.py` as `market_reaction_eligibility`.
+Stage 7A is wired into `run_pipeline.py` as `market_reaction_eligibility` and should be treated as **complete and frozen**.
 
-Stage 7A should therefore be treated as **complete and frozen**.
+## Stage 7B --- Timestamp-Aware Event Trading Dates
+
+Stage 7B applies the following canonical event-date rule:
+
+``` text
+trading-day filing at or before market close -> same trading day
+trading-day filing after market close        -> next TSE trading day
+non-trading-day filing                       -> next TSE trading day
+```
+
+The applicable TSE cash-market close is:
+
+``` text
+through 2024-11-01   15:00 JST
+from 2024-11-05      15:30 JST
+```
+
+The trading calendar is constructed from the **global union of observed J-Quants stock-price dates**, not from security-specific dates. This prevents individual-security suspensions or missing observations from being mistaken for exchange holidays.
+
+Canonical Stage 7B outputs are:
+
+``` text
+data/interim/paper2/market_reaction/
+    stage7_event_dates.csv
+    stage7_event_dates_summary.json
+```
+
+The final Stage 7B assignment is:
+
+| Event-date rule | Events |
+|---|---:|
+| Same trading day at or before close | **21,980** |
+| Next trading day after close | **10,154** |
+| Next trading day from non-trading submission date | **0** |
+| **Total** | **32,134** |
+
+Approximately **68.4%** of eligible filings therefore remain on the filing-day trading session and **31.6%** roll to the next TSE session because they were submitted after market close.
+
+The derived trading calendar contains **2,457 sessions** from **2016-09-01 through 2026-09-25**. All eligible EDINET submission dates fall on observed TSE trading days. Event-date shifts range from 0 to 11 calendar days. The five 11-day shifts correspond to after-close filings on April 26, 2019 followed by the extended Golden Week / imperial-succession market closure.
+
+A dedicated close-boundary QC found **zero assignment-rule mismatches**. Observed filings exactly at the applicable close are assigned to the same trading day, including post-November-2024 filings stamped exactly **15:30:00**.
+
+The Stage 7B production implementation is:
+
+``` text
+src/market_reaction/event_trading_dates.py
+src/pipeline/stages/market_reaction_event_dates.py
+```
+
+Stage 7B should therefore be treated as **complete and frozen**.
 
 ## Remaining Stage 7 Structure
 
 ``` text
 7A  Market-event universe / price coverage             COMPLETE
-7B  Timestamp-aware event trading-date construction   NEXT
-7C  TOPIX ingestion and market-return preparation
+7B  Timestamp-aware event trading-date construction   COMPLETE
+7C  TOPIX ingestion and market-return preparation     NEXT
 7D  Event-specific market-model estimation
 7E  Abnormal-return / CAR computation
 7F  Final market-reaction table and QC
 ```
 
-Stage 7B will use `curr_submitDateTime` rather than Paper 1's date-only event assignment. It will explicitly handle during-session filings, after-close filings, weekends, exchange holidays, and the applicable TSE close time before assigning the canonical `eventTradingDate`.
-
-TOPIX preparation, event-specific alpha/beta estimation, abnormal returns, CARs, and final event-study QC follow in Stages 7C--7F.
+The next implementation task is Stage 7C: construct the canonical TOPIX price/return series and validate its coverage against the Stage 7B trading calendar. Event-specific alpha/beta estimation, abnormal returns, CARs, and final event-study QC then follow in Stages 7D--7F.
 
 # Stage 6D --- GPT / Generative Sentiment (temporarily deferred)
 

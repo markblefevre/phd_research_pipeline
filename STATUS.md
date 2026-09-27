@@ -890,7 +890,7 @@ rather than evidence for the paper's hypotheses.
 
 ### Stage 7 --- Market-reaction construction
 
-Stage 7A --- market-event eligibility and price coverage --- is now **implemented, validated, and complete**. It begins from the frozen **33,046 research-eligible filing events** and determines whether each event has sufficient Tokyo Stock Exchange price history to support the Paper 1 event-study architecture.
+Stage 7A --- market-event eligibility and price coverage --- is **implemented, validated, complete, and frozen**. It begins from the frozen **33,046 research-eligible filing events** and determines whether each event has sufficient Tokyo Stock Exchange price history to support the Paper 1 event-study architecture.
 
 The retained baseline design is:
 
@@ -906,7 +906,7 @@ Raw J-Quants Stock Prices (OHLC) data are stored under:
 data/raw/paper2/prices/
 ```
 
-The archive covers September 2016 through September 2026 and is sufficient to classify all research events without weakening the Paper 1 estimation-window design.
+The archive contains 136 compressed daily-price files and covers September 2016 through September 2026.
 
 Final Stage 7A eligibility is:
 
@@ -921,24 +921,7 @@ Final Stage 7A eligibility is:
 
 Thus **32,134 / 33,046 = 97.24%** of the frozen research sample survives Stage 7A.
 
-The **814** regional-exchange exclusions correspond to securities listed on the Nagoya, Fukuoka, or Sapporo exchanges rather than the TSE. Historical exchange information from EDINET filings was used to reconcile these observations, including the previously unresolved security code 8171, which was confirmed as a Nagoya Stock Exchange Second Section listing.
-
-The **72** observations initially classified as having insufficient historical price coverage were investigated individually. They divide into:
-
-``` text
-57  not_in_TSE_price_universe_at_event
-15  insufficient_post_listing_estimation_history
-```
-
-For all 15 short-history securities, the first observed J-Quants trading date was reconciled to the security's actual TSE entry date. These cases consist of IPOs and transfers or entries from regional exchanges; none reflects inadequate J-Quants historical entitlement.
-
-The **26** observations with no price on or after the filing date were also reconciled. They collapse to 17 unique securities whose final J-Quants price coincides with their final TSE trading period before delisting or exchange exit. These observations are therefore classified as:
-
-``` text
-TSE_delisted_before_event
-```
-
-rather than as missing market data.
+The **814** regional-exchange exclusions correspond to securities listed on the Nagoya, Fukuoka, or Sapporo exchanges rather than the TSE. Historical exchange information from EDINET filings was used to reconcile these observations. The **72** observations initially classified as having insufficient historical price coverage were investigated individually and resolve to **57** events occurring before the security entered the TSE price universe and **15** events with insufficient post-listing estimation history. The **26** observations with no price on or after the filing date were reconciled to securities already delisted from the TSE before the event.
 
 The canonical Stage 7A outputs are:
 
@@ -950,8 +933,6 @@ data/interim/paper2/market_reaction/
     diagnostics/
 ```
 
-`stage7_event_eligibility.csv` is authoritative and contains all **33,046** research events with explicit inclusion/exclusion status. `stage7_exclusion_audit.csv` is the derived **912-event** exclusion-only audit view. The diagnostic files preserve the provenance of the underlying coverage, listing-history, and exchange investigations.
-
 Stage 7A is wired into the production pipeline through:
 
 ``` text
@@ -959,13 +940,63 @@ src/market_reaction/event_eligibility.py
 src/pipeline/stages/market_reaction_eligibility.py
 ```
 
-and the `market_reaction_eligibility` stage in `run_pipeline.py`.
+and should be treated as **complete and frozen**.
 
-Stage 7A should therefore be treated as **complete and frozen**.
+#### Stage 7B --- timestamp-aware event trading dates
 
-The next market-reaction task is **Stage 7B --- timestamp-aware event trading-date construction**. It will use `curr_submitDateTime` rather than Paper 1's date-only event assignment and will explicitly handle during-session filings, after-close filings, weekends, exchange holidays, and the applicable TSE market-close time before assigning the canonical `eventTradingDate`.
+Stage 7B is now **implemented, validated, complete, and frozen**. It takes the **32,134 Stage 7A-eligible events** and assigns the canonical trading date using the EDINET submission timestamp and the observed TSE trading calendar derived from the J-Quants price archive.
 
-Stages 7C--7F will then prepare TOPIX returns, estimate event-specific market models, calculate abnormal returns/CARs, and produce the final market-reaction table and QC.
+The event-date rule is:
+
+``` text
+trading-day filing at or before market close -> same trading day
+trading-day filing after market close        -> next TSE trading day
+non-trading-day filing                       -> next TSE trading day
+```
+
+The applicable TSE cash-market close is:
+
+``` text
+through 2024-11-01   15:00 JST
+from 2024-11-05      15:30 JST
+```
+
+The production implementation uses the global union of J-Quants trading dates rather than security-specific dates so that individual-security suspensions or missing observations cannot be misclassified as exchange holidays.
+
+Stage 7B produces:
+
+``` text
+data/interim/paper2/market_reaction/
+    stage7_event_dates.csv
+    stage7_event_dates_summary.json
+```
+
+The final validated Stage 7B results are:
+
+| Event-date rule | Events |
+|---|---:|
+| Same trading day at or before close | **21,980** |
+| Next trading day after close | **10,154** |
+| Next trading day from non-trading submission date | **0** |
+| **Total** | **32,134** |
+
+Thus approximately **68.4%** of eligible filings are assigned to the filing-day trading session and **31.6%** roll to the next TSE session because they were submitted after the close.
+
+The derived trading calendar contains **2,457 TSE sessions** from **2016-09-01 through 2026-09-25**. All 32,134 eligible EDINET submission dates fall on observed TSE trading dates, so no baseline observation requires the non-trading-date rule. Event-date shifts range from 0 to 11 calendar days. The five 11-day shifts correspond to after-close filings on April 26, 2019 followed by the extended Golden Week / imperial-succession exchange closure, providing a useful calendar sanity check.
+
+A dedicated cutoff-boundary QC confirmed that the regime-specific close rule is mechanically consistent. Filings stamped exactly at the close are assigned to the same trading day, including observed post-November-2024 filings at exactly **15:30:00**. The QC reports zero rule mismatches.
+
+The Stage 7B production implementation is:
+
+``` text
+src/market_reaction/event_trading_dates.py
+src/pipeline/stages/market_reaction_event_dates.py
+```
+
+Stage 7B should therefore be treated as **complete and frozen**.
+
+The next market-reaction task is **Stage 7C --- TOPIX ingestion and market-return preparation**. Stages 7D--7F will then estimate event-specific market models, calculate abnormal returns/CARs, and produce the final market-reaction table and QC.
+
 
 ## Open empirical decisions
 
@@ -988,32 +1019,29 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1.  **Stage 7B --- construct timestamp-aware event trading dates.**
-    -   Use `curr_submitDateTime` rather than the Paper 1 date-only rule.
-    -   Freeze the treatment of during-session, after-close, weekend, and
-        exchange-holiday filings.
-2.  **Stage 7C --- prepare TOPIX market returns.**
+1.  **Stage 7C --- prepare TOPIX market returns.**
     -   Establish the canonical TOPIX price/return series used by the event study.
-3.  **Stage 7D --- estimate event-specific market models.**
+    -   Validate date coverage against the Stage 7B trading calendar.
+2.  **Stage 7D --- estimate event-specific market models.**
     -   Preserve the Paper 1 `[-120,-20]` estimation window and minimum
         60-observation rule.
-4.  **Stages 7E/7F --- abnormal returns, CARs, final market-reaction table, and QC.**
+3.  **Stages 7E/7F --- abnormal returns, CARs, final market-reaction table, and QC.**
     -   Compute the planned short-window market reactions and freeze the final
         event-study sample.
-5.  **Stage 6D --- GPT / generative sentiment.**
+4.  **Stage 6D --- GPT / generative sentiment.**
     -   Freeze model/version, prompt, chunking/context strategy, aggregation rule,
         and structured output schema before production scoring.
-6.  **Then finalize the empirical specification, robustness suite, and paper-writing tasks.**
+5.  **Then finalize the empirical specification, robustness suite, and paper-writing tasks.**
 
 ## Current bottleneck
 
-The literature review, MD&A extraction, longitudinal matching, baseline novelty construction, LMMD scoring, Financial BERT scoring, and Stage 7A market-event eligibility are no longer the primary bottlenecks.
+The literature review, MD&A extraction, longitudinal matching, baseline novelty construction, LMMD scoring, Financial BERT scoring, Stage 7A market-event eligibility, and Stage 7B timestamp-aware event-date construction are no longer the primary bottlenecks.
 
 The bottleneck has shifted to:
 
-> **constructing timestamp-aware market-reaction outcomes and integrating them with the frozen novelty and sentiment measures in a regression-ready panel**
+> **constructing market-adjusted return outcomes and integrating them with the frozen novelty and sentiment measures in a regression-ready panel**
 
-Stages 1--5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and Stage 6C Financial BERT is complete, canonicalized, and frozen. Stage 7A market-event eligibility is also complete and frozen, retaining **32,134 of 33,046** research-eligible filing events. The immediate bottleneck is now constructing timestamp-aware event dates and market-reaction outcomes through Stages 7B--7F. Stage 6D GPT sentiment remains intentionally deferred while market-reaction construction proceeds.
+Stages 1--5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and Stage 6C Financial BERT is complete, canonicalized, and frozen. Stages 7A and 7B are also complete and frozen, leaving **32,134** eligible filing events with validated timestamp-aware `eventTradingDate` assignments. The immediate bottleneck is now TOPIX preparation and event-study construction through Stages 7C--7F. Stage 6D GPT sentiment remains intentionally deferred while market-reaction construction proceeds.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
