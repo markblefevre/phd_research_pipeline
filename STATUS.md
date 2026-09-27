@@ -1,6 +1,6 @@
 # Paper 2 — Current Status
 
-**Last updated:** 2026-09-26
+**Last updated:** 2026-09-27
 
 ## Current thesis
 
@@ -18,13 +18,13 @@ More precisely, the study asks whether the relative economic informativeness of 
 
 The Related Work section is now in coherent prose and organized around seven sections:
 
-1. Foundations of financial sentiment measurement
-2. Machine learning, contextual models, and domain adaptation
-3. Generative LLMs and financial reasoning
-4. Japanese financial text and closest empirical precedents
-5. Information location and forward-looking disclosure
-6. Textual change, novelty, and disclosure informativeness
-7. Research gap
+1.  Foundations of financial sentiment measurement
+2.  Machine learning, contextual models, and domain adaptation
+3.  Generative LLMs and financial reasoning
+4.  Japanese financial text and closest empirical precedents
+5.  Information location and forward-looking disclosure
+6.  Textual change, novelty, and disclosure informativeness
+7.  Research gap
 
 The old “Overall story arc” planning section has been removed because the narrative is now embedded in the prose.
 
@@ -34,7 +34,7 @@ The gap is no longer:
 
 > Which sentiment model performs best on Japanese annual reports?
 
-Okada et al. (2025) already makes that framing too weak.
+Okada et al. (2025) already makes that framing too weak.
 
 The current gap is:
 
@@ -46,11 +46,11 @@ The design therefore shifts from an unconditional comparison of sentiment techno
 
 - **Loughran & McDonald / Henry & Leone:** domain-specific lexical methods remain strong benchmarks.
 - **Li (2010):** information location matters; sentiment measurement and text selection are separate empirical choices.
-- **Huang et al. (2023):** strong precedent for constructing sentiment independently of returns and then validating it economically.
-- **Frankel et al. / Siano:** important contrast because their text measures are trained directly on market outcomes.
-- **Suzuki et al. (2023):** Japanese and finance-specific language-model adaptation matters, including tokenizer adaptation.
+- **Huang et al. (2023):** strong precedent for constructing sentiment independently of returns and then validating it economically.
+- **Frankel et al. / Siano:** important contrast because their text measures are trained directly on market outcomes.
+- **Suzuki et al. (2023):** Japanese and finance-specific language-model adaptation matters, including tokenizer adaptation.
 - **Kato & Goto (2021):** Japanese annual-report tone contains information about future firm performance.
-- **Okada et al. (2025):** closest Japanese empirical precedent; GPT-4o-mini and Claude 3 Haiku portfolios generate significant negative risk-adjusted alphas, while dictionary, DeBERTaV2, and Gemini measures do not.
+- **Okada et al. (2025):** closest Japanese empirical precedent; GPT-4o-mini and Claude 3 Haiku portfolios generate significant negative risk-adjusted alphas, while dictionary, DeBERTaV2, and Gemini measures do not.
 - **Brown & Tucker / Dyer / Cohen et al.:** textual change and persistence provide the foundation for the novelty dimension.
 - **Muslu et al.:** persistent text should not automatically be treated as stale or uninformative.
 
@@ -61,7 +61,6 @@ The design therefore shifts from an unconditional comparison of sentiment techno
 - Japanese-reference handling is cleaner.
 - Related Work is compiling cleanly in Overleaf.
 - The bibliography is usable, though small metadata/capitalization cleanup may still remain.
-
 
 ### Data acquisition and pipeline
 
@@ -86,11 +85,11 @@ Stage 2 MD&A extraction is now implemented as a reproducible, resumable pipeline
 
 The production design uses a fast `lxml` path:
 
-1. open the EDINET ZIP;
-2. select the primary Annual Securities Report XBRL under `XBRL/PublicDoc/`;
-3. locate the standardized MD&A text block by local name;
-4. fall back to Japanese anchor-text matching only when necessary;
-5. normalize embedded XHTML to canonical plain Japanese text.
+1.  open the EDINET ZIP;
+2.  select the primary Annual Securities Report XBRL under `XBRL/PublicDoc/`;
+3.  locate the standardized MD&A text block by local name;
+4.  fall back to Japanese anchor-text matching only when necessary;
+5.  normalize embedded XHTML to canonical plain Japanese text.
 
 Arelle was tested successfully as a full XBRL-aware parser and remains useful as a validation/debugging fallback, but the `lxml` approach is substantially faster and is preferred for batch extraction.
 
@@ -148,13 +147,13 @@ The stage combines the canonical Stage 1 filing metadata with successful Stage 2
 
 The production Stage 3 logic therefore:
 
-1. joins successful Stage 2 MD&A observations to Stage 1 filing metadata;
-2. orders filings within each EDINET issuer by actual reporting period;
-3. identifies only true duplicate reporting periods using `edinetCode + periodStart + periodEnd`;
-4. constructs adjacent within-firm reporting-period pairs;
-5. flags whether reporting periods are contiguous;
-6. classifies contiguous pairs as standard annual or transition-period pairs based on reporting-period duration;
-7. retains noncontiguous observations separately for audit rather than silently treating them as year-over-year pairs.
+1.  joins successful Stage 2 MD&A observations to Stage 1 filing metadata;
+2.  orders filings within each EDINET issuer by actual reporting period;
+3.  identifies only true duplicate reporting periods using `edinetCode + periodStart + periodEnd`;
+4.  constructs adjacent within-firm reporting-period pairs;
+5.  flags whether reporting periods are contiguous;
+6.  classifies contiguous pairs as standard annual or transition-period pairs based on reporting-period duration;
+7.  retains noncontiguous observations separately for audit rather than silently treating them as year-over-year pairs.
 
 Final Stage 3 results are:
 
@@ -169,13 +168,13 @@ Final Stage 3 results are:
 The two noncontiguous cases were manually investigated and found to reflect genuine issuer/listing discontinuities rather than matching failures:
 
 - **SBI Shinsei Bank** — gap associated with its 2023 delisting;
-- **Sony Financial Group** — gap associated with Sony's 2020 full acquisition / privatization and later 2025 relisting through the partial spin-off.
+- **Sony Financial Group** — gap associated with Sony’s 2020 full acquisition / privatization and later 2025 relisting through the partial spin-off.
 
 These checks provide strong validation that Stage 3 is identifying genuine longitudinal relationships rather than forcing observations into artificial calendar-year buckets.
 
 Canonical Stage 3 outputs are written under:
 
-```text
+``` text
 data/interim/paper2/longitudinal/
     longitudinal_panel.csv
     duplicate_reporting_periods.csv
@@ -188,12 +187,11 @@ data/interim/paper2/longitudinal/
 
 The baseline Stage 4 novelty analysis should begin from the **33,046 standard annual pairs**. Transition-period pairs should be retained as a diagnostic or robustness sample rather than automatically discarded.
 
-
 A final Stage 3 sample-eligibility check now makes the domestic-company research universe explicit using the historical EDINET filing `formCode` attached to each filing rather than current issuer-listing metadata.
 
 The domestic Annual Securities Report form codes used for eligibility are:
 
-```text
+``` text
 030000
 030200
 040000
@@ -215,11 +213,9 @@ Thus, making the domestic-company criterion explicit changes **zero observations
 
 The canonical Stage 3 handoff to Stage 4 is now:
 
-```text
+``` text
 data/interim/paper2/longitudinal/research_eligible_pairs.csv
 ```
-
-
 
 ### Stage 4 — token representation construction
 
@@ -229,9 +225,9 @@ The Stage 3 research sample contains **33,046 adjacent standard annual pairs**, 
 
 Stage 4 is organized into three internal substages:
 
-1. **4A — raw Japanese tokenization**
-2. **4B — numeric normalization**
-3. **4C — cross-variant quality control**
+1.  **4A — raw Japanese tokenization**
+2.  **4B — numeric normalization**
+3.  **4C — cross-variant quality control**
 
 #### Stage 4A — raw tokenization
 
@@ -239,27 +235,27 @@ The production tokenizer uses Sudachi with NFKC normalization, natural-boundary 
 
 Three Sudachi split modes are generated from the identical 37,473-document universe:
 
-| Variant | Documents | Total tokens | Mean tokens/document |
-|---|---:|---:|---:|
-| `sudachi_a_raw` | 37,473 | 113,574,929 | 3,030.8 |
-| `sudachi_b_raw` | 37,473 | 109,407,286 | 2,919.6 |
-| `sudachi_c_raw` | 37,473 | 105,993,616 | 2,828.5 |
+| Variant         | Documents | Total tokens | Mean tokens/document |
+|-----------------|----------:|-------------:|---------------------:|
+| `sudachi_a_raw` |    37,473 |  113,574,929 |              3,030.8 |
+| `sudachi_b_raw` |    37,473 |  109,407,286 |              2,919.6 |
+| `sudachi_c_raw` |    37,473 |  105,993,616 |              2,828.5 |
 
 All three variants completed with **37,473/37,473 successful documents**, no duplicate `(edinetCode, docID)` keys, and no missing token files.
 
 The expected Sudachi segmentation relationship holds for every document:
 
-```text
+``` text
 tokenCount(A) >= tokenCount(B) >= tokenCount(C)
 ```
 
-with **zero A<B violations** and **zero B<C violations**.
+with **zero A\<B violations** and **zero B\<C violations**.
 
 #### Stage 4B — numeric normalization
 
 Each raw token variant is deterministically transformed into a corresponding number-normalized representation:
 
-```text
+``` text
 sudachi_a_raw -> sudachi_a_num
 sudachi_b_raw -> sudachi_b_num
 sudachi_c_raw -> sudachi_c_num
@@ -267,7 +263,7 @@ sudachi_c_raw -> sudachi_c_num
 
 The final number-normalized representations use semantic numeric normalization:
 
-```text
+``` text
 numeric magnitudes        -> <NUM>
 percentages               -> <NUM>%
 yen-denominated amounts   -> <NUM>円
@@ -294,13 +290,13 @@ Stage 4 now runs an explicit validator over the complete six-variant output fami
 
 The QC result is written to:
 
-```text
+``` text
 data/interim/paper2/tokens/qc_summary.json
 ```
 
 and currently reports:
 
-```text
+``` text
 status = passed
 documentCount = 37,473
 ```
@@ -315,14 +311,14 @@ The stage fits corpus-wide TF-IDF on the common **37,473-document** universe and
 
 Final novelty summaries are:
 
-| Variant | Mean novelty | Median novelty |
-|---|---:|---:|
-| `sudachi_a_raw` | 0.106852 | 0.088598 |
-| `sudachi_b_raw` | 0.109630 | 0.091106 |
-| `sudachi_c_raw` | 0.111810 | 0.093010 |
-| `sudachi_a_num` | 0.049687 | 0.034892 |
-| `sudachi_b_num` | 0.051269 | 0.036312 |
-| `sudachi_c_num` | 0.052434 | 0.037234 |
+| Variant         | Mean novelty | Median novelty |
+|-----------------|-------------:|---------------:|
+| `sudachi_a_raw` |     0.106852 |       0.088598 |
+| `sudachi_b_raw` |     0.109630 |       0.091106 |
+| `sudachi_c_raw` |     0.111810 |       0.093010 |
+| `sudachi_a_num` |     0.049687 |       0.034892 |
+| `sudachi_b_num` |     0.051269 |       0.036312 |
+| `sudachi_c_num` |     0.052434 |       0.037234 |
 
 The Sudachi A/B/C variants are nearly identical within the raw and normalized families, with pairwise correlations around 0.997–0.999. Raw versus normalized novelty remains strongly related but meaningfully different: Pearson correlations are roughly 0.88 and Spearman correlations are around 0.71.
 
@@ -332,19 +328,19 @@ Stage 5 also produces a representation-independent `pair_diagnostics.csv` using 
 
 The baseline C-num novelty measure is strongly related to absolute MD&A length change:
 
-```text
+``` text
 Pearson corr(novelty, absLogLengthChange)  = 0.797
 Spearman corr(novelty, absLogLengthChange) = 0.592
 ```
 
 The relationship remains material after trimming extreme length changes:
 
-| Sample | Pearson | Spearman |
-|---|---:|---:|
-| Full sample | 0.797 | 0.592 |
-| Drop top 1% | 0.758 | 0.580 |
-| Drop top 5% | 0.633 | 0.526 |
-| Drop top 10% | 0.491 | 0.454 |
+| Sample       | Pearson | Spearman |
+|--------------|--------:|---------:|
+| Full sample  |   0.797 |    0.592 |
+| Drop top 1%  |   0.758 |    0.580 |
+| Drop top 5%  |   0.633 |    0.526 |
+| Drop top 10% |   0.491 |    0.454 |
 
 Source-text spot checks show that absolute-maximum novelty cases can reflect large but genuine changes in disclosure scope or structure, while observations around the 99th percentile generally contain coherent and economically meaningful textual change rather than extraction failure.
 
@@ -377,7 +373,7 @@ Stage 4 also exposed a significant infrastructure issue: tens of thousands of sm
 
 The Stage 4 pipeline therefore distinguishes between:
 
-```text
+``` text
 canonical logical paths:
 data/interim/paper2/...
 
@@ -389,15 +385,13 @@ Manifests continue to store canonical repo-relative paths rather than machine-sp
 
 This design improved Sudachi tokenization throughput dramatically. On the M1 Max, the best practical worker setting was **8 processes**:
 
-| Workers | Throughput |
-|---:|---:|
-| 6 | 569.1 docs/s |
-| 8 | 744.3 docs/s |
-| 10 | 751.1 docs/s |
+| Workers |   Throughput |
+|--------:|-------------:|
+|       6 | 569.1 docs/s |
+|       8 | 744.3 docs/s |
+|      10 | 751.1 docs/s |
 
 The 8-worker setting captures essentially all available speedup while avoiding unnecessary process overhead. Future stages that perform heavy small-file I/O should reuse the same canonical-NAS / local-scratch pattern.
-
-
 
 ### Stage 6A — analysis-panel foundation
 
@@ -411,7 +405,7 @@ The stage performs strict one-to-one joins on `edinetCode + prev_docID + curr_do
 
 The canonical output is:
 
-```text
+``` text
 data/interim/paper2/analysis/analysis_panel.csv
 ```
 
@@ -419,10 +413,9 @@ Final Stage 6A validation confirms **33,046 rows × 41 columns**, exactly preser
 
 Stage 6A should therefore be treated as **complete and frozen as the initial analysis-panel foundation**. Sentiment measures and later market-reaction variables should be constructed independently and joined to this foundation rather than embedded in the upstream novelty stages.
 
-
 ### Stage 6B — LMMD lexical sentiment benchmark
 
-Stage 6B sentiment work is now underway. The **LMMD lexical benchmark is complete and frozen**, including dictionary/token compatibility QC, full-sample document scoring, distribution/time-series diagnostics, and a focused investigation of the FY2017→FY2018 structural break. The implementation uses the translated Paper 1 LMMD resource against the validated Stage 4 `sudachi_c_raw` corpus.
+Stage 6B is **complete and frozen**. The LMMD lexical benchmark includes dictionary/token compatibility QC, full-sample document scoring, distribution/time-series diagnostics, and a focused investigation of the FY2017→FY2018 structural break. The implementation uses the translated Paper 1 LMMD resource against the validated Stage 4 `sudachi_c_raw` corpus.
 
 Key dictionary results:
 
@@ -450,6 +443,52 @@ A standalone matched-firm diagnostic confirms that this is not a sample-composit
 Term decomposition shows that `実績` (positive) and `減少` (negative) explain much of the measured break. In document-level leave-one-term-out tests, excluding both reduces the mean within-firm FY2017→FY2018 change from **0.00833** to **0.00230**, a reduction of approximately **72%**. The median change remains **+0.00192**, and **67.67%** of firms still become more positive. The break is therefore broad-based but substantially amplified by two context-insensitive lexical classifications.
 
 The LMMD dictionary will **not** be edited post hoc. Preserving the Paper 1 specification avoids corpus-driven tuning and makes the observed behavior an informative limitation of the lexical benchmark rather than something optimized away. The planned empirical treatment is to retain year fixed effects, include an FY2018-exclusion robustness specification, and test whether Japanese Financial BERT and GPT exhibit a comparable 2018 discontinuity. This diagnostic directly strengthens the motivation for comparing context-insensitive and contextual sentiment methods.
+
+### Stage 6C — Japanese Financial BERT contextual sentiment
+
+Stage 6C is now **implemented, trained, and validation-passed; full-corpus production inference is in progress**. Model development is deliberately separated from routine pipeline inference: chABSA preparation and fine-tuning produce frozen model artifacts, while the production pipeline consumes those frozen checkpoints to score the same **37,473-document** research universe used by Stage 4 and Stage 6B.
+
+The contextual backbone is `izumi-lab/bert-base-japanese-fin-additional`. Following the dual-binary design aligned with Nakatsuka & Suimon (2024), two independent sentence classifiers are fine-tuned on chABSA:
+
+1.  positive opinion present / absent;
+2.  negative opinion present / absent.
+
+A sentence may therefore be positive, negative, both, or neither rather than being forced into a single mutually exclusive sentiment class.
+
+The chABSA preparation step uses **230 Annual Securities Report annotation files** containing **6,119 sentences**. The prepared labels contain **2,210 positive sentences** and **1,746 negative sentences**, with joint states of 1,397 positive-only, 933 negative-only, 813 both, and 2,976 neither. A duplicated outer/inner copy in the downloaded Kaggle package was verified byte-for-byte with SHA-256; only one 230-file copy is used.
+
+The fixed split is joint-stratified across the four joint label states:
+
+| Split      | Sentences |
+|------------|----------:|
+| Train      |     4,895 |
+| Validation |       612 |
+| Test       |       612 |
+
+Fine-tuning uses maximum sequence length 512, learning rate `5e-5`, weight decay `0.01`, 100 warmup steps, training batch size 16, evaluation batch size 32, seed 42, and a maximum of 10 epochs. Only the classification head and final BERT encoder layer are trainable (**7,089,410 / 110,618,882 parameters**). The selected model for each binary task is the checkpoint with minimum validation loss rather than automatically the final epoch.
+
+Held-out test performance is:
+
+| Classifier | Accuracy | Precision | Recall |         F1 | Weighted F1 |
+|------------|---------:|----------:|-------:|-----------:|------------:|
+| Positive   |   0.9526 |    0.9251 | 0.9459 | **0.9354** |      0.9527 |
+| Negative   |   0.9461 |    0.9277 | 0.8800 | **0.9032** |      0.9456 |
+
+Production scoring re-reads the original Stage 2 MD&A text and applies the BERT model’s own Japanese tokenizer; Stage 4 `sudachi_c_raw` is used only to define the exact frozen document universe. MD&A is segmented into source sentences. Source sentences exceeding the model limit are split into model pieces, scored, and reaggregated before thresholding so that an overlong source sentence still counts once in the document-level measure.
+
+The primary document score is:
+
+``` text
+bertNet = (positiveSentenceCount - negativeSentenceCount) / sentenceCount
+```
+
+The output also preserves positive/negative sentence rates, positive-only/negative-only/both/neither counts, mean positive and negative probabilities, `bertProbabilityNet`, model-piece counts, overlong-sentence diagnostics, and unknown-token rates.
+
+End-to-end smoke testing on 25 real MD&A documents showed sensible sentence-level aggregation, meaningful positive and negative document scores, and near-zero unknown-token rates. A subsequent **250-document validation sample** produced mean `bertNet = 0.0277`, median `0.0248`, standard deviation `0.0792`, and a range from approximately `-0.227` to `+0.367`.
+
+As a non-tuning diagnostic, the same 250 documents were compared with the frozen LMMD scores. The measures show moderate agreement rather than redundancy: **Pearson correlation 0.444**, **Spearman correlation 0.472**, and **72.8% sign agreement** among documents with nonzero scores under both methods. The largest standardized disagreements include documents for which BERT and LMMD assign opposite sentiment signs. These cases are reserved for later qualitative validation; the comparison was not used to alter or tune either sentiment measure.
+
+Production inference is wired into `run_pipeline.py` as Stage 6C. It uses the frozen positive and negative checkpoints, `threshold = 0.5`, `inference_batch_size = 32`, Apple MPS when available, and resumable block-level output. The initial production run demonstrated the recovery design when the Mac slept: **2,112 completed documents** were preserved in the partial checkpoint and the subsequent run resumed successfully rather than recomputing them. The current full-corpus run is being executed under `caffeinate` with logging enabled. Stage 6C should be marked complete/frozen only after all 37,473 production rows and final diagnostics are validated.
 
 ## Current hypothesis structure
 
@@ -486,24 +525,24 @@ A rough TF-IDF cosine similarity measure based on Japanese character 3–5-grams
 
 Several preliminary lessons emerged:
 
-* **Year-over-year textual novelty is clearly present and economically interpretable.** Large similarity breaks often correspond to identifiable events such as COVID-related disruption, accounting-regime changes, reporting-segment reorganizations, or major changes in business perimeter.
-* **Numerical changes materially affect measured similarity.** Normalizing numbers substantially increases similarity in many firm-years, especially for highly quantitative disclosures. Raw novelty and linguistically normalized novelty therefore capture related but distinct concepts and should both be retained during methodological development.
-* **Baseline textual persistence differs substantially across firms and industries.** Toyota exhibits relatively stable but visibly changing operational MD&A; MUFG shows greater annual structural and financial-statement variation; Sony contains unusually persistent accounting and valuation language, with normalized similarity often close to one.
-* **Whole-document similarity can be dominated by persistent boilerplate.** Sony provides a particularly clear example: economically meaningful changes can occur within an MD&A whose large accounting-policy sections remain almost unchanged.
-* **Structural disclosure changes can generate apparent novelty that is not purely economic information.** Examples include accounting-standard changes, segment reorganizations, and changes in consolidation perimeter. These cases should be diagnosed rather than automatically treated as errors.
-* **Novelty and sentiment appear conceptually distinct.** Large textual changes can accompany either deterioration or improvement in business conditions, supporting the planned use of novelty as a conditioning variable rather than a directional sentiment measure.
+- **Year-over-year textual novelty is clearly present and economically interpretable.** Large similarity breaks often correspond to identifiable events such as COVID-related disruption, accounting-regime changes, reporting-segment reorganizations, or major changes in business perimeter.
+- **Numerical changes materially affect measured similarity.** Normalizing numbers substantially increases similarity in many firm-years, especially for highly quantitative disclosures. Raw novelty and linguistically normalized novelty therefore capture related but distinct concepts and should both be retained during methodological development.
+- **Baseline textual persistence differs substantially across firms and industries.** Toyota exhibits relatively stable but visibly changing operational MD&A; MUFG shows greater annual structural and financial-statement variation; Sony contains unusually persistent accounting and valuation language, with normalized similarity often close to one.
+- **Whole-document similarity can be dominated by persistent boilerplate.** Sony provides a particularly clear example: economically meaningful changes can occur within an MD&A whose large accounting-policy sections remain almost unchanged.
+- **Structural disclosure changes can generate apparent novelty that is not purely economic information.** Examples include accounting-standard changes, segment reorganizations, and changes in consolidation perimeter. These cases should be diagnosed rather than automatically treated as errors.
+- **Novelty and sentiment appear conceptually distinct.** Large textual changes can accompany either deterioration or improvement in business conditions, supporting the planned use of novelty as a conditioning variable rather than a directional sentiment measure.
 
 These observations strengthen the motivation for including **industry fixed effects** in the empirical specification. They also suggest that absolute textual novelty may not be directly comparable across all industries because normal disclosure persistence appears to differ systematically by business type.
 
 Accordingly, Stage 4 should preserve a simple absolute novelty measure as the baseline while also retaining the possibility of robustness specifications based on:
 
-* numerical normalization;
-* industry-relative novelty;
-* firm-relative novelty where sufficient longitudinal history exists;
-* alternative treatment of persistent versus changed portions of the MD&A;
-* explicit flags for major accounting, segment, or disclosure-structure changes.
+- numerical normalization;
+- industry-relative novelty;
+- firm-relative novelty where sufficient longitudinal history exists;
+- alternative treatment of persistent versus changed portions of the MD&A;
+- explicit flags for major accounting, segment, or disclosure-structure changes.
 
-The three-firm exercise should be treated as a methodological diagnostic rather than evidence for the paper's hypotheses.
+The three-firm exercise should be treated as a methodological diagnostic rather than evidence for the paper’s hypotheses.
 
 ## Open empirical decisions
 
@@ -520,37 +559,36 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1. **Stage 6B — Continue sentiment measurement with Japanese Financial BERT.**
-   - Treat the LMMD lexical benchmark as complete and frozen.
-   - Implement Japanese Financial BERT as the next independent document-level sentiment measure.
-   - Follow with GPT sentiment using the same document universe and comparable output architecture.
-   - Preserve sentiment construction independently of novelty and market outcomes; join measures to Stage 6A only after construction/validation.
-   - Compare annual distributions across models, with explicit attention to whether the FY2018 LMMD discontinuity also appears in contextual measures.
-
-2. **Write and freeze the empirical specification.**
-   - Baseline sentiment effects.
-   - Novelty main effect.
-   - Sentiment × novelty interaction.
-   - `absLogLengthChange` main control.
-   - Industry and year fixed effects.
-   - Length-tail and representation robustness specifications.
-
-3. **Adapt the Paper 1 market-data and regression infrastructure.**
-   - Reuse event-study and regression code where appropriate.
-   - Preserve historical sample construction without filtering on current listing status.
-
-4. **Add selected novelty robustness branches.**
-   - Japanese character 3–5-gram TF-IDF.
-   - Optional firm- or industry-relative novelty.
-   - Tail exclusions and signed-length-change specifications.
-
-5. **Write the formal hypothesis-development section.**
-   - Develop H1 from the contextual-capacity mechanism.
-   - Develop H2 from the textual-change literature.
-   - State the competing interpretation that lexical methods may remain equally or more informative even in novel text.
-
-6. **Update the Introduction and Abstract later.**
-   - The current abstract still reflects the older lexical-versus-GPT framing and should not be treated as final.
+1.  **Complete and freeze Stage 6C production inference.**
+    - Allow the resumable full-corpus Financial BERT run to finish for all 37,473 research-universe documents.
+    - Validate row count, key uniqueness, missingness, unknown-token rates, and document-score distributions.
+    - Run full-corpus annual diagnostics, with explicit attention to whether the FY2018 LMMD discontinuity also appears under contextual sentiment.
+    - Compare full-corpus BERT and LMMD distributions/correlations and inspect a small set of large standardized disagreements without retuning either measure.
+    - Archive the final positive/negative model artifacts, training metadata, chABSA preparation artifacts, and canonical production score output.
+2.  **Stage 6D — Design and implement GPT / generative sentiment.**
+    - Use the same 37,473-document research universe and a comparable document-level output architecture.
+    - Freeze the prompt, model/version, chunking/context strategy, aggregation rule, and structured output schema before production scoring.
+    - Preserve sentiment construction independently of novelty and market outcomes.
+3.  **Write and freeze the empirical specification.**
+    - Baseline sentiment effects.
+    - Novelty main effect.
+    - Sentiment × novelty interaction.
+    - `absLogLengthChange` main control.
+    - Industry and year fixed effects.
+    - Length-tail and representation robustness specifications.
+4.  **Adapt the Paper 1 market-data and regression infrastructure.**
+    - Reuse event-study and regression code where appropriate.
+    - Preserve historical sample construction without filtering on current listing status.
+5.  **Add selected novelty robustness branches.**
+    - Japanese character 3–5-gram TF-IDF.
+    - Optional firm- or industry-relative novelty.
+    - Tail exclusions and signed-length-change specifications.
+6.  **Write the formal hypothesis-development section.**
+    - Develop H1 from the contextual-capacity mechanism.
+    - Develop H2 from the textual-change literature.
+    - State the competing interpretation that lexical methods may remain equally or more informative even in novel text.
+7.  **Update the Introduction and Abstract later.**
+    - The current abstract still reflects the older lexical-versus-GPT framing and should not be treated as final.
 
 ## Current bottleneck
 
@@ -560,13 +598,13 @@ The bottleneck has shifted to:
 
 > **integrating the frozen novelty specification with sentiment measures and market-reaction outcomes in a regression-ready panel**
 
-Stages 1–5 are now complete through the baseline word-token novelty layer. The immediate empirical task is no longer novelty construction or representation selection. The canonical Stage 6A panel foundation is now complete, and the LMMD lexical benchmark is now complete and frozen. The immediate bottleneck is contextual sentiment measurement—beginning with Japanese Financial BERT, followed by GPT sentiment—then integration of sentiment and market-reaction outcomes into the Stage 6A foundation and implementation of the main sentiment × novelty specification.
+Stages 1–5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and Stage 6C Financial BERT has passed model and end-to-end validation and is currently in full-corpus production inference. The immediate bottleneck is therefore completion/freeze of Stage 6C, followed by Stage 6D GPT sentiment, market-reaction integration, and implementation of the main sentiment × novelty specification.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately 53–56%
+**Overall paper:** approximately 56–60%
 
 Approximate status by component:
 
@@ -574,7 +612,7 @@ Approximate status by component:
 - Research question / hypotheses: 65–75%
 - Empirical design: 60–65%
 - Data acquisition / reference-data infrastructure: 95%
-- Coding / pipeline adaptation: 85–90%
+- Coding / pipeline adaptation: 90–95%
 - MD&A extraction core / batch pipeline: 100%
 - Longitudinal matching: 100%
 - Novelty implementation: 90–95%

@@ -1,6 +1,6 @@
 # Paper 2 Pipeline Overview
 
-This document summarizes the implemented Paper 2 data pipeline through the completed Stage 6A analysis-panel foundation, including the frozen Stage 5 word-token textual-novelty layer, the Stage 6A analysis-panel foundation, and the completed LMMD lexical benchmark within Stage 6B. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 prepares six validated Japanese token representations. Stage 5 fits corpus-wide TF-IDF representations, computes adjacent-period cosine similarity / textual novelty for each variant, and produces descriptive and diagnostic novelty figures. Stage 6B now has a frozen LMMD document-level sentiment benchmark; the next substantive sentiment step is Japanese Financial BERT.
+This document summarizes the implemented Paper 2 data pipeline through Stage 6C contextual sentiment. Stages 1–3 cover EDINET acquisition, MD&A extraction, and longitudinal reporting-period matching. Stage 4 prepares six validated Japanese token representations. Stage 5 fits corpus-wide TF-IDF representations, computes adjacent-period cosine similarity / textual novelty for each variant, and produces descriptive and diagnostic novelty figures. Stage 6A provides the frozen analysis-panel foundation. Stage 6B provides the completed and frozen LMMD lexical sentiment benchmark. Stage 6C implements Japanese Financial BERT using two chABSA-fine-tuned binary classifiers; model training and end-to-end validation are complete, and full-corpus production inference is currently in progress.
 
 ## Current Pipeline Status
 
@@ -11,15 +11,17 @@ This document summarizes the implemented Paper 2 data pipeline through the compl
 - **Stage 5 — Word-token TF-IDF / cosine textual novelty:** complete, validated, and frozen. The primary specification is `sudachi_c_num`; `sudachi_c_raw` is the main representation robustness alternative, while Sudachi A/B variants are secondary robustness checks.
 - **Stage 5 visualization / QC:** implemented for reproducible publication and diagnostic plots, including temporal novelty diagnostics and novelty-versus-length analysis.
 - **Stage 6A — Analysis-panel foundation:** complete and validated; 33,046 rows × 41 columns, with zero missing joins across baseline/raw novelty and length diagnostics.
-- **Stage 6B — Sentiment measurement:** in progress. LMMD dictionary/token compatibility QC, production scoring, distribution diagnostics, and the FY2017→FY2018 structural-break investigation are complete. The LMMD benchmark is frozen; next are Japanese Financial BERT and GPT sentiment.
+- **Stage 6B — LMMD lexical sentiment:** complete, validated, and frozen for all 37,473 research-universe documents.
+- **Stage 6C — Japanese Financial BERT contextual sentiment:** implementation, chABSA fine-tuning, held-out evaluation, and 25/250-document end-to-end validation are complete. Full 37,473-document production inference is in progress through the resumable pipeline stage.
+- **Stage 6D — GPT / generative sentiment:** not yet implemented; design follows completion/freeze of Stage 6C.
 
 The current corpus contains **37,807 Annual Securities Reports** and **37,757 successfully extracted MD&A sections**.
 
----
+------------------------------------------------------------------------
 
 ## High-Level Pipeline
 
-```mermaid
+``` mermaid
 flowchart TD
 
     A[EDINET Listing API] --> B[Stage 1: EDINET acquisition]
@@ -57,9 +59,16 @@ flowchart TD
     U --> V[Cross-variant comparison<br/>and baseline selection]
     V --> W[Pair-level length diagnostics]
     W --> X[Frozen Stage 5 handoff<br/>to panel / sentiment integration]
+    X --> Y[Stage 6A<br/>Analysis-panel foundation]
+    X --> Z[Stage 6B<br/>LMMD lexical sentiment]
+    X --> AA[Stage 6C<br/>Financial BERT sentiment]
+    AB[chABSA model-development workflow] --> AA
+    Y --> AC[Later sentiment / market-data integration]
+    Z --> AC
+    AA --> AC
 ```
 
----
+------------------------------------------------------------------------
 
 # Stage 1 — EDINET Acquisition
 
@@ -69,7 +78,7 @@ Stage 1 creates the canonical filing universe used by the rest of the pipeline. 
 
 ## Main Outputs
 
-```text
+``` text
 data/raw/paper2/edinet/
     <edinetCode>/
         <docID>/
@@ -82,13 +91,13 @@ data/interim/paper2/edinet/
 
 The canonical filing manifest is:
 
-```text
+``` text
 data/interim/paper2/edinet/filings.csv
 ```
 
 Key metadata fields include:
 
-```text
+``` text
 docID
 edinetCode
 secCode
@@ -104,7 +113,7 @@ submitDateTime
 
 ## Stage 1 Flow
 
-```mermaid
+``` mermaid
 flowchart TD
 
     A1[EDINET filing-list API<br/>queried by submission date]
@@ -137,17 +146,17 @@ flowchart TD
 
 Final validated counts:
 
-| Metric | Count |
-|---|---:|
-| Filing rows | 37,807 |
-| Unique `docID` values | 37,807 |
-| Unique EDINET/security-code combinations | 4,448 |
+| Metric                                            |  Count |
+|---------------------------------------------------|-------:|
+| Filing rows                                       | 37,807 |
+| Unique `docID` values                             | 37,807 |
+| Unique EDINET/security-code combinations          |  4,448 |
 | Unique `edinetCode × periodEnd.year` combinations | 37,724 |
-| Apparent duplicate calendar-year groups | 83 |
+| Apparent duplicate calendar-year groups           |     83 |
 
 Submission-date coverage:
 
-```text
+``` text
 2016-09-20 10:01
 through
 2026-09-18 17:00
@@ -155,7 +164,7 @@ through
 
 Fiscal-period coverage:
 
-```text
+``` text
 2015-07-31
 through
 2026-06-30
@@ -169,7 +178,7 @@ The 83 apparent duplicate calendar-year groups were later resolved in Stage 3. T
 
 The current EDINET code list is used only as **current-state reference metadata**.
 
-It is **not** used as a historical listing-status filter because doing so would introduce survivorship bias. Historical sample construction must therefore avoid assuming that today's EDINET code-list status accurately describes whether a company was listed at a past filing date.
+It is **not** used as a historical listing-status filter because doing so would introduce survivorship bias. Historical sample construction must therefore avoid assuming that today’s EDINET code-list status accurately describes whether a company was listed at a past filing date.
 
 Foreign or otherwise out-of-scope issuers are handled later through sample construction and QC rather than through a brittle historical listing filter.
 
@@ -177,14 +186,14 @@ Foreign or otherwise out-of-scope issuers are handled later through sample const
 
 Relevant utilities include:
 
-```text
+``` text
 scripts/paper2/summarize_edinet_filings.py
 rebuild_edinet_filings_manifest.py
 ```
 
 These support corpus inspection and recovery without changing the canonical raw ZIP archive.
 
----
+------------------------------------------------------------------------
 
 # Stage 2 — MD&A Extraction
 
@@ -196,7 +205,7 @@ The extraction logic prioritizes standardized XBRL text-block tags and falls bac
 
 ## Main Components
 
-```text
+``` text
 src/mdna_analysis/mdna_extraction.py
 src/mdna_analysis/extract_mdna_batch.py
 scripts/paper2/extract_mdna_batch.py
@@ -205,7 +214,7 @@ scripts/paper2/qc_mdna_extraction.py
 
 ## Main Outputs
 
-```text
+``` text
 data/interim/paper2/mdna/
     <edinetCode>/
         <docID>.txt
@@ -219,11 +228,11 @@ data/interim/paper2/mdna/qc/
 
 The extracted `.txt` files are generated pipeline artifacts and are not intended for Git.
 
----
+------------------------------------------------------------------------
 
 ## Stage 2 Extraction Flow
 
-```mermaid
+``` mermaid
 flowchart TD
 
     B1[filings.csv]
@@ -267,13 +276,13 @@ flowchart TD
     B14 --> B16[Validated Stage 2 corpus]
 ```
 
----
+------------------------------------------------------------------------
 
 ## Primary MD&A XBRL Tags
 
 The extractor first looks for standardized MD&A text-block local names:
 
-```text
+``` text
 ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock
 
 AnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock
@@ -281,19 +290,19 @@ AnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock
 
 The primary XBRL document is selected from:
 
-```text
+``` text
 XBRL/PublicDoc/
 ```
 
 with preference for the Annual Securities Report (`-asr-`) document.
 
----
+------------------------------------------------------------------------
 
 ## Anchor-Based Fallback
 
 When a standardized MD&A tag is unavailable, candidate `*TextBlock` elements are scored using Japanese anchor phrases including:
 
-```text
+``` text
 経営者による財政状態
 経営成績
 キャッシュ・フロー
@@ -303,7 +312,7 @@ When a standardized MD&A tag is unavailable, candidate `*TextBlock` elements are
 
 A production fallback now requires:
 
-```text
+``` text
 fallbackScore >= 3
 ```
 
@@ -317,13 +326,13 @@ By contrast, reviewed score-3 and score-5 fallback cases were legitimate MD&A se
 
 The minimum score of 3 therefore prevents weak anchor matches from being accepted as valid MD&A text.
 
----
+------------------------------------------------------------------------
 
 ## Manual Recovery Case — S100QGPT
 
 One valid Japanese filing required a one-off recovery:
 
-```text
+``` text
 docID:      S100QGPT
 edinetCode: E30126
 company:    株式会社日本アクア
@@ -333,7 +342,7 @@ The filing contained a genuine human-readable MD&A section in the iXBRL HTML, bu
 
 A dedicated recovery script:
 
-```text
+``` text
 scripts/paper2/extract_mdna_S100QGPT.py
 ```
 
@@ -341,19 +350,19 @@ locates the exact MD&A section heading in the known iXBRL document and extracts 
 
 The extraction is written to the canonical output path and recorded in the manifest using:
 
-```text
+``` text
 method = manual_ixbrl
 ```
 
 This should be treated as an explicit documented exception rather than generalized into the primary parser.
 
----
+------------------------------------------------------------------------
 
 # Stage 2 Quality Control
 
 QC is performed by:
 
-```text
+``` text
 scripts/paper2/qc_mdna_extraction.py
 ```
 
@@ -365,7 +374,7 @@ The QC process compares:
 
 ## QC Outputs
 
-```text
+``` text
 data/interim/paper2/mdna/qc/
     mdna_qc_summary.json
     status_counts.csv
@@ -384,40 +393,40 @@ data/interim/paper2/mdna/qc/
 
 ## Final Stage 2 Results
 
-| Metric | Count |
-|---|---:|
-| Stage 1 filing rows | 37,807 |
-| Stage 2 manifest rows | 37,807 |
-| Successful extractions | 37,757 |
-| Failed extractions | 50 |
-| Success rate | 99.8677% |
-| Standard-tag successes | 37,752 |
-| Anchor-fallback successes | 4 |
-| Manual iXBRL recoveries | 1 |
-| Missing Stage 2 rows | 0 |
-| Extra Stage 2 rows | 0 |
-| Output-file issues | 0 |
-| Duplicate Stage 1 `docID` rows | 0 |
-| Duplicate Stage 2 `docID` rows | 0 |
+| Metric                         |    Count |
+|--------------------------------|---------:|
+| Stage 1 filing rows            |   37,807 |
+| Stage 2 manifest rows          |   37,807 |
+| Successful extractions         |   37,757 |
+| Failed extractions             |       50 |
+| Success rate                   | 99.8677% |
+| Standard-tag successes         |   37,752 |
+| Anchor-fallback successes      |        4 |
+| Manual iXBRL recoveries        |        1 |
+| Missing Stage 2 rows           |        0 |
+| Extra Stage 2 rows             |        0 |
+| Output-file issues             |        0 |
+| Duplicate Stage 1 `docID` rows |        0 |
+| Duplicate Stage 2 `docID` rows |        0 |
 
 Text-length distribution:
 
-| Statistic | Characters |
-|---|---:|
-| Minimum | 243 |
-| 1st percentile | 971 |
-| 5th percentile | 1,811 |
-| Median | 6,216 |
-| Mean | 6,749 |
-| 95th percentile | 12,494 |
-| 99th percentile | 20,936 |
-| Maximum | 79,595 |
+| Statistic       | Characters |
+|-----------------|-----------:|
+| Minimum         |        243 |
+| 1st percentile  |        971 |
+| 5th percentile  |      1,811 |
+| Median          |      6,216 |
+| Mean            |      6,749 |
+| 95th percentile |     12,494 |
+| 99th percentile |     20,936 |
+| Maximum         |     79,595 |
 
 Short and long texts are retained as review flags rather than automatically excluded.
 
 The known 243-character minimum is a manually reviewed legitimate short MD&A.
 
----
+------------------------------------------------------------------------
 
 # Failure Interpretation
 
@@ -425,7 +434,7 @@ The remaining extraction failures appear concentrated in foreign or otherwise ou
 
 Examples include:
 
-```text
+``` text
 YTL Corporation Berhad
 MediciNova, Inc.
 Techpoint, Inc.
@@ -436,7 +445,7 @@ Aflac Incorporated
 
 These failures are therefore expected to be handled during downstream sample construction rather than by weakening the MD&A extraction rules.
 
----
+------------------------------------------------------------------------
 
 # Reproducibility and Git Policy
 
@@ -444,7 +453,7 @@ Generated corpus artifacts should remain outside Git.
 
 Recommended exclusions include:
 
-```gitignore
+``` gitignore
 data/interim/paper2/mdna/**/*.txt
 data/interim/paper2/mdna/qc/
 ```
@@ -459,7 +468,7 @@ Git should contain:
 - documentation,
 - and small reproducibility fixtures or summaries where useful.
 
----
+------------------------------------------------------------------------
 
 # Stage 3 — Longitudinal Reporting-Period Matching
 
@@ -471,7 +480,7 @@ The stage is intentionally mechanical. It does not compute TF-IDF, cosine simila
 
 ## Main Components
 
-```text
+``` text
 src/mdna_analysis/longitudinal_match.py
 src/pipeline/stages/longitudinal_match.py
 scripts/paper2/run_pipeline.py
@@ -483,7 +492,7 @@ The Stage 3 adapter inherits its input paths from the configured outputs of the 
 
 An initial diagnostic defined a firm-year using:
 
-```text
+``` text
 edinetCode + year(periodEnd)
 ```
 
@@ -491,7 +500,7 @@ This produced 83 apparent duplicate firm-years.
 
 Manual inspection showed that these were largely legitimate cases in which a company changed its fiscal year-end. A typical sequence looked like:
 
-```text
+``` text
 normal annual period
 2024-04-01 -> 2025-03-31
 
@@ -507,7 +516,7 @@ Within each `edinetCode`, filings are ordered by actual reporting period.
 
 For each adjacent observation, Stage 3 computes:
 
-```text
+``` text
 prev_period_days
 curr_period_days
 period_end_gap_days
@@ -521,7 +530,7 @@ pair_status
 
 Two periods are contiguous when:
 
-```text
+``` text
 curr_periodStart == prev_periodEnd + 1 day
 ```
 
@@ -529,7 +538,7 @@ A standard annual reporting period currently has duration between 300 and 430 da
 
 Adjacent pairs are classified as:
 
-```text
+``` text
 standard_annual
 transition_period
 noncontiguous
@@ -541,7 +550,7 @@ noncontiguous
 
 ## Stage 3 Outputs
 
-```text
+``` text
 data/interim/paper2/longitudinal/
     longitudinal_panel.csv
     duplicate_reporting_periods.csv
@@ -555,23 +564,23 @@ data/interim/paper2/longitudinal/
 
 ## Final Stage 3 Results
 
-| Metric | Count |
-|---|---:|
-| Stage 1 filing rows | 37,807 |
-| Stage 2 manifest rows | 37,807 |
-| Successful Stage 2 extractions | 37,757 |
-| Matched Stage 3 panel rows | 37,757 |
-| Matched EDINET codes | 4,441 |
-| True duplicate reporting-period groups | 0 |
-| Adjacent reporting-period pairs | 33,316 |
-| Standard annual pairs | 33,046 |
-| Transition-period pairs | 268 |
-| Noncontiguous pairs | 2 |
-| Domestic matched panel rows | 37,757 |
-| Foreign matched panel rows | 0 |
-| Domestic standard annual pairs | 33,046 |
-| Foreign standard annual pairs | 0 |
-| Research-eligible pairs | 33,046 |
+| Metric                                 |  Count |
+|----------------------------------------|-------:|
+| Stage 1 filing rows                    | 37,807 |
+| Stage 2 manifest rows                  | 37,807 |
+| Successful Stage 2 extractions         | 37,757 |
+| Matched Stage 3 panel rows             | 37,757 |
+| Matched EDINET codes                   |  4,441 |
+| True duplicate reporting-period groups |      0 |
+| Adjacent reporting-period pairs        | 33,316 |
+| Standard annual pairs                  | 33,046 |
+| Transition-period pairs                |    268 |
+| Noncontiguous pairs                    |      2 |
+| Domestic matched panel rows            | 37,757 |
+| Foreign matched panel rows             |      0 |
+| Domestic standard annual pairs         | 33,046 |
+| Foreign standard annual pairs          |      0 |
+| Research-eligible pairs                | 33,046 |
 
 The exact one-to-one match between successful Stage 2 extractions and Stage 3 panel rows provides a strong join-integrity check.
 
@@ -584,17 +593,17 @@ Only two adjacent available observations were classified as noncontiguous.
 Manual investigation showed that both reflect genuine issuer/listing discontinuities rather than matching failures:
 
 - **SBI Shinsei Bank:** the gap follows its 2023 delisting.
-- **Sony Financial Group:** the gap reflects Sony's 2020 full acquisition / privatization and the later 2025 relisting associated with the partial spin-off.
+- **Sony Financial Group:** the gap reflects Sony’s 2020 full acquisition / privatization and the later 2025 relisting associated with the partial spin-off.
 
 These cases are retained for auditability but excluded from ordinary year-over-year novelty comparisons.
 
 ## Research-Universe Eligibility
 
-The Stage 3 → Stage 4 boundary now includes an explicit domestic-company eligibility rule based on each filing's historical EDINET `formCode`.
+The Stage 3 → Stage 4 boundary now includes an explicit domestic-company eligibility rule based on each filing’s historical EDINET `formCode`.
 
 The eligible domestic Annual Securities Report form codes are:
 
-```text
+``` text
 030000
 030200
 040000
@@ -602,7 +611,7 @@ The eligible domestic Annual Securities Report form codes are:
 
 Foreign-company Annual Securities Reports use:
 
-```text
+``` text
 080000
 ```
 
@@ -612,7 +621,7 @@ This rule is deliberately not embedded in Stage 1 acquisition or Stage 2 extract
 
 The rule currently changes **zero observations** in the baseline novelty sample:
 
-```text
+``` text
 standard annual pairs:       33,046
 domestic standard pairs:     33,046
 foreign standard pairs:           0
@@ -623,13 +632,13 @@ The reason is that all 50 foreign-company filings in Stage 1 failed Stage 2 extr
 
 The canonical Stage 4 input is:
 
-```text
+``` text
 data/interim/paper2/longitudinal/research_eligible_pairs.csv
 ```
 
 ## Stage 3 Flow
 
-```mermaid
+``` mermaid
 flowchart TD
 
     A[Stage 1<br/>filings.csv]
@@ -659,7 +668,7 @@ flowchart TD
 
 Stage 3 should now be treated as **complete and frozen**.
 
----
+------------------------------------------------------------------------
 
 # Stage 4 — Token Representation Construction
 
@@ -667,7 +676,7 @@ Stage 4 begins from the frozen Stage 3 research-eligible pair manifest and intro
 
 The canonical Stage 4 pair input is:
 
-```text
+``` text
 data/interim/paper2/longitudinal/research_eligible_pairs.csv
 ```
 
@@ -675,7 +684,7 @@ This file contains **33,046 research-eligible adjacent standard annual pairs**. 
 
 Stage 4 is divided into three internal phases:
 
-```text
+``` text
 4A — raw Sudachi tokenization
 4B — numeric normalization
 4C — cross-variant QC
@@ -696,7 +705,7 @@ The production tokenization stage uses:
 
 Three Sudachi segmentation modes are generated:
 
-```text
+``` text
 sudachi_a_raw
 sudachi_b_raw
 sudachi_c_raw
@@ -704,15 +713,15 @@ sudachi_c_raw
 
 Final validated counts are:
 
-| Variant | Documents | Total tokens | Mean tokens/document |
-|---|---:|---:|---:|
-| `sudachi_a_raw` | 37,473 | 113,574,929 | 3,030.8 |
-| `sudachi_b_raw` | 37,473 | 109,407,286 | 2,919.6 |
-| `sudachi_c_raw` | 37,473 | 105,993,616 | 2,828.5 |
+| Variant         | Documents | Total tokens | Mean tokens/document |
+|-----------------|----------:|-------------:|---------------------:|
+| `sudachi_a_raw` |    37,473 |  113,574,929 |              3,030.8 |
+| `sudachi_b_raw` |    37,473 |  109,407,286 |              2,919.6 |
+| `sudachi_c_raw` |    37,473 |  105,993,616 |              2,828.5 |
 
 The expected segmentation relationship holds for every document:
 
-```text
+``` text
 tokenCount(A) >= tokenCount(B) >= tokenCount(C)
 ```
 
@@ -720,7 +729,7 @@ with zero violations.
 
 Each raw variant is stored under:
 
-```text
+``` text
 data/interim/paper2/tokens/
     sudachi_a_raw/
     sudachi_b_raw/
@@ -735,7 +744,7 @@ Numeric normalization is implemented as a deterministic transformation of the ex
 
 The final semantic normalization collapses numeric magnitude while preserving economically meaningful number classes:
 
-```text
+``` text
 numeric magnitudes        -> <NUM>
 percentages               -> <NUM>%
 yen-denominated amounts   -> <NUM>円
@@ -749,7 +758,7 @@ The transformation remains one-input-token to one-output-token, so the number-no
 
 The derived variants are:
 
-```text
+``` text
 sudachi_a_num
 sudachi_b_num
 sudachi_c_num
@@ -775,7 +784,7 @@ The validator checks:
 
 The current QC summary reports:
 
-```text
+``` text
 status = passed
 documentCount = 37,473
 missingFiles = 0
@@ -790,7 +799,7 @@ num B<C violations = 0
 
 The machine-readable QC artifact is:
 
-```text
+``` text
 data/interim/paper2/tokens/qc_summary.json
 ```
 
@@ -798,7 +807,7 @@ The Stage 4 token-preparation layer should therefore now be treated as **complet
 
 ## Stage 4 Flow
 
-```mermaid
+``` mermaid
 flowchart TD
 
     A[research_eligible_pairs.csv<br/>33,046 pairs]
@@ -841,7 +850,7 @@ Stage 4 exposed a practical infrastructure constraint: directly reading and writ
 
 The pipeline now supports an optional local scratch layout:
 
-```text
+``` text
 canonical repository / NAS paths:
 data/interim/paper2/...
 
@@ -853,11 +862,11 @@ Canonical manifests continue to record repo-relative logical paths. Machine-spec
 
 For Stage 4 tokenization on the M1 Max, local SSD processing improved throughput dramatically. Worker-count testing produced:
 
-| Workers | Throughput |
-|---:|---:|
-| 6 | 569.1 docs/s |
-| 8 | 744.3 docs/s |
-| 10 | 751.1 docs/s |
+| Workers |   Throughput |
+|--------:|-------------:|
+|       6 | 569.1 docs/s |
+|       8 | 744.3 docs/s |
+|      10 | 751.1 docs/s |
 
 The production setting is therefore **8 workers**, which captures nearly all available throughput without unnecessary process overhead.
 
@@ -865,7 +874,7 @@ Completed scratch artifacts are archived and transferred back to the canonical N
 
 ## Stage 4 Outputs
 
-```text
+``` text
 data/interim/paper2/tokens/
     sudachi_a_raw/
         manifest.csv
@@ -907,14 +916,14 @@ For each token variant, the stage operates on the same **37,473-document** unive
 
 The baseline pair-level measure is:
 
-```text
+``` text
 cosine_similarity = cosine(TFIDF_previous, TFIDF_current)
 textual_novelty = 1 - cosine_similarity
 ```
 
 The stage has now been run for all six token variants:
 
-```text
+``` text
 sudachi_a_raw
 sudachi_a_num
 sudachi_b_raw
@@ -927,7 +936,7 @@ The architecture is deliberately variant-agnostic. Stage 5 does not hard-code a 
 
 ## Stage 5 Flow
 
-```mermaid
+``` mermaid
 flowchart TD
 
     A[Validated Stage 4 token variant] --> B[Load 37,473 tokenized MD&A documents]
@@ -947,14 +956,14 @@ All six word-token variants completed on the identical **37,473-document** corpu
 
 Final pair-level novelty summaries are:
 
-| Variant | Mean novelty | Median novelty |
-|---|---:|---:|
-| `sudachi_a_raw` | 0.106852 | 0.088598 |
-| `sudachi_b_raw` | 0.109630 | 0.091106 |
-| `sudachi_c_raw` | 0.111810 | 0.093010 |
-| `sudachi_a_num` | 0.049687 | 0.034892 |
-| `sudachi_b_num` | 0.051269 | 0.036312 |
-| `sudachi_c_num` | 0.052434 | 0.037234 |
+| Variant         | Mean novelty | Median novelty |
+|-----------------|-------------:|---------------:|
+| `sudachi_a_raw` |     0.106852 |       0.088598 |
+| `sudachi_b_raw` |     0.109630 |       0.091106 |
+| `sudachi_c_raw` |     0.111810 |       0.093010 |
+| `sudachi_a_num` |     0.049687 |       0.034892 |
+| `sudachi_b_num` |     0.051269 |       0.036312 |
+| `sudachi_c_num` |     0.052434 |       0.037234 |
 
 The Sudachi A/B/C choices are extremely similar within the raw family and within the number-normalized family. Pairwise correlations are approximately 0.997–0.999 within each family, indicating that segmentation mode has little effect on the ranking of firm-year novelty.
 
@@ -962,13 +971,13 @@ Raw versus number-normalized novelty is meaningfully different. Pearson correlat
 
 The primary word-token novelty specification is now:
 
-```text
+``` text
 baseline_variant = sudachi_c_num
 ```
 
 The main representation robustness alternative is:
 
-```text
+``` text
 sudachi_c_raw
 ```
 
@@ -978,7 +987,7 @@ Sudachi A/B variants are retained as secondary robustness checks rather than equ
 
 Stage 5 also writes a representation-independent:
 
-```text
+``` text
 data/interim/paper2/novelty/pair_diagnostics.csv
 ```
 
@@ -986,7 +995,7 @@ derived directly from the Stage 3 `prev_textChars` and `curr_textChars` fields.
 
 The diagnostics include:
 
-```text
+``` text
 prevMdnaLength
 currMdnaLength
 lengthRatio
@@ -1003,19 +1012,19 @@ For the 33,046 research-eligible pairs:
 
 Length change is strongly related to baseline C-num novelty. In the full sample:
 
-```text
+``` text
 Pearson corr(novelty, absLogLengthChange)  = 0.797
 Spearman corr(novelty, absLogLengthChange) = 0.592
 ```
 
 The relationship remains meaningful after excluding extreme length changes:
 
-| Sample | Pearson | Spearman |
-|---|---:|---:|
-| Full sample | 0.797 | 0.592 |
-| Drop top 1% absolute length change | 0.758 | 0.580 |
-| Drop top 5% | 0.633 | 0.526 |
-| Drop top 10% | 0.491 | 0.454 |
+| Sample                             | Pearson | Spearman |
+|------------------------------------|--------:|---------:|
+| Full sample                        |   0.797 |    0.592 |
+| Drop top 1% absolute length change |   0.758 |    0.580 |
+| Drop top 5%                        |   0.633 |    0.526 |
+| Drop top 10%                       |   0.491 |    0.454 |
 
 This indicates that disclosure expansion/contraction is an important systematic component of textual novelty, not merely an artifact of a few extreme filings.
 
@@ -1029,7 +1038,7 @@ The extreme maximum tail includes genuine but unusually large changes in disclos
 
 The final Stage 5 validation reports:
 
-```text
+``` text
 pair rows = 33,046
 duplicate pairs = 0
 missing pair-diagnostic values = 0
@@ -1045,7 +1054,7 @@ A separate plotting layer generates reproducible descriptive and diagnostic outp
 
 The planned/generated figure family includes:
 
-```text
+``` text
 outputs/paper2/figures/novelty/
     annual_novelty_summary.csv
     paper/
@@ -1062,21 +1071,20 @@ The annual summary exposes a pronounced 2018 discontinuity. C-num novelty for fi
 
 The novelty-versus-length visualization documents the strong relationship already quantified in `pair_diagnostics.csv`. This figure should be retained as a candidate appendix or main-text diagnostic because it motivates the `absLogLengthChange` control and the planned length-tail robustness tests. A further diagnostic should assess whether the 2018 novelty discontinuity remains after accounting for MD&A length change.
 
-## Next Pipeline Step — Stage 6
+## Stage 5 Handoff to Stage 6
 
-Stage 6 should begin with an analysis-panel foundation before sentiment models are run. The canonical panel should establish one auditable row per research-eligible adjacent annual pair and integrate:
+Stage 5 hands the frozen novelty artifacts to Stage 6 without recomputing text representations. Stage 6A has now implemented the analysis-panel foundation, establishing one auditable row per research-eligible adjacent annual pair and integrating:
 
 - baseline `sudachi_c_num` novelty;
-- `sudachi_c_raw` and other representation robustness measures;
+- `sudachi_c_raw` representation robustness novelty;
 - `absLogLengthChange` and signed length-change diagnostics;
-- identifiers and dates needed for subsequent sentiment and market-data joins;
-- sentiment outputs (Stage 6B);
-- market-reaction outcomes (subsequent integration);
-- firm/year/industry identifiers and fixed-effect variables.
+- identifiers and dates needed for subsequent sentiment and market-data joins.
 
-Character 3–5-gram novelty remains a planned tokenizer-robustness branch rather than a blocker for the main panel construction.
+Sentiment is deliberately constructed independently at the document level: Stage 6B produces the frozen LMMD lexical measure and Stage 6C produces the Financial BERT contextual measure. These outputs are joined to the Stage 6A foundation only after their own construction and validation. Market-reaction outcomes and firm/year/industry fixed-effect variables are subsequent integration steps.
 
----
+Character 3–5-gram novelty remains a planned tokenizer-robustness branch rather than a blocker for the main panel.
+
+------------------------------------------------------------------------
 
 # Design Principles Established So Far
 
@@ -1092,7 +1100,7 @@ The implemented stages establish several project-wide principles:
 - freeze completed stages before downstream modeling;
 - separate mechanical data construction from methodological choices.
 
-These principles should continue through Stage 4 and later empirical stages.
+These principles continue through the sentiment and later empirical stages.
 
 # Stage 6A — Analysis-Panel Foundation
 
@@ -1102,7 +1110,7 @@ Stage 6A creates the canonical pair-level foundation for subsequent sentiment, m
 
 The stage joins Stage 5 measures strictly on:
 
-```text
+``` text
 edinetCode + prev_docID + curr_docID
 ```
 
@@ -1112,7 +1120,7 @@ and preserves the full Stage 3 pair metadata.
 
 Stage 6A incorporates:
 
-```text
+``` text
 baseline novelty:    sudachi_c_num
 robustness novelty:  sudachi_c_raw
 
@@ -1126,7 +1134,7 @@ pair diagnostics:
 
 The canonical output is:
 
-```text
+``` text
 data/interim/paper2/analysis/analysis_panel.csv
 ```
 
@@ -1136,20 +1144,19 @@ with a companion metadata JSON recording inputs, join diagnostics, dimensions, a
 
 The completed Stage 6A panel contains:
 
-| Metric | Result |
-|---|---:|
-| Rows | 33,046 |
-| Columns | 41 |
-| Missing C-num novelty/cosine joins | 0 |
-| Missing C-raw novelty/cosine joins | 0 |
-| Missing length-diagnostic joins | 0 |
+| Metric                             | Result |
+|------------------------------------|-------:|
+| Rows                               | 33,046 |
+| Columns                            |     41 |
+| Missing C-num novelty/cosine joins |      0 |
+| Missing C-raw novelty/cosine joins |      0 |
+| Missing length-diagnostic joins    |      0 |
 
 The C-num and C-raw novelty means and medians exactly reproduce the frozen Stage 5 summaries, providing an additional end-to-end integrity check.
 
 Stage 6A should therefore be treated as **complete and validated**. Later sentiment and market-reaction measures should be produced independently and joined to this canonical foundation.
 
-
-# Stage 6B — Sentiment Measurement
+# Stage 6B — LMMD Lexical Sentiment Benchmark
 
 ## LMMD Dictionary / Token Compatibility QC
 
@@ -1161,7 +1168,7 @@ Of the 2,692 sentiment-bearing entries, **2,689 have a `GPT_JA` translation (99.
 
 Three sentiment-bearing source entries lack a Japanese translation:
 
-```text
+``` text
 AVERSELY
 BRIBERIES
 CLAIMING
@@ -1170,14 +1177,14 @@ CLAIMING
 These missing translations were not manually imputed. A diagnostic search of plausible Japanese equivalents in the full Stage 4 C-raw corpus found:
 
 | Source concept | Diagnostic Japanese term | Corpus count |
-|---|---|---:|
-| AVERSELY | `反対` | 88 |
-| AVERSELY | `不利` | 225 |
-| AVERSELY | `嫌う` | 0 |
-| BRIBERIES | `贈賄` | 3 |
-| BRIBERIES | `賄賂` | 0 |
-| CLAIMING | `主張` | 54 |
-| CLAIMING | `請求` | 1,122 |
+|----------------|--------------------------|-------------:|
+| AVERSELY       | `反対`                   |           88 |
+| AVERSELY       | `不利`                   |          225 |
+| AVERSELY       | `嫌う`                   |            0 |
+| BRIBERIES      | `贈賄`                   |            3 |
+| BRIBERIES      | `賄賂`                   |            0 |
+| CLAIMING       | `主張`                   |           54 |
+| CLAIMING       | `請求`                   |        1,122 |
 
 The first two missing translations therefore have negligible potential corpus impact. `CLAIMING` is more consequential only under some possible translations, but Japanese terms such as `請求` are context-dependent and can denote ordinary claims, billing, or requests for payment. Automatically assigning all such occurrences negative polarity would risk introducing more measurement error than leaving the source entry untranslated. To avoid post-hoc corpus-driven tuning, all three entries remain missing.
 
@@ -1185,18 +1192,18 @@ The corpus compatibility check read all **37,473 Stage 4 C-raw documents**, with
 
 Of the **1,827 unique translated sentiment terms**, **466 (25.51%)** occur at least once in the MD&A corpus. Although dictionary-term realization is sparse because many translated LMMD terms are absent from Japanese annual-report language, document-level coverage is essentially universal:
 
-| Metric | Result |
-|---|---:|
-| Documents with any sentiment hit | 99.9546% |
-| Documents with positive hit | 99.6798% |
-| Documents with negative hit | 99.7331% |
-| Positive token hits | 1,230,083 |
-| Negative token hits | 1,094,758 |
-| Total sentiment-token hits | 2,324,841 |
-| Median sentiment hits/document | 56 |
-| Mean sentiment hits/document | 62.04 |
-| Median LMMD net sentiment | 0.001538 |
-| Mean LMMD net sentiment | 0.000992 |
+| Metric                           |    Result |
+|----------------------------------|----------:|
+| Documents with any sentiment hit |  99.9546% |
+| Documents with positive hit      |  99.6798% |
+| Documents with negative hit      |  99.7331% |
+| Positive token hits              | 1,230,083 |
+| Negative token hits              | 1,094,758 |
+| Total sentiment-token hits       | 2,324,841 |
+| Median sentiment hits/document   |        56 |
+| Mean sentiment hits/document     |     62.04 |
+| Median LMMD net sentiment        |  0.001538 |
+| Mean LMMD net sentiment          |  0.000992 |
 
 Inspection of the highest-frequency matched terms confirmed that many important financial-polarity translations behave plausibly, including `減少`, `損失`, `減損`, `悪化`, and `厳しい` on the negative side and `利益`, `収益`, `強化`, `向上`, `改善`, `回復`, and `達成` on the positive side.
 
@@ -1212,7 +1219,7 @@ The single positive/negative translation collision (`決定的に`) is likewise 
 
 Production LMMD scoring is now **complete and validated** for all **37,473** unique research-universe MD&A documents. The implementation preserves the Paper 1 lexical concept while using the frozen Stage 4 C-raw tokens:
 
-```text
+``` text
 positiveRate = positiveCount / tokenCount
 negativeRate = negativeCount / tokenCount
 lmmdNet      = positiveRate - negativeRate
@@ -1232,12 +1239,12 @@ The same matched firms experience a median log token-count change of approximate
 
 Term-frequency decomposition identifies two especially influential translated LMMD classifications: `実績` on the positive side and `減少` on the negative side. A document-level leave-one-term-out diagnostic gives:
 
-| Specification | Mean Δ LMMD | Median Δ LMMD | Firms more positive |
-|---|---:|---:|---:|
-| Baseline | 0.00833 | 0.00756 | 84.98% |
-| Exclude `実績` | 0.00578 | 0.00498 | 76.59% |
-| Exclude `減少` | 0.00485 | 0.00465 | 82.21% |
-| Exclude both | 0.00230 | 0.00192 | 67.67% |
+| Specification  | Mean Δ LMMD | Median Δ LMMD | Firms more positive |
+|----------------|------------:|--------------:|--------------------:|
+| Baseline       |     0.00833 |       0.00756 |              84.98% |
+| Exclude `実績` |     0.00578 |       0.00498 |              76.59% |
+| Exclude `減少` |     0.00485 |       0.00465 |              82.21% |
+| Exclude both   |     0.00230 |       0.00192 |              67.67% |
 
 Removing both terms reduces the mean FY2017→FY2018 shift by approximately **72%**, but does not eliminate it. The remaining positive shift is still broad-based. This supports a nuanced interpretation: the 2018 LMMD discontinuity reflects a genuine broad change in disclosure vocabulary that is substantially amplified by context-insensitive lexical classifications.
 
@@ -1245,7 +1252,201 @@ The translated dictionary will **not** be modified in response to these diagnost
 
 Planned empirical treatment is to retain the original LMMD benchmark, include year fixed effects in the main models, run key specifications excluding the FY2018 regulatory-transition observations, and explicitly compare whether Japanese Financial BERT and GPT exhibit a similar 2018 discontinuity.
 
-# Next — Stage 6B Contextual Sentiment Measurement
+# Stage 6C — Japanese Financial BERT Contextual Sentiment
 
-The LMMD lexical benchmark should now be treated as **complete and frozen**. The immediate next sentiment task is Japanese Financial BERT, followed by GPT sentiment. Both should be constructed independently at document level, without using novelty or market outcomes during sentiment construction, and should produce comparable outputs suitable for joining to the Stage 6A panel.
+## Purpose and Model-Development Boundary
 
+Stage 6C provides a contextual Japanese financial sentiment measure that is constructed independently of textual novelty and market outcomes. The production stage does **not** retrain a model on every pipeline run. Model development is a separate, reproducible workflow that prepares chABSA labels, fine-tunes and validates two classifiers, and freezes the selected checkpoints. The main pipeline then consumes those frozen model artifacts.
+
+The contextual backbone is:
+
+``` text
+izumi-lab/bert-base-japanese-fin-additional
+```
+
+The implementation follows the dual-binary chABSA design aligned with Nakatsuka & Suimon (2024):
+
+``` text
+classifier 1: positive opinion present / absent
+classifier 2: negative opinion present / absent
+```
+
+The two decisions are independent, so a sentence can be positive-only, negative-only, both, or neither.
+
+## chABSA Preparation
+
+The downloaded chABSA archive contained a duplicated nested directory. The outer and inner copies each contained 230 annotation JSON files and were verified byte-for-byte identical using SHA-256 comparison. Only one copy is used as the canonical model-development input.
+
+The preparation script converts the 230 annotation files into **6,119 sentence observations**:
+
+| Label statistic    | Count |
+|--------------------|------:|
+| Documents          |   230 |
+| Sentences          | 6,119 |
+| Positive sentences | 2,210 |
+| Negative sentences | 1,746 |
+| Positive only      | 1,397 |
+| Negative only      |   933 |
+| Both               |   813 |
+| Neither            | 2,976 |
+
+The prepared artifact is:
+
+``` text
+data/interim/paper2/sentiment/financial_bert/chabsa_sentences.csv
+```
+
+with companion metadata recording source counts and label distributions.
+
+## Fine-Tuning Design
+
+The fixed split is joint-stratified over the four joint label states:
+
+``` text
+train       4,895
+validation    612
+test          612
+```
+
+Training configuration:
+
+``` text
+max_length          = 512
+max_epochs          = 10
+learning_rate       = 5e-5
+weight_decay        = 0.01
+warmup_steps        = 100
+train_batch_size    = 16
+eval_batch_size     = 32
+seed                = 42
+full_finetune       = false
+```
+
+Only the classification head and final BERT encoder layer are updated. Each classifier has **110,618,882 total parameters**, of which **7,089,410 are trainable**. The selected checkpoint is the checkpoint with minimum validation loss, not automatically the final epoch.
+
+The frozen model artifacts are:
+
+``` text
+models/paper2/financial_bert_sentiment/
+    positive/final/
+    negative/final/
+    sentence_splits.csv
+    training_metadata.json
+```
+
+Held-out test performance:
+
+| Classifier | Accuracy | Precision | Recall |     F1 | Weighted F1 |
+|------------|---------:|----------:|-------:|-------:|------------:|
+| Positive   |   0.9526 |    0.9251 | 0.9459 | 0.9354 |      0.9527 |
+| Negative   |   0.9461 |    0.9277 | 0.8800 | 0.9032 |      0.9456 |
+
+The positive model’s minimum validation-loss checkpoint is `checkpoint-306`; the negative model’s is `checkpoint-612`.
+
+## Production Document Scoring
+
+The Stage 6C pipeline uses the Stage 4 `sudachi_c_raw` manifest only to define the exact frozen **37,473-document** universe. It then re-reads the original Stage 2 MD&A text and tokenizes it with the Financial BERT tokenizer rather than reusing Sudachi tokens.
+
+The production logic is:
+
+1.  split MD&A into source sentences using Japanese punctuation/newline boundaries;
+2.  discard only source segments shorter than the configured minimum (`min_chars = 2`);
+3.  tokenize with the frozen Financial BERT tokenizer;
+4.  split source sentences exceeding the 512-token model limit into model pieces;
+5.  score all model pieces with both binary classifiers;
+6.  content-token-weight the piece probabilities and reaggregate them to the original source sentence;
+7.  apply the `0.5` positive/negative thresholds only after source-sentence reaggregation;
+8.  aggregate sentence classifications to document-level sentiment.
+
+The primary document score is:
+
+``` text
+bertNet = (bertPositiveSentenceCount - bertNegativeSentenceCount)
+          / bertSentenceCount
+```
+
+The output also preserves:
+
+``` text
+bertPositiveSentenceRate
+bertNegativeSentenceRate
+bertPositiveOnlySentenceCount
+bertNegativeOnlySentenceCount
+bertBothSentenceCount
+bertNeitherSentenceCount
+bertBothSentenceRate
+bertNeitherSentenceRate
+bertMeanPositiveProbability
+bertMeanNegativeProbability
+bertProbabilityNet
+bertModelPieceCount
+bertOverlongSentenceCount
+bertContentTokenCount
+bertUnknownTokenCount
+bertUnknownTokenRate
+```
+
+The canonical final output is:
+
+``` text
+data/interim/paper2/sentiment/financial_bert/financial_bert_sentiment.csv
+```
+
+During a resumable run, intermediate state is preserved in partial artifacts:
+
+``` text
+financial_bert_sentiment.partial.csv
+financial_bert_sentiment.partial.metadata.json
+```
+
+The partial metadata contains a run signature incorporating the backbone, tokenizer/model references and fingerprints, universe variant, segmentation, sequence length, threshold, and inference batch size. Resume is accepted only for a compatible run signature.
+
+## End-to-End Validation
+
+A 25-document smoke test on actual research-universe MD&A text verified model loading, sentence segmentation, long-sentence handling, aggregation, and document-level output. Unknown-token rates were essentially zero and the document scores showed meaningful positive and negative variation.
+
+A subsequent 250-document validation run produced:
+
+| Statistic          | `bertNet` |
+|--------------------|----------:|
+| Mean               |  0.027666 |
+| Standard deviation |  0.079157 |
+| Minimum            | -0.227273 |
+| 25th percentile    | -0.016229 |
+| Median             |  0.024815 |
+| 75th percentile    |  0.064241 |
+| Maximum            |  0.366667 |
+
+Mean positive-sentence rate was **0.1275** and mean negative-sentence rate was **0.0998**. The distribution did not show classifier collapse or saturation.
+
+As a diagnostic only, the same 250 documents were joined to the frozen LMMD output. The measures show:
+
+``` text
+Pearson corr(bertNet, lmmdNet)   = 0.4442
+Spearman corr(bertNet, lmmdNet)  = 0.4724
+nonzero-sign agreement           = 72.8%
+```
+
+This comparison was not used for BERT model selection or tuning. It establishes that the lexical and contextual measures share a meaningful sentiment component while remaining far from interchangeable. Large standardized disagreements are retained for later qualitative validation.
+
+## Compute and Resume Behavior
+
+On the M1 Max, the production stage automatically selects Apple MPS. During sustained inference, GPU active residency is approximately 97–100%, confirming that the production scorer is effectively using the GPU rather than being dominated by CPU or NAS I/O.
+
+Current production settings are:
+
+``` text
+inference_batch_size = 32
+document_block_size  = 16
+device               = auto
+resume               = true
+overwrite            = false
+```
+
+The resume mechanism has been validated in practice. An interrupted first production run preserved **2,112 / 37,473** completed document scores in the partial output. Restarting the same pipeline configuration resumed beyond that checkpoint instead of recomputing completed documents. Long production runs are now launched under `caffeinate` and terminal output is captured with `tee`.
+
+Stage 6C should be treated as **implementation-complete and validation-passed, but not yet frozen**, until full-corpus inference reaches 37,473 documents and final row-count/key/distribution/annual diagnostics pass.
+
+# Next — Stage 6D GPT / Generative Sentiment
+
+After Stage 6C production scoring and diagnostics are frozen, the next sentiment layer is GPT / generative sentiment. It should use the same research-universe documents, be constructed independently of novelty and market outcomes, and preserve a comparable document-level output architecture. Model/version, prompt, context/chunking strategy, aggregation rule, and structured output schema should be frozen before full production scoring.
