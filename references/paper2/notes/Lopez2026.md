@@ -4,7 +4,7 @@
 LopezLiraTang2026.pdf
 
 ## Citation
-@article{lopez2026can,
+@article{lopezlira2026can,
   title={Can chatgpt forecast stock price movements? return predictability and large language models},
   author={Lopez-Lira, Alejandro and Tang, Yuehua},
   journal={Journal of Financial Economics},
