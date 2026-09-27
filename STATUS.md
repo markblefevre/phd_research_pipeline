@@ -716,31 +716,16 @@ sentiment methods.
 
 ### Stage 6C --- Japanese Financial BERT contextual sentiment
 
-Stage 6C is now **complete, full-corpus scored, diagnostically
-validated, and frozen for downstream analysis**. Model development is
-deliberately separated from routine pipeline inference: chABSA
-preparation and fine-tuning produce frozen model artifacts, while the
-production pipeline consumes those frozen checkpoints to score the same
-**37,473-document** research universe used by Stage 4 and Stage 6B.
+Stage 6C is now **complete, full-corpus scored, diagnostically validated, canonicalized, and frozen for downstream analysis**. Model development is deliberately separated from routine pipeline inference: chABSA preparation and fine-tuning produce frozen model artifacts, while the production pipeline consumes those frozen checkpoints to score the same **37,473-document** research universe used by Stage 4 and Stage 6B.
 
-The contextual backbone is
-`izumi-lab/bert-base-japanese-fin-additional`. Following the dual-binary
-design aligned with Nakatsuka & Suimon (2024), two independent sentence
-classifiers are fine-tuned on chABSA:
+The contextual backbone is `izumi-lab/bert-base-japanese-fin-additional`. Following the dual-binary design aligned with Nakatsuka & Suimon (2024), two independent sentence classifiers are fine-tuned on chABSA:
 
-1.  positive opinion present / absent;
-2.  negative opinion present / absent.
+1. positive opinion present / absent;
+2. negative opinion present / absent.
 
-A sentence may therefore be positive, negative, both, or neither rather
-than being forced into a single mutually exclusive sentiment class.
+A sentence may therefore be positive, negative, both, or neither rather than being forced into a single mutually exclusive sentiment class.
 
-The chABSA preparation step uses **230 Annual Securities Report
-annotation files** containing **6,119 sentences**. The prepared labels
-contain **2,210 positive sentences** and **1,746 negative sentences**,
-with joint states of 1,397 positive-only, 933 negative-only, 813 both,
-and 2,976 neither. A duplicated outer/inner copy in the downloaded
-Kaggle package was verified byte-for-byte with SHA-256; only one
-230-file copy is used.
+The chABSA preparation step uses **230 Annual Securities Report annotation files** containing **6,119 sentences**. The prepared labels contain **2,210 positive sentences** and **1,746 negative sentences**, with joint states of 1,397 positive-only, 933 negative-only, 813 both, and 2,976 neither. A duplicated outer/inner copy in the downloaded Kaggle package was verified byte-for-byte with SHA-256; only one 230-file copy is used.
 
 The fixed split is joint-stratified across the four joint label states:
 
@@ -750,13 +735,7 @@ The fixed split is joint-stratified across the four joint label states:
   Validation           612
   Test                 612
 
-Fine-tuning uses maximum sequence length 512, learning rate `5e-5`,
-weight decay `0.01`, 100 warmup steps, training batch size 16,
-evaluation batch size 32, seed 42, and a maximum of 10 epochs. Only the
-classification head and final BERT encoder layer are trainable
-(**7,089,410 / 110,618,882 parameters**). The selected model for each
-binary task is the checkpoint with minimum validation loss rather than
-automatically the final epoch.
+Fine-tuning uses maximum sequence length 512, learning rate `5e-5`, weight decay `0.01`, 100 warmup steps, training batch size 16, evaluation batch size 32, seed 42, and a maximum of 10 epochs. Only the classification head and final BERT encoder layer are trainable (**7,089,410 / 110,618,882 parameters**). The selected model for each binary task is the checkpoint with minimum validation loss rather than automatically the final epoch.
 
 Held-out test performance is:
 
@@ -768,13 +747,7 @@ Held-out test performance is:
   Negative         0.9461      0.9277   0.8800   **0.9032**        0.9456
   -----------------------------------------------------------------------
 
-Production scoring re-reads the original Stage 2 MD&A text and applies
-the BERT model's own Japanese tokenizer; Stage 4 `sudachi_c_raw` is used
-only to define the exact frozen document universe. MD&A is segmented
-into source sentences. Source sentences exceeding the model limit are
-split into model pieces, scored, and reaggregated before thresholding so
-that an overlong source sentence still counts once in the document-level
-measure.
+Production scoring re-reads the original Stage 2 MD&A text and applies the BERT model's own Japanese tokenizer; Stage 4 `sudachi_c_raw` is used only to define the exact frozen document universe. MD&A is segmented into source sentences. Source sentences exceeding the model limit are split into model pieces, scored, and reaggregated before thresholding so that an overlong source sentence still counts once in the document-level measure.
 
 The primary document score is:
 
@@ -782,74 +755,37 @@ The primary document score is:
 bertNet = (positiveSentenceCount - negativeSentenceCount) / sentenceCount
 ```
 
-The output also preserves positive/negative sentence rates,
-positive-only/negative-only/both/neither counts, mean positive and
-negative probabilities, `bertProbabilityNet`, model-piece counts,
-overlong-sentence diagnostics, and unknown-token rates.
+The output also preserves positive/negative sentence rates, positive-only/negative-only/both/neither counts, mean positive and negative probabilities, `bertProbabilityNet`, model-piece counts, overlong-sentence diagnostics, and unknown-token rates.
 
-End-to-end smoke testing on 25 real MD&A documents showed sensible
-sentence-level aggregation, meaningful positive and negative document
-scores, and near-zero unknown-token rates. A subsequent **250-document
-validation sample** produced mean `bertNet = 0.0277`, median `0.0248`,
-standard deviation `0.0792`, and a range from approximately `-0.227` to
-`+0.367`.
+End-to-end smoke testing on 25 real MD&A documents showed sensible sentence-level aggregation, meaningful positive and negative document scores, and near-zero unknown-token rates. A subsequent **250-document validation sample** produced mean `bertNet = 0.0277`, median `0.0248`, standard deviation `0.0792`, and a range from approximately `-0.227` to `+0.367`.
 
-As a non-tuning diagnostic, the same 250 documents were compared with
-the frozen LMMD scores. The measures show moderate agreement rather than
-redundancy: **Pearson correlation 0.444**, **Spearman correlation
-0.472**, and **72.8% sign agreement** among documents with nonzero
-scores under both methods. The largest standardized disagreements
-include documents for which BERT and LMMD assign opposite sentiment
-signs. These cases are reserved for later qualitative validation; the
-comparison was not used to alter or tune either sentiment measure.
+As a non-tuning diagnostic, the same 250 documents were compared with the frozen LMMD scores. The measures show moderate agreement rather than redundancy: **Pearson correlation 0.444**, **Spearman correlation 0.472**, and **72.8% sign agreement** among documents with nonzero scores under both methods. The largest standardized disagreements include documents for which BERT and LMMD assign opposite sentiment signs. These cases are reserved for later qualitative validation; the comparison was not used to alter or tune either sentiment measure.
 
-Production inference is wired into `run_pipeline.py` as Stage 6C. It
-uses the frozen positive and negative checkpoints, `threshold = 0.5`,
-`inference_batch_size = 32`, Apple MPS when available, and resumable
-block-level output. The initial production run demonstrated the recovery
-design when the Mac slept: **2,112 completed documents** were preserved
-in the partial checkpoint and the subsequent run resumed successfully
-rather than recomputing them. The current full-corpus run is being
-executed under `caffeinate` with logging enabled. Full production
-inference has now completed successfully on the Windows RTX 4080 SUPER.
-The validated output contains exactly **37,473 rows**, matching the
-frozen research-universe document count. Resume behavior was also
-validated when an interrupted run completed correctly after restart.
+Production inference is wired into `run_pipeline.py` as Stage 6C and uses the frozen positive and negative checkpoints, `threshold = 0.5`, `inference_batch_size = 32`, automatic hardware selection, and resumable block-level output. Full production inference completed successfully for the complete **37,473-document** research universe.
 
-Full-sample diagnostics show that BERT and LMMD are related but
-nonredundant: across all 37,473 documents, Pearson
-`corr(bertNet, lmmdNet) = 0.4031` and Spearman `= 0.4445`; using
-`bertProbabilityNet` gives Pearson `0.4118` and Spearman `0.4513`.
+The canonical frozen Stage 6C artifacts are:
 
-The FY2017→FY2018 comparison differs sharply across methods. Mean LMMD
-rises from approximately **−0.00536** to **+0.00298**, while mean BERT
-falls from approximately **+0.08722** to **+0.05747**. Among **3,362
-matched firms**, mean within-firm BERT change is **−0.03091**, median
-change is **−0.02350**, and **55.92%** become less positive.
+``` text
+data/interim/paper2/sentiment/financial_bert/
+    financial_bert_sentiment.csv
+    financial_bert_sentiment.metadata.json
+```
 
-A pre-specified diagnostic on all **33,046 research-eligible pairs**
-then examined whether BERT/LMMD measurement disagreement varies with
-frozen C-num textual novelty. Mean `|z(BERT) - z(LMMD)|` generally rises
-across the novelty distribution (approximately **0.741** in decile 1,
-**0.814** in decile 9, and **0.806** in decile 10). With
-`absLogLengthChange` and fiscal-year fixed effects, the novelty
-coefficient is **0.912 (t = 6.65)**; excluding FY2018 it remains **0.879
-(t = 5.25)**.
+Hardware-specific production directories are no longer part of the active pipeline. The canonical output is the validated CUDA production result, while an independent full-corpus Apple MPS run was used only as an implementation-reproducibility check.
 
-Directional disagreement behaves differently. Raw sign disagreement is
-**26.20%** and declines with novelty. A centered standardized-magnitude
-diagnostic shows that much of this is concentrated among relatively weak
-signals. Requiring both centered standardized magnitudes to exceed **0.50**
-reduces sign disagreement to **15.04%**, with rates broadly stable
-across novelty deciles (approximately **13.7%--16.3%**).
+The independent MPS and CUDA runs contained identical **37,473-document** universes and identical preprocessing, sentence counts, token diagnostics, and document construction. Continuous sentiment probabilities differed only at numerical floating-point precision (approximately `1e-8` to `1e-7`). Only one document exhibited a one-sentence threshold classification difference near the `0.5` decision boundary. Corpus-level sentiment distributions were unchanged. This check therefore provides strong evidence that Stage 6C results are not materially hardware-dependent; it is retained as implementation validation rather than as part of the paper's substantive empirical narrative.
 
-The frozen diagnostic conclusion is therefore narrow: **greater textual
-novelty is associated with somewhat greater divergence in measured
-sentiment intensity, while directional classification remains broadly
-consistent when both sentiment signals are sufficiently strong**. No
-BERT or LMMD parameters, thresholds, dictionary terms, or
-model-selection decisions were changed in response to these diagnostics.
-Stage 6C should now be treated as **complete and frozen**.
+Full-sample diagnostics show that BERT and LMMD are related but nonredundant: across all 37,473 documents, Pearson `corr(bertNet, lmmdNet) = 0.4031` and Spearman `= 0.4445`; using `bertProbabilityNet` gives Pearson `0.4118` and Spearman `0.4513`.
+
+The FY2017→FY2018 comparison differs sharply across methods. Mean LMMD rises from approximately **−0.00536** to **+0.00298**, while mean BERT falls from approximately **+0.08722** to **+0.05747**. Among **3,362 matched firms**, mean within-firm BERT change is **−0.03091**, median change is **−0.02350**, and **55.92%** become less positive.
+
+A pre-specified diagnostic on all **33,046 research-eligible pairs** examined whether BERT/LMMD measurement disagreement varies with frozen C-num textual novelty. With `absLogLengthChange` and fiscal-year fixed effects, the novelty coefficient is **0.912 (t = 6.65)**; excluding FY2018 it remains **0.879 (t = 5.25)**.
+
+Directional disagreement behaves differently. Raw sign disagreement is **26.20%** and declines with novelty. A centered standardized-magnitude diagnostic shows that much of this is concentrated among relatively weak signals. Requiring both centered standardized magnitudes to exceed **0.50** reduces sign disagreement to **15.04%**, with rates broadly stable across novelty deciles (approximately **13.7%--16.3%**).
+
+The frozen diagnostic conclusion is therefore narrow: **greater textual novelty is associated with somewhat greater divergence in measured sentiment intensity, while directional classification remains broadly consistent when both sentiment signals are sufficiently strong**. No BERT or LMMD parameters, thresholds, dictionary terms, or model-selection decisions were changed in response to these diagnostics.
+
+Stage 6C should now be treated as **complete, reproducible, canonicalized, and frozen**.
 
 ## Current hypothesis structure
 
@@ -954,79 +890,82 @@ rather than evidence for the paper's hypotheses.
 
 ### Stage 7 --- Market-reaction construction
 
-Stage 7 has now begun with a focused market-data and sample-coverage
-diagnostic based on the Paper 1 event-study architecture. This work is
-currently **exploratory/QC and not yet formalized as a production
-pipeline stage**.
+Stage 7A --- market-event eligibility and price coverage --- is now **implemented, validated, and complete**. It begins from the frozen **33,046 research-eligible filing events** and determines whether each event has sufficient Tokyo Stock Exchange price history to support the Paper 1 event-study architecture.
 
-The raw J-Quants stock-price archive is stored under:
+The retained baseline design is:
+
+``` text
+estimation window = [-120, -20] trading days
+minimum usable estimation observations = 60
+market benchmark = TOPIX
+```
+
+Raw J-Quants Stock Prices (OHLC) data are stored under:
 
 ``` text
 data/raw/paper2/prices/
 ```
 
-The available monthly Stock Prices (OHLC) files provide continuous
-coverage from **2016-09 through 2026-08**, supplemented by September 2026
-daily files. The current archive contains no internal monthly gaps over
-the 120-month monthly-history block.
+The archive covers September 2016 through September 2026 and is sufficient to classify all research events without weakening the Paper 1 estimation-window design.
 
-Using the frozen **33,046 research-eligible filing pairs**, an event-level
-price-coverage diagnostic applies the Paper 1 market-model requirements
-provisionally:
+Final Stage 7A eligibility is:
 
-``` text
-estimation window = [-120, -20] trading days
-minimum usable estimation observations = 60
-```
+| Classification | Events |
+|---|---:|
+| Eligible for market-reaction construction | **32,134** |
+| Non-TSE regional-exchange security | **814** |
+| Not yet in TSE price universe at event | **57** |
+| Insufficient post-listing estimation history | **15** |
+| TSE delisted before event | **26** |
+| **Total research-eligible events** | **33,046** |
 
-Current coverage is:
+Thus **32,134 / 33,046 = 97.24%** of the frozen research sample survives Stage 7A.
 
--   **32,126** events with full estimation-window history;
--   **8** additional events with partial history but at least 60 usable
-    estimation observations;
--   **72** events with insufficient estimation history;
--   **814** events whose security code is absent from the J-Quants stock
-    price universe;
--   **26** events with no stock price on or after the filing date under
-    the preliminary date-only alignment rule;
--   **32,134 / 33,046 = 97.24%** currently satisfy the minimum
-    estimation-observation requirement before final event-time handling.
+The **814** regional-exchange exclusions correspond to securities listed on the Nagoya, Fukuoka, or Sapporo exchanges rather than the TSE. Historical exchange information from EDINET filings was used to reconcile these observations, including the previously unresolved security code 8171, which was confirmed as a Nagoya Stock Exchange Second Section listing.
 
-The historical-depth constraint is therefore immaterial for the large
-majority of the sample and does not justify weakening the Paper 1
-`[-120,-20]` specification.
-
-The **814 J-Quants-missing events** were investigated separately. They
-correspond to **108 unique securities / 108 EDINET issuers**. Historical
-exchange information was extracted from the corresponding EDINET XBRL
-filings using the standardized exchange-name disclosure fact. Successful
-event-level extractions identify only regional-exchange listings
-(Nagoya, Fukuoka, or Sapporo), with **no TSE cases** among the
-successfully classified observations. Filing-level extraction gaps were
-resolved by other annual filings for the same security; the final
-previously unresolved code **8171** was independently confirmed as a
-Nagoya Stock Exchange Second Section listing.
-
-Thus all **108 / 108** securities absent from the J-Quants stock-price
-universe are explained as **non-TSE regional-exchange securities** rather
-than identifier failures. The intended production exclusion reason is:
+The **72** observations initially classified as having insufficient historical price coverage were investigated individually. They divide into:
 
 ``` text
-non_TSE_regional_exchange
+57  not_in_TSE_price_universe_at_event
+15  insufficient_post_listing_estimation_history
 ```
 
-The exploratory Stage 7 utilities are version controlled under `tests/`
-to preserve the audit trail for market-data entitlement, raw-file
-coverage, event-level price coverage, missing-security diagnostics, and
-EDINET XBRL exchange classification.
+For all 15 short-history securities, the first observed J-Quants trading date was reconciled to the security's actual TSE entry date. These cases consist of IPOs and transfers or entries from regional exchanges; none reflects inadequate J-Quants historical entitlement.
 
-The next implementation task is to consolidate this validated logic into
-a formal **Stage 7A market-event / price-coverage pipeline stage**, then
-construct **Stage 7B timestamp-aware event trading dates** from
-`curr_submitDateTime`. TOPIX ingestion and event-specific market-model
-estimation will follow. Stage 6D GPT sentiment is intentionally deferred
-until the Mac Stage 6C run finishes and the full Mac/Windows BERT outputs
-can be compared.
+The **26** observations with no price on or after the filing date were also reconciled. They collapse to 17 unique securities whose final J-Quants price coincides with their final TSE trading period before delisting or exchange exit. These observations are therefore classified as:
+
+``` text
+TSE_delisted_before_event
+```
+
+rather than as missing market data.
+
+The canonical Stage 7A outputs are:
+
+``` text
+data/interim/paper2/market_reaction/
+    stage7_event_eligibility.csv
+    stage7_exclusion_audit.csv
+    stage7_eligibility_summary.json
+    diagnostics/
+```
+
+`stage7_event_eligibility.csv` is authoritative and contains all **33,046** research events with explicit inclusion/exclusion status. `stage7_exclusion_audit.csv` is the derived **912-event** exclusion-only audit view. The diagnostic files preserve the provenance of the underlying coverage, listing-history, and exchange investigations.
+
+Stage 7A is wired into the production pipeline through:
+
+``` text
+src/market_reaction/event_eligibility.py
+src/pipeline/stages/market_reaction_eligibility.py
+```
+
+and the `market_reaction_eligibility` stage in `run_pipeline.py`.
+
+Stage 7A should therefore be treated as **complete and frozen**.
+
+The next market-reaction task is **Stage 7B --- timestamp-aware event trading-date construction**. It will use `curr_submitDateTime` rather than Paper 1's date-only event assignment and will explicitly handle during-session filings, after-close filings, weekends, exchange holidays, and the applicable TSE market-close time before assigning the canonical `eventTradingDate`.
+
+Stages 7C--7F will then prepare TOPIX returns, estimate event-specific market models, calculate abnormal returns/CARs, and produce the final market-reaction table and QC.
 
 ## Open empirical decisions
 
@@ -1049,59 +988,34 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1.  **Formalize Stage 7A --- market-event universe and price coverage.**
-    -   Move the validated exploratory logic into the Paper 2 production
-        pipeline.
-    -   Preserve explicit event-level inclusion/exclusion reasons,
-        including `non_TSE_regional_exchange`, insufficient estimation
-        history, and unavailable event-window prices.
-    -   Produce canonical coverage and QC artifacts from the frozen
-        33,046-pair research universe.
-2.  **Stage 7B --- construct timestamp-aware event trading dates.**
+1.  **Stage 7B --- construct timestamp-aware event trading dates.**
     -   Use `curr_submitDateTime` rather than the Paper 1 date-only rule.
     -   Freeze the treatment of during-session, after-close, weekend, and
         exchange-holiday filings.
-3.  **Stage 7C onward --- TOPIX, event-specific market models, and CARs.**
-    -   Prepare TOPIX market returns.
+2.  **Stage 7C --- prepare TOPIX market returns.**
+    -   Establish the canonical TOPIX price/return series used by the event study.
+3.  **Stage 7D --- estimate event-specific market models.**
     -   Preserve the Paper 1 `[-120,-20]` estimation window and minimum
-        60-observation rule unless later evidence requires otherwise.
-    -   Compute the planned short-window market reactions.
-4.  **Complete the optional Stage 6C computational reproducibility check.**
-    -   When the Mac MPS run finishes, compare all 37,473 Mac and
-        Windows/CUDA outputs.
-    -   Treat this as implementation reproducibility only; do not retune
-        the frozen BERT model.
+        60-observation rule.
+4.  **Stages 7E/7F --- abnormal returns, CARs, final market-reaction table, and QC.**
+    -   Compute the planned short-window market reactions and freeze the final
+        event-study sample.
 5.  **Stage 6D --- GPT / generative sentiment.**
-    -   Resume after the Mac/Windows Stage 6C comparison.
-    -   Freeze model/version, prompt, chunking/context strategy,
-        aggregation rule, and structured output schema before production
-        scoring.
-6.  **Then finalize the empirical specification, robustness suite, and
-    hypothesis-development / paper-writing tasks.**
+    -   Freeze model/version, prompt, chunking/context strategy, aggregation rule,
+        and structured output schema before production scoring.
+6.  **Then finalize the empirical specification, robustness suite, and paper-writing tasks.**
 
 ## Current bottleneck
 
-The literature review, MD&A extraction, and longitudinal matching stages
-are no longer the primary bottlenecks.
+The literature review, MD&A extraction, longitudinal matching, baseline novelty construction, LMMD scoring, Financial BERT scoring, and Stage 7A market-event eligibility are no longer the primary bottlenecks.
 
 The bottleneck has shifted to:
 
-> **integrating the frozen novelty specification with sentiment measures
-> and market-reaction outcomes in a regression-ready panel**
+> **constructing timestamp-aware market-reaction outcomes and integrating them with the frozen novelty and sentiment measures in a regression-ready panel**
 
-Stages 1--5 are complete through the baseline word-token novelty layer.
-Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen,
-and Stage 6C Financial BERT is complete, full-corpus scored,
-diagnostically validated, and frozen on Windows/CUDA pending an optional
-full Mac/Windows reproducibility comparison. Stage 7 market-reaction
-construction has now begun and preliminary price-coverage / exchange
-diagnostics are complete. The immediate bottleneck is formalizing Stage
-7A/7B and constructing market-reaction outcomes; Stage 6D GPT sentiment is
-temporarily deferred until the Mac Stage 6C run finishes.
+Stages 1--5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and Stage 6C Financial BERT is complete, canonicalized, and frozen. Stage 7A market-event eligibility is also complete and frozen, retaining **32,134 of 33,046** research-eligible filing events. The immediate bottleneck is now constructing timestamp-aware event dates and market-reaction outcomes through Stages 7B--7F. Stage 6D GPT sentiment remains intentionally deferred while market-reaction construction proceeds.
 
-Further literature review should now be driven primarily by unresolved
-methodological or theoretical questions that emerge from the empirical
-work rather than by broad literature searching.
+Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 
 ## Rough completion estimate
 

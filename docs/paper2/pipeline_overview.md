@@ -42,12 +42,12 @@ diagnostics are complete.
     for all 37,473 research-universe documents. Full-sample LMMD
     comparison and novelty-disagreement diagnostics are complete.
 -   **Stage 6D --- GPT / generative sentiment:** not yet implemented and
-    temporarily deferred pending the full Mac/Windows Stage 6C
-    reproducibility comparison.
--   **Stage 7 --- Market-reaction construction:** exploratory/QC work has
-    begun. J-Quants price coverage, estimation-window availability, and
-    regional-exchange exclusions have been validated; production pipeline
-    formalization is the next implementation task.
+    intentionally deferred while Stage 7 market-reaction construction proceeds.
+-   **Stage 7A --- Market-event eligibility and price coverage:** complete,
+    validated, and wired into the production pipeline. Of 33,046
+    research-eligible filing events, 32,134 (97.24%) satisfy the TSE
+    listing-history and estimation-window requirements. Stage 7B
+    timestamp-aware event-date construction is next.
 
 The current corpus contains **37,807 Annual Securities Reports** and
 **37,757 successfully extracted MD&A sections**.
@@ -1810,19 +1810,24 @@ are sufficiently strong. No model or lexical specification was changed
 after these diagnostics.
 
 Stage 6C is therefore **complete, full-corpus scored, diagnostically
-validated, and frozen**. A later full Mac MPS versus Windows CUDA
-comparison may be retained as a computational-reproducibility check.
+validated, canonicalized, and frozen**. Independent full-corpus MPS and
+CUDA inference was also compared as an implementation-reproducibility
+check. Document universes and preprocessing outputs matched exactly;
+continuous probabilities differed only at floating-point precision, and
+a single document exhibited a one-sentence threshold classification
+difference. The canonical production artifact remains the validated CUDA
+result at `data/interim/paper2/sentiment/financial_bert/financial_bert_sentiment.csv`,
+with companion metadata at `financial_bert_sentiment.metadata.json`.
+Hardware-specific run directories are not part of the active pipeline.
 
 
 # Stage 7 --- Market-Reaction Construction
 
 ## Status
 
-Stage 7 has begun with **validated exploratory/QC work** but has not yet
-been consolidated into the production `run_pipeline.py` path. The purpose
-of the exploratory work was to establish data availability, identify
-sample exclusions, and verify that the Paper 1 event-study architecture
-can be carried forward without weakening its estimation-window design.
+Stage 7A --- market-event eligibility and price coverage --- is **complete, validated, and wired into the production pipeline**. It begins from the frozen **33,046 research-eligible filing events** and determines whether each event has sufficient Tokyo Stock Exchange price history to support the Paper 1 event-study architecture.
+
+The validated Stage 7A result retains **32,134 / 33,046 = 97.24%** of research events. The remaining 912 observations are excluded for explicit, documented listing-history reasons rather than general data unavailability.
 
 ## Raw Stock-Price Data
 
@@ -1832,23 +1837,19 @@ Raw J-Quants Stock Prices (OHLC) files are stored under:
 data/raw/paper2/prices/
 ```
 
-The available monthly archive runs continuously from **2016-09 through
-2026-08**, with September 2026 supplemented by daily files. A dedicated
-file-coverage utility confirms **120 monthly files with zero internal
-monthly gaps** over the monthly block.
+The archive covers September 2016 through September 2026 and is sufficient to classify the full research-event universe without weakening the Paper 1 estimation-window design.
 
-The Stage 7 market-reaction sample begins from the frozen Stage 3
-research universe:
+The Stage 7 market-reaction sample begins from:
 
 ``` text
 data/interim/paper2/longitudinal/research_eligible_pairs.csv
 ```
 
-containing **33,046** standard annual adjacent filing pairs.
+containing **33,046** research-eligible annual filing events.
 
-## Provisional Paper 1 Event-Study Carryover
+## Paper 1 Event-Study Carryover
 
-The Paper 1 market model is provisionally retained:
+The retained market-model architecture is:
 
 ``` text
 R_i,t = alpha_i + beta_i * R_m,t + epsilon_i,t
@@ -1858,135 +1859,80 @@ minimum estimation observations = 60
 market benchmark = TOPIX
 ```
 
-The Paper 1 CAR machinery used event-specific alpha/beta estimates and
-short event windows. Stage 7 will preserve that architecture while
-improving event-date assignment using the Paper 2 EDINET submission
-timestamp.
+Paper 1 used event-specific alpha/beta estimates and short event windows. Stage 7 preserves that architecture while improving event-date assignment using the Paper 2 EDINET submission timestamp.
 
-## Event-Level Price-Coverage Diagnostic
+## Final Stage 7A Eligibility
 
-A Stage 7 exploratory utility reads only security codes and dates from
-the compressed J-Quants files and checks each of the **33,046** filing
-events against the provisional Paper 1 estimation-window requirements.
-
-Current results are:
-
-| Coverage status | Events |
+| Classification | Events |
 |---|---:|
-| Full `[-120,-20]` history | 32,126 |
-| Partial history but >=60 observations | 8 |
-| Insufficient estimation history | 72 |
-| Security absent from J-Quants prices | 814 |
-| No price on/after event under preliminary date-only alignment | 26 |
-| **Meets >=60-observation requirement** | **32,134 (97.24%)** |
+| Eligible for market-reaction construction | **32,134** |
+| Non-TSE regional-exchange security | **814** |
+| Not yet in TSE price universe at event | **57** |
+| Insufficient post-listing estimation history | **15** |
+| TSE delisted before event | **26** |
+| **Total research-eligible events** | **33,046** |
 
-The September 2016 J-Quants history boundary therefore affects only a
-small number of events and does **not** justify changing the Paper 1
-estimation window or minimum-observation threshold.
+The **814** regional-exchange exclusions correspond to securities listed on the Nagoya, Fukuoka, or Sapporo exchanges rather than the TSE. Historical exchange information from EDINET filings reconciles all 108 unique securities, including security code 8171, which was confirmed as a Nagoya Stock Exchange Second Section listing.
 
-The `no price on/after event` category is still preliminary because the
-current diagnostic deliberately uses a Paper 1-style date-only alignment.
-Stage 7B will replace this with an explicit timestamp-aware trading-date
-rule.
-
-## Regional-Exchange Reconciliation
-
-The **814** events whose `secCode` is absent from the J-Quants stock-price
-files correspond to **108 unique securities and 108 unique EDINET
-issuers**.
-
-These cases were investigated from the firms' own historical EDINET XBRL
-filings. The diagnostic extracts the standardized disclosure fact for the
-financial instruments exchange on which the securities are listed and
-classifies the reported venue.
-
-Successful event-level XBRL extractions identify only:
+The **72** observations initially classified as having insufficient price history were investigated individually and resolve to:
 
 ``` text
-Nagoya Stock Exchange
-Fukuoka Stock Exchange
-Sapporo Securities Exchange
+57  not_in_TSE_price_universe_at_event
+15  insufficient_post_listing_estimation_history
 ```
 
-and identify **no TSE cases** among successfully classified missing-price
-events.
+For all 15 short-history securities, the first J-Quants date coincides with actual TSE entry. These observations consist of IPOs and transfers or entries from regional exchanges; none reflects inadequate J-Quants subscription history.
 
-Where an individual filing's exchange fact could not be extracted, other
-annual filings for the same security resolve the venue. The one security
-initially unresolved across the extracted filings, code **8171**, was
-independently confirmed as a **Nagoya Stock Exchange Second Section**
-listing.
-
-The resulting conclusion is therefore:
+The **26** observations with no price on or after the preliminary event date collapse to 17 unique securities whose J-Quants history ends with their final TSE trading period. They are therefore classified as:
 
 ``` text
-108 / 108 J-Quants-missing securities
-= non-TSE regional-exchange securities
+TSE_delisted_before_event
 ```
 
-The intended canonical Stage 7 exclusion reason is:
+rather than as missing market data.
+
+## Canonical Stage 7A Outputs
 
 ``` text
-non_TSE_regional_exchange
+data/interim/paper2/market_reaction/
+    stage7_event_eligibility.csv
+    stage7_exclusion_audit.csv
+    stage7_eligibility_summary.json
+    diagnostics/
 ```
 
-This is a market-data/sample-construction exclusion rather than an EDINET
-identifier-matching failure.
+`stage7_event_eligibility.csv` is authoritative and contains all **33,046** research events with explicit eligibility and exclusion status. `stage7_exclusion_audit.csv` contains the **912** excluded events only. The diagnostics directory preserves the underlying coverage, exchange, listing-history, and delisting audit trail.
 
-## Stage 7 Exploratory / QC Utilities
-
-The following independent utilities are retained under `tests/` as an
-audit trail:
+The production implementation is:
 
 ``` text
-test_jquants_history.py
-check_jquants_price_files.py
-check_stage7_price_coverage.py
-diagnose_stage7_missing_securities.py
-build_missing_security_exchange_check.py
+src/market_reaction/event_eligibility.py
+src/pipeline/stages/market_reaction_eligibility.py
 ```
 
-They document:
+and is wired into `run_pipeline.py` as `market_reaction_eligibility`.
 
-- J-Quants API/history entitlement testing;
-- raw monthly price-file completeness;
-- event-level estimation-window coverage;
-- missing-security isolation;
-- historical exchange classification from EDINET XBRL.
+Stage 7A should therefore be treated as **complete and frozen**.
 
-These utilities are useful reproducibility/QC tools even after the
-validated logic is moved into the production Stage 7 pipeline.
-
-## Planned Production Structure
-
-Stage 7 should be formalized as:
+## Remaining Stage 7 Structure
 
 ``` text
-7A  Market-event universe / price coverage
-7B  Timestamp-aware event trading-date construction
+7A  Market-event universe / price coverage             COMPLETE
+7B  Timestamp-aware event trading-date construction   NEXT
 7C  TOPIX ingestion and market-return preparation
 7D  Event-specific market-model estimation
 7E  Abnormal-return / CAR computation
 7F  Final market-reaction table and QC
 ```
 
-Stage 7A should produce a canonical event-level coverage table with an
-explicit inclusion/exclusion reason for every research-eligible pair.
+Stage 7B will use `curr_submitDateTime` rather than Paper 1's date-only event assignment. It will explicitly handle during-session filings, after-close filings, weekends, exchange holidays, and the applicable TSE close time before assigning the canonical `eventTradingDate`.
 
-Stage 7B will use `curr_submitDateTime` to improve on Paper 1's date-only
-event alignment, explicitly handling during-session filings, after-close
-filings, weekends, and exchange holidays before assigning
-`eventTradingDate`.
-
-TOPIX should then be ingested as the primary market benchmark before
-event-specific alpha/beta estimation and CAR construction.
-
+TOPIX preparation, event-specific alpha/beta estimation, abnormal returns, CARs, and final event-study QC follow in Stages 7C--7F.
 
 # Stage 6D --- GPT / Generative Sentiment (temporarily deferred)
 
-Stage 6D remains the next sentiment layer, but it is temporarily deferred
-while the Mac Stage 6C run finishes and the full Mac/Windows BERT outputs
-are compared. It should use the same
+Stage 6D remains the next sentiment layer, but it is intentionally deferred
+while Stage 7 market-reaction construction proceeds. It should use the same
 research-universe documents, be constructed independently of novelty and
 market outcomes, and preserve a comparable document-level output
 architecture. Model/version, prompt, context/chunking strategy,
