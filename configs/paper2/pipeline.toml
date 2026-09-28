@@ -17,7 +17,8 @@ financial_bert_sentiment = false
 financial_bert_plots = false
 market_reaction_eligibility = false
 market_reaction_event_dates = false
-market_reaction_topix = true
+market_reaction_topix = false
+market_reaction_market_model = true
 
 text_stats = false
 sentiment = false
@@ -209,3 +210,14 @@ start = "2016-09-28"
 end = "2026-09-25"
 api_key_env = "JQUANTS_API_KEY"
 refresh_raw = false
+
+## STAGE 7D EVENT-SPECIFIC MARKET MODEL
+[market_reaction_market_model]
+event_dates_csv = "data/interim/paper2/market_reaction/stage7_event_dates.csv"
+topix_returns_csv = "data/interim/paper2/market_reaction/topix_returns.csv"
+prices_dir = "data/raw/paper2/prices"
+output_csv = "data/interim/paper2/market_reaction/market_model_estimates.csv"
+summary_json = "data/interim/paper2/market_reaction/market_model_summary.json"
+estimation_start = -120
+estimation_end = -20
+min_observations = 60

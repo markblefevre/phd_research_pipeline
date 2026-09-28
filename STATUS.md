@@ -888,16 +888,24 @@ The three-firm exercise should be treated as a methodological diagnostic
 rather than evidence for the paper's hypotheses.
 
 
-### Stage 7 --- Market-reaction construction
+### Stage 7 --- market-reaction construction
 
-Stage 7A --- market-event eligibility and price coverage --- is **implemented, validated, complete, and frozen**. It begins from the frozen **33,046 research-eligible filing events** and determines whether each event has sufficient Tokyo Stock Exchange price history to support the Paper 1 event-study architecture.
+Stage 7 market-reaction construction is now implemented through the event-specific
+market-model estimation layer. Stages 7B and 7C are complete and validated.
+Stage 7D production estimation has completed and its failure mechanics have been
+independently reconstructed exactly. A narrow Stage 7A historical-venue issue was
+identified during Stage 7D QC and is being resolved before the Stage 7 sample is
+finally frozen.
 
-The retained baseline design is:
+The retained baseline event-study design is:
 
 ``` text
-estimation window = [-120, -20] trading days
-minimum usable estimation observations = 60
-market benchmark = TOPIX
+R_i,t = alpha_i + beta_i * R_m,t + epsilon_i,t
+
+stock return      = corporate-action-adjusted simple return
+market return     = TOPIX simple return
+estimation window = [-120,-20] trading sessions
+minimum paired estimation observations = 60
 ```
 
 Raw J-Quants Stock Prices (OHLC) data are stored under:
@@ -906,9 +914,14 @@ Raw J-Quants Stock Prices (OHLC) data are stored under:
 data/raw/paper2/prices/
 ```
 
-The archive contains 136 compressed daily-price files and covers September 2016 through September 2026.
+The archive contains **136** compressed daily-price files spanning
+**2016-09-01 through 2026-09-25**.
 
-Final Stage 7A eligibility is:
+#### Stage 7A --- market-event eligibility and price coverage
+
+The original validated Stage 7A construction begins from the frozen
+**33,046 research-eligible filing events**. Its current canonical output retains
+**32,134** events and excludes **912**:
 
 | Classification | Events |
 |---|---:|
@@ -919,11 +932,48 @@ Final Stage 7A eligibility is:
 | TSE delisted before event | **26** |
 | **Total research-eligible events** | **33,046** |
 
-Thus **32,134 / 33,046 = 97.24%** of the frozen research sample survives Stage 7A.
+The original Stage 7A reconciliation remains valid for the categories it was
+designed to detect. However, Stage 7D QC exposed an additional historical-venue
+edge case: securities can appear in the J-Quants archive while being listed on
+**TOKYO PRO Market** rather than an ordinary TSE market. Because Stage 7A's
+original regional-exchange branch was triggered primarily by securities absent
+from the J-Quants price universe, these cases could pass the preliminary
+coverage screen.
 
-The **814** regional-exchange exclusions correspond to securities listed on the Nagoya, Fukuoka, or Sapporo exchanges rather than the TSE. Historical exchange information from EDINET filings was used to reconcile these observations. The **72** observations initially classified as having insufficient historical price coverage were investigated individually and resolve to **57** events occurring before the security entered the TSE price universe and **15** events with insufficient post-listing estimation history. The **26** observations with no price on or after the filing date were reconciled to securities already delisted from the TSE before the event.
+A targeted audit of all **436 Stage 7D non-estimated events** found:
 
-The canonical Stage 7A outputs are:
+``` text
+428 events  ordinary TSE or ordinary TSE plus regional listing references
+  8 events  TOKYO PRO / TOKYO PRO plus regional-market references
+  0 events  unresolved after external verification of the single EDINET-text miss
+```
+
+The eight clearly out-of-scope event observations are:
+
+``` text
+14440   2021-11-01
+22300   2019-08-28
+22300   2020-08-28
+22300   2021-09-01
+70750   2024-06-28
+93880   2022-05-31
+93880   2023-05-31
+93880   2024-05-30
+```
+
+These observations demonstrate that the final Stage 7A rule should be based on
+the **historical listing venue at the event date**, not merely on the existence
+of raw J-Quants rows. Ordinary TSE markets remain eligible; TOKYO PRO and
+regional-only listings should be excluded from the baseline TOPIX event-study
+universe.
+
+Before changing the canonical Stage 7A counts, the same venue classifier will
+be run across the complete **32,134-event** Stage 7B sample to ensure that no
+additional TOKYO PRO or regional-only events survive among successfully
+estimated observations. Stage 7A is therefore **temporarily reopened for this
+narrow venue-at-event correction** rather than treated as finally frozen.
+
+Current canonical Stage 7A artifacts remain:
 
 ``` text
 data/interim/paper2/market_reaction/
@@ -933,18 +983,18 @@ data/interim/paper2/market_reaction/
     diagnostics/
 ```
 
-Stage 7A is wired into the production pipeline through:
+Production implementation:
 
 ``` text
 src/market_reaction/event_eligibility.py
 src/pipeline/stages/market_reaction_eligibility.py
 ```
 
-and should be treated as **complete and frozen**.
-
 #### Stage 7B --- timestamp-aware event trading dates
 
-Stage 7B is now **implemented, validated, complete, and frozen**. It takes the **32,134 Stage 7A-eligible events** and assigns the canonical trading date using the EDINET submission timestamp and the observed TSE trading calendar derived from the J-Quants price archive.
+Stage 7B is implemented, validated, and complete under the current Stage 7A
+sample. It assigns the canonical event session from the EDINET submission
+timestamp and the observed TSE trading calendar.
 
 The event-date rule is:
 
@@ -961,17 +1011,10 @@ through 2024-11-01   15:00 JST
 from 2024-11-05      15:30 JST
 ```
 
-The production implementation uses the global union of J-Quants trading dates rather than security-specific dates so that individual-security suspensions or missing observations cannot be misclassified as exchange holidays.
+The global trading calendar is derived from the union of observed J-Quants
+stock-price dates rather than from security-specific calendars.
 
-Stage 7B produces:
-
-``` text
-data/interim/paper2/market_reaction/
-    stage7_event_dates.csv
-    stage7_event_dates_summary.json
-```
-
-The final validated Stage 7B results are:
+Current Stage 7B results are:
 
 | Event-date rule | Events |
 |---|---:|
@@ -980,151 +1023,167 @@ The final validated Stage 7B results are:
 | Next trading day from non-trading submission date | **0** |
 | **Total** | **32,134** |
 
-Thus approximately **68.4%** of eligible filings are assigned to the filing-day trading session and **31.6%** roll to the next TSE session because they were submitted after the close.
+The derived calendar contains **2,457 sessions** from **2016-09-01 through
+2026-09-25**. A dedicated close-boundary QC reports **zero rule mismatches**,
+including filings stamped exactly at the applicable close.
 
-The derived trading calendar contains **2,457 TSE sessions** from **2016-09-01 through 2026-09-25**. All 32,134 eligible EDINET submission dates fall on observed TSE trading dates, so no baseline observation requires the non-trading-date rule. Event-date shifts range from 0 to 11 calendar days. The five 11-day shifts correspond to after-close filings on April 26, 2019 followed by the extended Golden Week / imperial-succession exchange closure, providing a useful calendar sanity check.
+Canonical outputs:
 
-A dedicated cutoff-boundary QC confirmed that the regime-specific close rule is mechanically consistent. Filings stamped exactly at the close are assigned to the same trading day, including observed post-November-2024 filings at exactly **15:30:00**. The QC reports zero rule mismatches.
+``` text
+data/interim/paper2/market_reaction/
+    stage7_event_dates.csv
+    stage7_event_dates_summary.json
+```
 
-The Stage 7B production implementation is:
+Production implementation:
 
 ``` text
 src/market_reaction/event_trading_dates.py
 src/pipeline/stages/market_reaction_event_dates.py
 ```
 
-Stage 7B should therefore be treated as **complete and frozen**.
-
+After the Stage 7A venue-at-event correction is finalized, Stage 7B should be
+rerun so downstream counts remain internally consistent.
 
 #### Stage 7C --- TOPIX market-return preparation
 
-Stage 7C is now **implemented, validated, complete, and frozen**.
+Stage 7C is implemented, validated, complete, and methodologically frozen.
 
-The production stage acquires official daily TOPIX OHLC data from the current J-Quants v2 API and stores the raw benchmark series separately from the event-study outputs:
+Raw official J-Quants TOPIX:
 
 ``` text
 data/raw/paper2/market/topix_daily.csv
 ```
 
-The canonical processed market-return series is:
+Canonical processed output:
 
 ``` text
 data/interim/paper2/market_reaction/topix_returns.csv
-```
-
-with QC metadata at:
-
-``` text
 data/interim/paper2/market_reaction/topix_returns_summary.json
 ```
 
-The retained columns are `tradingDate`, TOPIX OHLC, `topixReturnSimple`, and `topixReturnLog`.
+The final TOPIX series contains **2,440 observations** from
+**2016-09-28 through 2026-09-25**, with zero missing close values and exactly
+one mechanically expected missing simple/log return at the first observation.
 
-The J-Quants subscription currently provides TOPIX history from **2016-09-28** onward. The final TOPIX series contains **2,440 observations** from **2016-09-28 through 2026-09-25**, with **0 missing close values** and exactly one missing simple/log return at the first observation, as expected.
+Under the current Stage 7B sample:
 
-Coverage against Stage 7B is complete:
-
-- Stage 7B eligible events: **32,134**
-- unique Stage 7B event trading dates: **1,341**
+- Stage 7B events: **32,134**
+- unique event trading dates: **1,341**
 - missing TOPIX event dates: **0**
 - events with at least 60 TOPIX observations in `[-120,-20]`: **32,134**
-- events failing the TOPIX estimation-history requirement: **0**
-- TOPIX observations in the inclusive `[-120,-20]` window for every event: **101**
+- events failing the TOPIX history requirement: **0**
+- TOPIX observations in every inclusive `[-120,-20]` window: **101**
 
-Thus the subscription-history cutoff is empirically irrelevant for the retained event sample, and no supplemental pre-2016-09-28 TOPIX data are required.
+The J-Quants TOPIX subscription boundary therefore does not constrain the
+event-study sample.
 
-The Stage 7C production implementation is:
+Production implementation:
 
 ``` text
 src/market/topix.py
 src/pipeline/stages/market_reaction_topix.py
 ```
 
-Stage 7C should therefore be treated as **complete and frozen**.
+The TOPIX series itself does not need to change when Stage 7A is corrected;
+only event-count-dependent summary/QC output may be refreshed for consistency.
 
-#### Stage 7D --- stock-return construction and market-model preparation
+#### Stage 7D --- event-specific market-model estimation
 
-Stage 7D production estimation has not yet been run, but the stock-return construction required for the market model has now been **methodologically validated and frozen**.
+Stage 7D is now **implemented and production-run**.
 
-Paper 1's market-model convention was reviewed directly. The retained baseline is:
-
-``` text
-R_i,t = alpha_i + beta_i * R_m,t + epsilon_i,t
-
-stock return      = simple price return
-market return     = simple TOPIX return
-estimation window = [-120,-20] trading sessions
-minimum paired estimation observations = 60
-```
-
-Paper 1 used `pct_change()` for both stocks and TOPIX and preferred adjusted stock prices when available. The Paper 2 J-Quants archive does not provide a precomputed adjusted-close column. Instead, the raw stock files contain:
+Production implementation:
 
 ``` text
-C
-AdjFactor
+src/market_reaction/market_model.py
+src/pipeline/stages/market_reaction_market_model.py
 ```
 
-Corporate-action QC identified **2,594 rows with `AdjFactor != 1.0`** across **2,216 securities**. Representative factors include 0.5, 1/3, 0.25, 2, 5, and 10, consistent with stock splits, consolidations, and related corporate actions.
+Configuration is under:
 
-For a consecutive-session price pair, the validated split/corporate-action-adjusted simple return is:
+``` text
+[market_reaction_market_model]
+```
+
+in `configs/paper2/pipeline.toml`.
+
+The frozen stock-return construction is:
 
 ``` text
 adjustedReturn_t =
     C_t / (C_(t-1) * AdjFactor_t) - 1
 ```
 
-A clean external validation is NTT (`94320`) around its 25-for-1 split. J-Quants reports a June 28, 2023 raw close of 4405.0, a June 29 close of 171.2, and `AdjFactor = 0.04`. Applying the factor gives a June 28 split-adjusted close of **176.20**, which exactly matches Yahoo Finance's split-adjusted historical `Close`; the June 29 `Close` also matches at **171.20**. This supports using J-Quants `AdjFactor` to remove split/corporate-action discontinuities while retaining price returns rather than dividend-adjusted total returns.
+with returns calculated only when the two observations are consecutive on the
+global TSE trading calendar. Missing-price gaps and suspensions are not bridged.
 
-A first full-sample QC showed that blindly linking successive valid closes can bridge long suspensions or multi-month/multi-year gaps. That behavior was rejected. The frozen Paper 2 rule is therefore:
+The full return-construction QC found:
+
+| Metric | Result |
+|---|---:|
+| J-Quants price files | **136** |
+| Raw price rows | **10,186,612** |
+| Global TSE sessions | **2,457** |
+| Valid close rows | **9,829,689** |
+| Valid consecutive-session returns | **9,720,426** |
+| Returns usable on TOPIX calendar | **9,663,455** |
+| Securities indexed | **5,149** |
+| Rows with `AdjFactor != 1` | **2,594** |
+| Adjustment-crossing returns | **2,527** |
+| Adjusted returns with `|r| > 50%` | **0** |
+
+The production market-model run on the current **32,134-event** Stage 7B
+sample produced:
+
+| Status | Events |
+|---|---:|
+| Estimated | **31,698** |
+| Insufficient paired observations | **433** |
+| Security not in stock-return index | **3** |
+| **Total** | **32,134** |
+
+Thus **31,698 / 32,134 = 98.64%** of the current Stage 7B events receive a
+market-model estimate.
+
+For estimated events, the number of paired observations is highly concentrated
+near the full 101-session estimation window: the median is **101**, the 5th
+percentile is **95**, and the minimum is the required **60**.
+
+A dedicated independent failure audit reconstructed the production observation
+count for **436 / 436** non-estimated events exactly. It found:
 
 ``` text
-compute a stock return only when
-the previous valid close is on the immediately preceding global TSE trading session
+429  fewer than 60 usable consecutive stock/TOPIX returns
+  7  price history exists but no usable consecutive returns in the estimation window
 ```
 
-Returns are not bridged across suspensions or missing-price gaps.
+This validates the Stage 7D indexing, return construction, and estimation-window
+logic. The 433 insufficient-observation cases are genuine consequences of the
+frozen consecutive-session rule rather than join or indexing errors.
 
-The revised consecutive-session QC reports:
+The venue-at-event audit then showed that **8** of the 436 non-estimated
+observations belong outside the ordinary TSE baseline universe because they were
+TOKYO PRO events. The remaining **428** failures are ordinary-TSE events and
+should remain legitimate Stage 7D estimation failures under the 60-observation
+minimum.
 
-- **136** price files scanned;
-- **2,457** global TSE trading sessions;
-- **9,720,426** valid consecutive-session stock returns;
-- **2,527** returns crossing a non-unit adjustment factor;
-- **1,902** securities represented among those adjusted returns.
-
-Adjustment QC is strong:
+Canonical Stage 7D outputs are:
 
 ``` text
-median absolute raw return across adjustment events = 66.75%
-median absolute adjusted return                     = 1.98%
-99th percentile absolute adjusted return            = 17.82%
-
-|return| > 25%: raw 2,455 -> adjusted 6
-|return| > 50%: raw 2,012 -> adjusted 0
-|return| >100%: raw   669 -> adjusted 0
-|return| >500%: raw   421 -> adjusted 0
+data/interim/paper2/market_reaction/
+    market_model_estimates.csv
+    market_model_summary.json
+    diagnostics/stage7d_market_model_failure_audit.csv
+    diagnostics/stage7d_failed_event_venue_audit.csv
 ```
 
-For observations with `AdjFactor = 1`, the adjusted-return formula reproduces the raw return exactly.
+Stage 7D should be treated as **implemented and mechanically validated**.
+Final freezing should occur after the full-sample venue audit closes the narrow
+Stage 7A issue and Stages 7A, 7B, and 7D are rerun on the corrected event
+universe.
 
-The Stage 7D stock-return construction is therefore frozen as:
-
-1. use J-Quants raw close `C`;
-2. apply `AdjFactor` to eliminate corporate-action price discontinuities;
-3. compute **simple returns**, preserving Paper 1 continuity;
-4. require consecutive global TSE trading sessions;
-5. do not bridge suspensions or missing-price gaps;
-6. pair stock returns with the Stage 7C TOPIX simple return;
-7. estimate event-specific alpha/beta over `[-120,-20]`;
-8. require at least 60 matched stock/TOPIX observations.
-
-The next implementation task is to move these validated rules into the production Stage 7D market-model code and generate event-specific alpha/beta estimates.
-
-
-The next task is **Stage 7D --- event-specific market-model estimation**.
-
-
-The next market-reaction task is **Stage 7C --- TOPIX ingestion and market-return preparation**. Stages 7D--7F will then estimate event-specific market models, calculate abnormal returns/CARs, and produce the final market-reaction table and QC.
+The next substantive market-reaction task after that cleanup is
+**Stage 7E --- abnormal returns and CAR construction**.
 
 
 ## Open empirical decisions
@@ -1148,44 +1207,63 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1.  **Stage 7D --- implement and run event-specific market models.**
-    -   Use the frozen corporate-action-adjusted, consecutive-session stock-return rule.
-    -   Pair stock simple returns with the Stage 7C TOPIX simple return.
-    -   Preserve the Paper 1 `[-120,-20]` estimation window and minimum 60 paired observations.
-    -   Produce event-level alpha/beta estimates and Stage 7D QC.
-2.  **Stages 7E/7F --- abnormal returns, CARs, final market-reaction table, and QC.**
-    -   Compute the planned short-window market reactions and freeze the final event-study sample.
-3.  **Stage 6D --- GPT / generative sentiment.**
-    -   Freeze model/version, prompt, chunking/context strategy, aggregation rule, and structured output schema before production scoring.
-4.  **Then finalize the empirical specification, robustness suite, and paper-writing tasks.**
+1.  **Complete the full-sample Stage 7 venue-at-event audit.**
+    -   Run the EDINET filing venue classifier across all 32,134 current Stage 7B events using a local SSD copy of the raw EDINET ZIP corpus.
+    -   Confirm the complete set of TOKYO PRO and regional-only events.
+    -   Preserve ordinary TSE plus secondary regional listings as eligible.
+2.  **Apply the narrow Stage 7A correction and rerun downstream event stages.**
+    -   Make historical venue at the event date explicit in Stage 7A.
+    -   Update Stage 7A hard assertions and canonical exclusion counts.
+    -   Rerun Stage 7B and Stage 7D so all canonical outputs use the corrected universe.
+    -   Refresh Stage 7C event-count QC if needed; the TOPIX return series itself is already frozen.
+3.  **Stage 7E/7F --- abnormal returns, CARs, final market-reaction table, and QC.**
+    -   Compute short-window abnormal returns and CARs using the validated event-specific alpha/beta estimates.
+    -   Freeze the final event-study sample.
+4.  **Stage 6D --- GPT / generative sentiment.**
+    -   Freeze model/version, prompt, context/chunking strategy, aggregation rule, and structured output schema before production scoring.
+5.  **Then finalize the empirical specification, robustness suite, and paper-writing tasks.**
 
 ## Current bottleneck
 
-The literature review, MD&A extraction, longitudinal matching, baseline novelty construction, LMMD scoring, Financial BERT scoring, Stage 7A market-event eligibility, and Stage 7B timestamp-aware event-date construction are no longer the primary bottlenecks.
+The primary bottleneck is no longer market-model implementation. Stage 7D is
+production-run and independently validated.
 
-The bottleneck has shifted to:
+The immediate bottleneck is now:
 
-> **constructing market-adjusted return outcomes and integrating them with the frozen novelty and sentiment measures in a regression-ready panel**
+> **closing the narrow historical-venue correction in Stage 7A, rerunning the affected market-reaction stages, and then constructing abnormal returns/CARs.**
 
-Stages 1--5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and Stage 6C Financial BERT is complete, canonicalized, and frozen. Stages 7A, 7B, and 7C are complete and frozen, leaving **32,134** eligible filing events with validated timestamp-aware `eventTradingDate` assignments and complete TOPIX benchmark coverage. The immediate bottleneck is now implementing the validated Stage 7D stock-return rules in the event-specific market-model estimator, followed by CAR construction through Stages 7E--7F. Stage 6D GPT sentiment remains intentionally deferred while market-reaction construction proceeds.
+Stages 1--5 are complete through the baseline word-token novelty layer.
+Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and
+Stage 6C Financial BERT is complete, canonicalized, and frozen. Stage 7B and
+Stage 7C are complete under the current sample, while Stage 7D is implemented,
+production-run, and mechanically validated. Stage 7A has been temporarily
+reopened only to enforce ordinary-TSE historical venue at the event date after
+the Stage 7D audit identified a small TOKYO PRO edge case.
 
-Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
+Stage 6D GPT sentiment remains intentionally deferred while market-reaction
+construction proceeds.
+
+Further literature review should now be driven primarily by unresolved
+methodological or theoretical questions that emerge from the empirical work
+rather than by broad literature searching.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately 62--66%
+**Overall paper:** approximately 68--72%
 
 Approximate status by component:
 
 -   Related Work / research gap: 80--85%
--   Research question / hypotheses: 65--75%
--   Empirical design: 60--65%
--   Data acquisition / reference-data infrastructure: 97%
--   Coding / pipeline adaptation: 95%
+-   Research question / hypotheses: 70--80%
+-   Empirical design: 70--75%
+-   Data acquisition / reference-data infrastructure: 98%
+-   Coding / pipeline adaptation: 97%
 -   MD&A extraction core / batch pipeline: 100%
 -   Longitudinal matching: 100%
--   Novelty implementation: 90--95%
--   Main results: 5--15%
--   Robustness tests: 0%
+-   Novelty implementation: 95%
+-   Market-reaction construction: 80--85%
+-   Main results: 10--20%
+-   Robustness tests: 0--5%
 -   Final Introduction / Abstract / Conclusion: 20--30%
 -   Final tables / polishing / submission readiness: 10--20%
+
