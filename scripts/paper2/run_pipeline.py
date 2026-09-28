@@ -31,7 +31,8 @@ from src.pipeline.stages.market_reaction_eligibility import run_stage_market_rea
 from src.pipeline.stages.market_reaction_event_dates import run_stage_market_reaction_event_dates
 from src.pipeline.stages.market_reaction_topix import run_stage_market_reaction_topix
 from src.pipeline.stages.market_reaction_market_model import run_stage_market_reaction_market_model
-
+from src.pipeline.stages.market_reaction_abnormal_returns import (run_stage_market_reaction_abnormal_returns)
+from src.pipeline.stages.market_reaction_final_table import (run_stage_market_reaction_final_table)
 
 # ----------------------------
 # Helpers
@@ -247,6 +248,20 @@ def main() -> int:
         run_stage_market_reaction_market_model(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage market_reaction_market_model disabled")
+    # Stage 7E: abnormal returns / CARs
+    if bool(stages.get("market_reaction_abnormal_returns", False)):
+        run_stage_market_reaction_abnormal_returns(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage market_reaction_abnormal_returns disabled")
+     # Stage 7F: final market-reaction table / QC
+    if bool(stages.get("market_reaction_final_table", False)):
+        run_stage_market_reaction_final_table(
+            paper=paper,
+            cfg=cfg,
+            logger=logger,
+        )
+    else:
+        logger.info("Stage market_reaction_final_table disabled")
     
     logger.info("Pipeline done: paper=%s run_id=%s", paper, run_id)
     logger.info("Outputs base: %s", out_base)

@@ -15,10 +15,12 @@ lmmd_sentiment = false
 lmmd_plots = false
 financial_bert_sentiment = false
 financial_bert_plots = false
-market_reaction_eligibility = false
-market_reaction_event_dates = false
-market_reaction_topix = false
-market_reaction_market_model = false
+market_reaction_eligibility = true
+market_reaction_event_dates = true
+market_reaction_topix = true
+market_reaction_market_model = true
+market_reaction_abnormal_returns = true
+market_reaction_final_table = true
 
 ## STAGE 1 EDINET_DOWNLOAD
 [edinet_download]
@@ -194,7 +196,7 @@ skip_if_exists = false
 input_path = "data/interim/paper2/market_reaction/stage7_event_eligibility.csv"
 price_dir = "data/raw/paper2/prices"
 output_dir = "data/interim/paper2/market_reaction"
-expected_eligible_events = 32134
+expected_eligible_events = 32126 # 32134 before explicit PRO exclusion addition
 
 [market_reaction_topix]
 event_dates_path = "data/interim/paper2/market_reaction/stage7_event_dates.csv"
@@ -216,3 +218,22 @@ summary_json = "data/interim/paper2/market_reaction/market_model_summary.json"
 estimation_start = -120
 estimation_end = -20
 min_observations = 60
+
+## STAGE 7E ABNORMAL RETURNS / CAR
+[market_reaction_abnormal_returns]
+event_dates_csv = "data/interim/paper2/market_reaction/stage7_event_dates.csv"
+market_model_csv = "data/interim/paper2/market_reaction/market_model_estimates.csv"
+topix_returns_csv = "data/interim/paper2/market_reaction/topix_returns.csv"
+prices_dir = "data/raw/paper2/prices"
+output_csv = "data/interim/paper2/market_reaction/abnormal_returns.csv"
+summary_json = "data/interim/paper2/market_reaction/abnormal_returns_summary.json"
+windows = [[0,0], [0,1], [-1,1]]
+
+## STAGE 7F FINAL MARKET-REACTION TABLE / QC
+[market_reaction_final_table]
+analysis_panel_csv = "data/interim/paper2/analysis/analysis_panel.csv"
+eligibility_csv = "data/interim/paper2/market_reaction/stage7_event_eligibility.csv"
+abnormal_returns_csv = "data/interim/paper2/market_reaction/abnormal_returns.csv"
+output_csv = "data/interim/paper2/market_reaction/final_event_study_table.csv"
+summary_json = "data/interim/paper2/market_reaction/final_event_study_summary.json"
+windows = [[0,0], [0,1], [-1,1]]

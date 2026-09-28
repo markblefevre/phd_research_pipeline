@@ -17,8 +17,19 @@ _NEW_CLOSE = pd.Timedelta(hours=15, minutes=30)
 
 _DATE_COLUMNS = ("Date", "date", "TradingDate", "tradingDate", "trading_date")
 _SUBMIT_COLUMNS = ("curr_submitDateTime", "submitDateTime", "currSubmitDateTime", "submissionDateTime")
-_ELIGIBLE_COLUMNS = ("eventEligible", "eligible", "isEligible", "marketReactionEligible", "stage7Eligible")
-_EXCLUSION_COLUMNS = ("finalExclusionReason", "exclusionReason", "exclusion_reason", "stage7ExclusionReason")
+_ELIGIBLE_COLUMNS = (
+    "eventEligible",
+    "eligible",
+    "isEligible",
+    "marketReactionEligible",
+    "stage7Eligible",
+)
+_EXCLUSION_COLUMNS = (
+    "finalExclusionReason",
+    "exclusionReason",
+    "exclusion_reason",
+    "stage7ExclusionReason",
+)
 
 def _first_existing(columns: Iterable[str], candidates: Iterable[str]) -> str | None:
     cols = set(columns)
@@ -69,7 +80,7 @@ def _read_dates_from_csv(path: Path) -> pd.Series:
 
 
 def build_tse_trading_calendar(price_dir: Path) -> list[pd.Timestamp]:
-    files = sorted(Path(price_dir).glob("equities_bars_daily_*.csv.gz"))
+    files = sorted(Path(price_dir).rglob("*.csv.gz"))
     if not files:
         raise FileNotFoundError(f"No CSV price files found under {price_dir}")
 

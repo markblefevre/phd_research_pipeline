@@ -150,6 +150,22 @@ REGIONAL_EXCHANGE_MANUAL_OVERRIDE = {
 }
 
 
+# Historical Stage 7 venue audit identified eight filing events whose securities
+# were on TOKYO PRO Market rather than the ordinary TSE/TOPIX equity universe.
+# These events can have J-Quants price coverage, so coverageStatus alone is not
+# sufficient to define the event-study universe.
+TOKYO_PRO_EVENT_KEYS = {
+    ("E33910", "14440", "S100MOAA"),
+    ("E26570", "22300", "S100GU7J"),
+    ("E26570", "22300", "S100JLHR"),
+    ("E26570", "22300", "S100MD50"),
+    ("E35344", "70750", "S100TWUC"),
+    ("E33610", "93880", "S100O5O0"),
+    ("E33610", "93880", "S100QV2C"),
+    ("E33610", "93880", "S100TIE9"),
+}
+
+
 def norm_code(s: pd.Series) -> pd.Series:
     return s.astype("string").str.strip().str.replace(r"\.0$", "", regex=True).str.zfill(5)
 
@@ -293,6 +309,42 @@ def build_stage7_event_eligibility(*, root: Path, paper: str = "paper2") -> dict
     mask = out["coverageStatus"].isin(eligible_statuses)
     out.loc[mask, "eventEligible"] = True
     out.loc[mask, "finalEligibilityStatus"] = "eligible_market_reaction"
+
+    # --------------------------------------------------------------
+    # TOKYO PRO Market: outside the ordinary TSE/TOPIX event-study universe.
+    # These eight events were identified by the full-sample EDINET venue audit
+    # and confirmed by the targeted structured exchange-fact review.
+    # --------------------------------------------------------------
+    event_key_tuples = list(zip(out["edinetCode"], out["secCode"], out["curr_docID"]))
+    tokyo_pro_mask = pd.Series(
+        [k in TOKYO_PRO_EVENT_KEYS for k in event_key_tuples],
+        index=out.index,
+    )
+
+    found_tokyo_pro_keys = set(
+        zip(
+            out.loc[tokyo_pro_mask, "edinetCode"],
+            out.loc[tokyo_pro_mask, "secCode"],
+            out.loc[tokyo_pro_mask, "curr_docID"],
+        )
+    )
+    if found_tokyo_pro_keys != TOKYO_PRO_EVENT_KEYS:
+        missing_keys = TOKYO_PRO_EVENT_KEYS - found_tokyo_pro_keys
+        extra_keys = found_tokyo_pro_keys - TOKYO_PRO_EVENT_KEYS
+        raise AssertionError(
+            "TOKYO PRO event-key reconciliation failed. "
+            f"Missing={sorted(missing_keys)} Extra={sorted(extra_keys)}"
+        )
+
+    out.loc[tokyo_pro_mask, "eventEligible"] = False
+    out.loc[tokyo_pro_mask, "finalEligibilityStatus"] = "excluded"
+    out.loc[tokyo_pro_mask, "finalExclusionReason"] = "TOKYO_PRO_market"
+    out.loc[tokyo_pro_mask, "exclusionSubClass"] = "non_ordinary_TSE_market"
+    out.loc[tokyo_pro_mask, "verificationStatus"] = "EDINET_full_sample_venue_audit"
+    out.loc[tokyo_pro_mask, "auditNotes"] = (
+        "Historical EDINET filing identifies TOKYO PRO Market rather than "
+        "the ordinary TSE/TOPIX equity universe."
+    )
 
     # --------------------------------------------------------------
     # 814 securities absent from J-Quants/TSE price universe
@@ -464,9 +516,10 @@ def build_stage7_event_eligibility(*, root: Path, paper: str = "paper2") -> dict
 
     # Strong reproducibility assertions based on the validated exploratory run.
     expected_total = 33_046
-    expected_eligible = 32_134
-    expected_excluded = 912
+    expected_eligible = 32_126
+    expected_excluded = 920
     expected_reasons = {
+        "TOKYO_PRO_market": 8,
         "non_TSE_regional_exchange": 814,
         "not_in_TSE_price_universe_at_event": 57,
         "insufficient_post_listing_estimation_history": 15,
