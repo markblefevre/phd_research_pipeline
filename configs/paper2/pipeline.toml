@@ -16,7 +16,8 @@ lmmd_plots = false
 financial_bert_sentiment = false
 financial_bert_plots = false
 market_reaction_eligibility = false
-market_reaction_event_dates = true
+market_reaction_event_dates = false
+market_reaction_topix = true
 
 text_stats = false
 sentiment = false
@@ -198,3 +199,13 @@ input_path = "data/interim/paper2/market_reaction/stage7_event_eligibility.csv"
 price_dir = "data/raw/paper2/prices"
 output_dir = "data/interim/paper2/market_reaction"
 expected_eligible_events = 32134
+
+[market_reaction_topix]
+event_dates_path = "data/interim/paper2/market_reaction/stage7_event_dates.csv"
+raw_path = "data/raw/paper2/market/topix_daily.csv"
+output_path = "data/interim/paper2/market_reaction/topix_returns.csv"
+summary_path = "data/interim/paper2/market_reaction/topix_returns_summary.json"
+start = "2016-09-28"
+end = "2026-09-25"
+api_key_env = "JQUANTS_API_KEY"
+refresh_raw = false

@@ -1,6 +1,6 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-09-27
+**Last updated:** 2026-09-28
 
 ## Current thesis
 
@@ -995,6 +995,56 @@ src/pipeline/stages/market_reaction_event_dates.py
 
 Stage 7B should therefore be treated as **complete and frozen**.
 
+
+#### Stage 7C --- TOPIX market-return preparation
+
+Stage 7C is now **implemented, validated, complete, and frozen**.
+
+The production stage acquires official daily TOPIX OHLC data from the current J-Quants v2 API and stores the raw benchmark series separately from the event-study outputs:
+
+``` text
+data/raw/paper2/market/topix_daily.csv
+```
+
+The canonical processed market-return series is:
+
+``` text
+data/interim/paper2/market_reaction/topix_returns.csv
+```
+
+with QC metadata at:
+
+``` text
+data/interim/paper2/market_reaction/topix_returns_summary.json
+```
+
+The retained columns are `tradingDate`, TOPIX OHLC, `topixReturnSimple`, and `topixReturnLog`.
+
+The J-Quants subscription currently provides TOPIX history from **2016-09-28** onward. The final TOPIX series contains **2,440 observations** from **2016-09-28 through 2026-09-25**, with **0 missing close values** and exactly one missing simple/log return at the first observation, as expected.
+
+Coverage against Stage 7B is complete:
+
+- Stage 7B eligible events: **32,134**
+- unique Stage 7B event trading dates: **1,341**
+- missing TOPIX event dates: **0**
+- events with at least 60 TOPIX observations in `[-120,-20]`: **32,134**
+- events failing the TOPIX estimation-history requirement: **0**
+- TOPIX observations in the inclusive `[-120,-20]` window for every event: **101**
+
+Thus the subscription-history cutoff is empirically irrelevant for the retained event sample, and no supplemental pre-2016-09-28 TOPIX data are required.
+
+The Stage 7C production implementation is:
+
+``` text
+src/market/topix.py
+src/pipeline/stages/market_reaction_topix.py
+```
+
+Stage 7C should therefore be treated as **complete and frozen**.
+
+The next task is **Stage 7D --- event-specific market-model estimation**.
+
+
 The next market-reaction task is **Stage 7C --- TOPIX ingestion and market-return preparation**. Stages 7D--7F will then estimate event-specific market models, calculate abnormal returns/CARs, and produce the final market-reaction table and QC.
 
 
@@ -1019,19 +1069,12 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1.  **Stage 7C --- prepare TOPIX market returns.**
-    -   Establish the canonical TOPIX price/return series used by the event study.
-    -   Validate date coverage against the Stage 7B trading calendar.
-2.  **Stage 7D --- estimate event-specific market models.**
-    -   Preserve the Paper 1 `[-120,-20]` estimation window and minimum
-        60-observation rule.
-3.  **Stages 7E/7F --- abnormal returns, CARs, final market-reaction table, and QC.**
-    -   Compute the planned short-window market reactions and freeze the final
-        event-study sample.
-4.  **Stage 6D --- GPT / generative sentiment.**
-    -   Freeze model/version, prompt, chunking/context strategy, aggregation rule,
-        and structured output schema before production scoring.
-5.  **Then finalize the empirical specification, robustness suite, and paper-writing tasks.**
+1. **Stage 7D --- estimate event-specific market models.**
+   - Preserve the Paper 1 `[-120,-20]` estimation window and minimum 60-observation rule.
+   - Confirm the Paper 1 stock-return convention before freezing the Paper 2 implementation.
+2. **Stages 7E/7F --- abnormal returns, CARs, final market-reaction table, and QC.**
+3. **Stage 6D --- GPT / generative sentiment.**
+4. **Then finalize the empirical specification, robustness suite, and paper-writing tasks.**
 
 ## Current bottleneck
 
@@ -1041,7 +1084,7 @@ The bottleneck has shifted to:
 
 > **constructing market-adjusted return outcomes and integrating them with the frozen novelty and sentiment measures in a regression-ready panel**
 
-Stages 1--5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and Stage 6C Financial BERT is complete, canonicalized, and frozen. Stages 7A and 7B are also complete and frozen, leaving **32,134** eligible filing events with validated timestamp-aware `eventTradingDate` assignments. The immediate bottleneck is now TOPIX preparation and event-study construction through Stages 7C--7F. Stage 6D GPT sentiment remains intentionally deferred while market-reaction construction proceeds.
+Stages 1--5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and Stage 6C Financial BERT is complete, canonicalized, and frozen. Stages 7A, 7B, and 7C are complete and frozen, leaving **32,134** eligible filing events with validated timestamp-aware `eventTradingDate` assignments and complete TOPIX benchmark coverage. The immediate bottleneck is now event-specific market-model estimation and CAR construction through Stages 7D--7F. Stage 6D GPT sentiment remains intentionally deferred while market-reaction construction proceeds.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 

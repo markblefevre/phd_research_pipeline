@@ -31,6 +31,7 @@ from src.pipeline.stages.financial_bert_sentiment import run_stage_financial_ber
 from src.pipeline.stages.financial_bert_plots import run_stage_financial_bert_plots
 from src.pipeline.stages.market_reaction_eligibility import run_stage_market_reaction_eligibility
 from src.pipeline.stages.market_reaction_event_dates import (run_stage_market_reaction_event_dates)
+from src.pipeline.stages.market_reaction_topix import (run_stage_market_reaction_topix)
 
 from src.prices.fetch_jpx_prices import run_fetch_jpx_prices
 from src.prices.compute_lagged_rolling_vol_csv import compute_lagged_rolling_vol_csv
@@ -916,7 +917,11 @@ def main() -> int:
         run_stage_market_reaction_event_dates(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage market_reaction_event_dates disabled")
-
+    # Stage 7C
+    if bool(stages.get("market_reaction_topix", False)):
+        run_stage_market_reaction_topix(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage market_reaction_topix disabled")
 
 
 

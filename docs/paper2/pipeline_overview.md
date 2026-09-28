@@ -1,7 +1,7 @@
 # Paper 2 Pipeline Overview
 
 This document summarizes the implemented Paper 2 data pipeline through
-Stage 6C contextual sentiment and the completed Stage 7A--7B foundation
+Stage 6C contextual sentiment and the completed Stage 7A--7C foundation
 for market-reaction construction. Stages 1--3 cover EDINET acquisition,
 MD&A extraction, and longitudinal reporting-period matching. Stage 4
 prepares six validated Japanese token representations. Stage 5 fits
@@ -51,7 +51,11 @@ diagnostics are complete.
     validated, and frozen for all 32,134 Stage 7A-eligible events. The
     canonical assignment uses the EDINET submission timestamp, the observed
     TSE trading calendar, and regime-specific 15:00 / 15:30 JST close times.
-    Stage 7C TOPIX market-return preparation is next.
+-   **Stage 7C --- TOPIX market-return preparation:** complete, validated,
+    and frozen. Official J-Quants TOPIX contains 2,440 daily observations
+    from 2016-09-28 through 2026-09-25; all 32,134 Stage 7B events have the
+    full 101 TOPIX observations in the inclusive `[-120,-20]` estimation
+    window. Stage 7D market-model estimation is next.
 
 The current corpus contains **37,807 Annual Securities Reports** and
 **37,757 successfully extracted MD&A sections**.
@@ -1829,7 +1833,7 @@ Hardware-specific run directories are not part of the active pipeline.
 
 ## Status
 
-Stages 7A and 7B are now **complete, validated, and frozen**.
+Stages 7A, 7B, and 7C are now **complete, validated, and frozen**.
 
 Stage 7A begins from the frozen **33,046 research-eligible filing events** and determines whether each event has sufficient Tokyo Stock Exchange listing and price history to support the Paper 1 event-study architecture. It retains **32,134 / 33,046 = 97.24%** of research events.
 
@@ -1942,18 +1946,65 @@ src/pipeline/stages/market_reaction_event_dates.py
 
 Stage 7B should therefore be treated as **complete and frozen**.
 
+
+## Stage 7C --- TOPIX Market-Return Preparation
+
+Stage 7C acquires and validates the official TOPIX benchmark required by the market model.
+
+Implementation:
+
+``` text
+src/market/topix.py
+src/pipeline/stages/market_reaction_topix.py
+```
+
+Raw official J-Quants TOPIX:
+
+``` text
+data/raw/paper2/market/topix_daily.csv
+```
+
+Canonical processed output:
+
+``` text
+data/interim/paper2/market_reaction/topix_returns.csv
+data/interim/paper2/market_reaction/topix_returns_summary.json
+```
+
+Final validation:
+
+| Metric | Result |
+|---|---:|
+| TOPIX observations | **2,440** |
+| First trading date | **2016-09-28** |
+| Last trading date | **2026-09-25** |
+| Stage 7B events | **32,134** |
+| Unique Stage 7B event dates | **1,341** |
+| Missing TOPIX event dates | **0** |
+| Missing TOPIX close values | **0** |
+| Missing simple returns | **1** |
+| Missing log returns | **1** |
+| Events meeting 60-observation minimum in `[-120,-20]` | **32,134** |
+| Events failing TOPIX history requirement | **0** |
+
+The one missing return in each return series is the first TOPIX observation and is mechanically expected because no prior close exists.
+
+A dedicated estimation-window coverage diagnostic confirms that **every one of the 32,134 Stage 7B events has exactly 101 TOPIX observations** in the inclusive `[-120,-20]` window. The J-Quants subscription-history boundary at 2016-09-28 therefore does not reduce the retained event-study sample.
+
+Stage 7C should therefore be treated as **complete and frozen**.
+
 ## Remaining Stage 7 Structure
 
 ``` text
 7A  Market-event universe / price coverage             COMPLETE
 7B  Timestamp-aware event trading-date construction   COMPLETE
-7C  TOPIX ingestion and market-return preparation     NEXT
-7D  Event-specific market-model estimation
+7C  TOPIX ingestion and market-return preparation     COMPLETE
+7D  Event-specific market-model estimation            NEXT
 7E  Abnormal-return / CAR computation
 7F  Final market-reaction table and QC
 ```
 
-The next implementation task is Stage 7C: construct the canonical TOPIX price/return series and validate its coverage against the Stage 7B trading calendar. Event-specific alpha/beta estimation, abnormal returns, CARs, and final event-study QC then follow in Stages 7D--7F.
+The next implementation task is Stage 7D: estimate event-specific market-model alpha/beta coefficients using the validated stock-price and TOPIX series. Abnormal returns, CARs, and final event-study QC then follow in Stages 7E--7F.
 
 # Stage 6D --- GPT / Generative Sentiment (temporarily deferred)
 
