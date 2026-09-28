@@ -1042,6 +1042,85 @@ src/pipeline/stages/market_reaction_topix.py
 
 Stage 7C should therefore be treated as **complete and frozen**.
 
+#### Stage 7D --- stock-return construction and market-model preparation
+
+Stage 7D production estimation has not yet been run, but the stock-return construction required for the market model has now been **methodologically validated and frozen**.
+
+Paper 1's market-model convention was reviewed directly. The retained baseline is:
+
+``` text
+R_i,t = alpha_i + beta_i * R_m,t + epsilon_i,t
+
+stock return      = simple price return
+market return     = simple TOPIX return
+estimation window = [-120,-20] trading sessions
+minimum paired estimation observations = 60
+```
+
+Paper 1 used `pct_change()` for both stocks and TOPIX and preferred adjusted stock prices when available. The Paper 2 J-Quants archive does not provide a precomputed adjusted-close column. Instead, the raw stock files contain:
+
+``` text
+C
+AdjFactor
+```
+
+Corporate-action QC identified **2,594 rows with `AdjFactor != 1.0`** across **2,216 securities**. Representative factors include 0.5, 1/3, 0.25, 2, 5, and 10, consistent with stock splits, consolidations, and related corporate actions.
+
+For a consecutive-session price pair, the validated split/corporate-action-adjusted simple return is:
+
+``` text
+adjustedReturn_t =
+    C_t / (C_(t-1) * AdjFactor_t) - 1
+```
+
+A clean external validation is NTT (`94320`) around its 25-for-1 split. J-Quants reports a June 28, 2023 raw close of 4405.0, a June 29 close of 171.2, and `AdjFactor = 0.04`. Applying the factor gives a June 28 split-adjusted close of **176.20**, which exactly matches Yahoo Finance's split-adjusted historical `Close`; the June 29 `Close` also matches at **171.20**. This supports using J-Quants `AdjFactor` to remove split/corporate-action discontinuities while retaining price returns rather than dividend-adjusted total returns.
+
+A first full-sample QC showed that blindly linking successive valid closes can bridge long suspensions or multi-month/multi-year gaps. That behavior was rejected. The frozen Paper 2 rule is therefore:
+
+``` text
+compute a stock return only when
+the previous valid close is on the immediately preceding global TSE trading session
+```
+
+Returns are not bridged across suspensions or missing-price gaps.
+
+The revised consecutive-session QC reports:
+
+- **136** price files scanned;
+- **2,457** global TSE trading sessions;
+- **9,720,426** valid consecutive-session stock returns;
+- **2,527** returns crossing a non-unit adjustment factor;
+- **1,902** securities represented among those adjusted returns.
+
+Adjustment QC is strong:
+
+``` text
+median absolute raw return across adjustment events = 66.75%
+median absolute adjusted return                     = 1.98%
+99th percentile absolute adjusted return            = 17.82%
+
+|return| > 25%: raw 2,455 -> adjusted 6
+|return| > 50%: raw 2,012 -> adjusted 0
+|return| >100%: raw   669 -> adjusted 0
+|return| >500%: raw   421 -> adjusted 0
+```
+
+For observations with `AdjFactor = 1`, the adjusted-return formula reproduces the raw return exactly.
+
+The Stage 7D stock-return construction is therefore frozen as:
+
+1. use J-Quants raw close `C`;
+2. apply `AdjFactor` to eliminate corporate-action price discontinuities;
+3. compute **simple returns**, preserving Paper 1 continuity;
+4. require consecutive global TSE trading sessions;
+5. do not bridge suspensions or missing-price gaps;
+6. pair stock returns with the Stage 7C TOPIX simple return;
+7. estimate event-specific alpha/beta over `[-120,-20]`;
+8. require at least 60 matched stock/TOPIX observations.
+
+The next implementation task is to move these validated rules into the production Stage 7D market-model code and generate event-specific alpha/beta estimates.
+
+
 The next task is **Stage 7D --- event-specific market-model estimation**.
 
 
@@ -1069,12 +1148,16 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1. **Stage 7D --- estimate event-specific market models.**
-   - Preserve the Paper 1 `[-120,-20]` estimation window and minimum 60-observation rule.
-   - Confirm the Paper 1 stock-return convention before freezing the Paper 2 implementation.
-2. **Stages 7E/7F --- abnormal returns, CARs, final market-reaction table, and QC.**
-3. **Stage 6D --- GPT / generative sentiment.**
-4. **Then finalize the empirical specification, robustness suite, and paper-writing tasks.**
+1.  **Stage 7D --- implement and run event-specific market models.**
+    -   Use the frozen corporate-action-adjusted, consecutive-session stock-return rule.
+    -   Pair stock simple returns with the Stage 7C TOPIX simple return.
+    -   Preserve the Paper 1 `[-120,-20]` estimation window and minimum 60 paired observations.
+    -   Produce event-level alpha/beta estimates and Stage 7D QC.
+2.  **Stages 7E/7F --- abnormal returns, CARs, final market-reaction table, and QC.**
+    -   Compute the planned short-window market reactions and freeze the final event-study sample.
+3.  **Stage 6D --- GPT / generative sentiment.**
+    -   Freeze model/version, prompt, chunking/context strategy, aggregation rule, and structured output schema before production scoring.
+4.  **Then finalize the empirical specification, robustness suite, and paper-writing tasks.**
 
 ## Current bottleneck
 
@@ -1084,7 +1167,7 @@ The bottleneck has shifted to:
 
 > **constructing market-adjusted return outcomes and integrating them with the frozen novelty and sentiment measures in a regression-ready panel**
 
-Stages 1--5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and Stage 6C Financial BERT is complete, canonicalized, and frozen. Stages 7A, 7B, and 7C are complete and frozen, leaving **32,134** eligible filing events with validated timestamp-aware `eventTradingDate` assignments and complete TOPIX benchmark coverage. The immediate bottleneck is now event-specific market-model estimation and CAR construction through Stages 7D--7F. Stage 6D GPT sentiment remains intentionally deferred while market-reaction construction proceeds.
+Stages 1--5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, and Stage 6C Financial BERT is complete, canonicalized, and frozen. Stages 7A, 7B, and 7C are complete and frozen, leaving **32,134** eligible filing events with validated timestamp-aware `eventTradingDate` assignments and complete TOPIX benchmark coverage. The immediate bottleneck is now implementing the validated Stage 7D stock-return rules in the event-specific market-model estimator, followed by CAR construction through Stages 7E--7F. Stage 6D GPT sentiment remains intentionally deferred while market-reaction construction proceeds.
 
 Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
 

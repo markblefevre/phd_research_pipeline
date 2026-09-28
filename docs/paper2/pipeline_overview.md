@@ -55,7 +55,11 @@ diagnostics are complete.
     and frozen. Official J-Quants TOPIX contains 2,440 daily observations
     from 2016-09-28 through 2026-09-25; all 32,134 Stage 7B events have the
     full 101 TOPIX observations in the inclusive `[-120,-20]` estimation
-    window. Stage 7D market-model estimation is next.
+    window.
+-   **Stage 7D --- Event-specific market-model estimation:** production
+    estimation is next. The underlying stock-return methodology has already
+    been validated and frozen: J-Quants `C` plus `AdjFactor`, simple returns,
+    and returns only across consecutive global TSE trading sessions.
 
 The current corpus contains **37,807 Annual Securities Reports** and
 **37,757 successfully extracted MD&A sections**.
@@ -1993,18 +1997,118 @@ A dedicated estimation-window coverage diagnostic confirms that **every one of t
 
 Stage 7C should therefore be treated as **complete and frozen**.
 
+
+## Stage 7D --- Stock-Return Construction and Market-Model Preparation
+
+Before event-specific alpha/beta estimation, the Paper 1 return convention and the Paper 2 J-Quants stock-price schema were validated explicitly.
+
+Paper 1 used simple percentage returns for both the stock and TOPIX legs of the market model:
+
+``` text
+R_i,t = alpha_i + beta_i * R_m,t + epsilon_i,t
+```
+
+with:
+
+``` text
+estimation window = [-120,-20] trading sessions
+minimum paired observations = 60
+market benchmark = TOPIX
+```
+
+The Paper 2 raw J-Quants stock archive does not contain a precomputed adjusted close. Its relevant fields are:
+
+``` text
+Date
+Code
+C
+AdjFactor
+```
+
+A full archive scan found **2,594 rows with `AdjFactor != 1.0`** across **2,216 securities**. For consecutive trading sessions, the validated corporate-action-adjusted stock return is:
+
+``` text
+adjustedReturn_t =
+    C_t / (C_(t-1) * AdjFactor_t) - 1
+```
+
+Representative manual checks show that this removes the mechanical split/consolidation jump while preserving the underlying economic return.
+
+### NTT external validation
+
+NTT (`94320`) provides a clean external cross-check around its 25-for-1 split:
+
+``` text
+J-Quants:
+2023-06-28 C         = 4405.0
+2023-06-29 C         = 171.2
+2023-06-29 AdjFactor = 0.04
+
+4405.0 * 0.04 = 176.20
+```
+
+Yahoo Finance reports a split-adjusted historical `Close` of **176.20** for June 28 and **171.20** for June 29. This confirms the interpretation of the J-Quants adjustment factor. Yahoo's separate dividend-adjusted `Adjusted Close` is intentionally not the Paper 2 baseline because the event study retains price returns rather than dividend total returns.
+
+### Consecutive-session rule
+
+An initial QC using successive valid closes revealed that a naive return calculation can bridge long suspensions or periods without valid prices. Such observations are not one-day returns and are excluded.
+
+The frozen stock-return rule is therefore:
+
+``` text
+compute a return only if the prior valid close
+is on the immediately preceding global TSE trading session
+```
+
+No return is constructed across a suspension or missing-price gap.
+
+The revised full-sample QC reports:
+
+| Metric | Result |
+|---|---:|
+| J-Quants price files scanned | **136** |
+| Global TSE trading sessions | **2,457** |
+| Valid consecutive-session returns | **9,720,426** |
+| Returns crossing an adjustment | **2,527** |
+| Unique adjusted securities | **1,902** |
+| Median absolute raw return at adjustment events | **66.75%** |
+| Median absolute adjusted return | **1.98%** |
+| 99th percentile absolute adjusted return | **17.82%** |
+| Raw returns with `|r| > 25%` | **2,455** |
+| Adjusted returns with `|r| > 25%` | **6** |
+| Raw returns with `|r| > 50%` | **2,012** |
+| Adjusted returns with `|r| > 50%` | **0** |
+
+For observations with no corporate action (`AdjFactor = 1`), the adjusted formula exactly reproduces the raw simple return.
+
+### Frozen Stage 7D return design
+
+The production Stage 7D implementation should therefore:
+
+1. read J-Quants raw close `C` and `AdjFactor`;
+2. construct corporate-action-adjusted **simple** stock returns;
+3. compute returns only across consecutive global TSE sessions;
+4. leave returns missing across suspensions or missing-price gaps;
+5. pair stock returns with the Stage 7C TOPIX simple return;
+6. define the estimation window on the global trading calendar as `[-120,-20]`;
+7. require at least 60 matched stock/TOPIX observations;
+8. estimate event-specific alpha and beta.
+
+The stock-return methodology should be treated as **validated and frozen**. The remaining Stage 7D task is production implementation and full event-level estimation.
+
 ## Remaining Stage 7 Structure
 
 ``` text
 7A  Market-event universe / price coverage             COMPLETE
 7B  Timestamp-aware event trading-date construction   COMPLETE
 7C  TOPIX ingestion and market-return preparation     COMPLETE
-7D  Event-specific market-model estimation            NEXT
+7D  Stock-return methodology / QC                     VALIDATED
+    Event-specific market-model estimation            NEXT
 7E  Abnormal-return / CAR computation
 7F  Final market-reaction table and QC
 ```
 
-The next implementation task is Stage 7D: estimate event-specific market-model alpha/beta coefficients using the validated stock-price and TOPIX series. Abnormal returns, CARs, and final event-study QC then follow in Stages 7E--7F.
+The next implementation task is the production Stage 7D estimator: construct the frozen corporate-action-adjusted, consecutive-session stock returns, pair them with TOPIX simple returns, and estimate event-specific alpha/beta coefficients. Abnormal returns, CARs, and final event-study QC then follow in Stages 7E--7F.
 
 # Stage 6D --- GPT / Generative Sentiment (temporarily deferred)
 
