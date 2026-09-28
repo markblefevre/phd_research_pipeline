@@ -253,7 +253,7 @@ def main() -> int:
         run_stage_market_reaction_abnormal_returns(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage market_reaction_abnormal_returns disabled")
-     # Stage 7F: final market-reaction table / QC
+    # Stage 7F: final market-reaction table / QC
     if bool(stages.get("market_reaction_final_table", False)):
         run_stage_market_reaction_final_table(
             paper=paper,
