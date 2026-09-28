@@ -18,12 +18,7 @@ financial_bert_plots = false
 market_reaction_eligibility = false
 market_reaction_event_dates = false
 market_reaction_topix = false
-market_reaction_market_model = true
-
-text_stats = false
-sentiment = false
-build_panel = false
-regression = false
+market_reaction_market_model = false
 
 ## STAGE 1 EDINET_DOWNLOAD
 [edinet_download]
