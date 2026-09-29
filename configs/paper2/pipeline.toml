@@ -15,12 +15,14 @@ lmmd_sentiment = false
 lmmd_plots = false
 financial_bert_sentiment = false
 financial_bert_plots = false
-market_reaction_eligibility = true
-market_reaction_event_dates = true
-market_reaction_topix = true
-market_reaction_market_model = true
-market_reaction_abnormal_returns = true
+market_reaction_eligibility = false
+market_reaction_event_dates = false
+market_reaction_topix = false
+market_reaction_market_model = false
+market_reaction_abnormal_returns = false
 market_reaction_final_table = true
+empirical_panel = true
+baseline_regressions = true
 
 ## STAGE 1 EDINET_DOWNLOAD
 [edinet_download]
@@ -237,3 +239,24 @@ abnormal_returns_csv = "data/interim/paper2/market_reaction/abnormal_returns.csv
 output_csv = "data/interim/paper2/market_reaction/final_event_study_table.csv"
 summary_json = "data/interim/paper2/market_reaction/final_event_study_summary.json"
 windows = [[0,0], [0,1], [-1,1]]
+
+## STAGE 8A EMPIRICAL PANEL
+[empirical_panel]
+analysis_panel_csv = "data/interim/paper2/analysis/analysis_panel.csv"
+lmmd_csv = "data/interim/paper2/sentiment/lmmd/lmmd_sentiment.csv"
+financial_bert_csv = "data/interim/paper2/sentiment/financial_bert/financial_bert_sentiment.csv"
+event_study_csv = "data/interim/paper2/market_reaction/final_event_study_table.csv"
+output_csv = "data/interim/paper2/analysis/empirical_panel.csv"
+summary_json = "data/interim/paper2/analysis/empirical_panel_summary.json"
+
+## STAGE 8B BASELINE REGRESSIONS
+[baseline_regressions]
+input_csv = "data/interim/paper2/analysis/empirical_panel.csv"
+output_dir = "data/interim/paper2/regressions/baseline"
+windows = [[0,0], [0,1], [-1,1]]
+novelty_column = "noveltyCNum"
+length_control = "absLogLengthChange"
+sentiment_models = ["lmmd", "financial_bert"]
+include_year_fixed_effects = true
+include_industry_fixed_effects = false
+cluster_by_firm = true

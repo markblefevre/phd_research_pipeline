@@ -33,6 +33,8 @@ from src.pipeline.stages.market_reaction_topix import run_stage_market_reaction_
 from src.pipeline.stages.market_reaction_market_model import run_stage_market_reaction_market_model
 from src.pipeline.stages.market_reaction_abnormal_returns import (run_stage_market_reaction_abnormal_returns)
 from src.pipeline.stages.market_reaction_final_table import (run_stage_market_reaction_final_table)
+from src.pipeline.stages.empirical_panel import (run_stage_empirical_panel)
+from src.pipeline.stages.baseline_regressions import (run_stage_baseline_regressions)
 
 # ----------------------------
 # Helpers
@@ -256,12 +258,20 @@ def main() -> int:
     # Stage 7F: final market-reaction table / QC
     if bool(stages.get("market_reaction_final_table", False)):
         run_stage_market_reaction_final_table(
-            paper=paper,
-            cfg=cfg,
-            logger=logger,
-        )
+            paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage market_reaction_final_table disabled")
+
+    # Stage 8A: empirical analysis panel
+    if bool(stages.get("empirical_panel", False)):
+        run_stage_empirical_panel(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage empirical_panel disabled")
+    # Stage 8B: baseline regressions
+    if bool(stages.get("baseline_regressions", False)):
+        run_stage_baseline_regressions(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage baseline_regressions disabled")
     
     logger.info("Pipeline done: paper=%s run_id=%s", paper, run_id)
     logger.info("Outputs base: %s", out_base)
