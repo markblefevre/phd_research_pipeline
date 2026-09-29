@@ -1,6 +1,6 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-09-28
+**Last updated:** 2026-09-29
 
 ## Current thesis
 
@@ -1083,46 +1083,187 @@ The historical-venue correction changed upstream attribution of eight invalid ob
 
 Stage 7 should therefore be treated as **complete and frozen** once the CSV-driven venue override implementation reproduces these same counts.
 
+## Stage 8 --- empirical integration and first-look checkpoint
+
+Stage 8A and Stage 8B are now implemented.
+
+### Stage 8A --- regression-ready empirical panel
+
+Stage 8A preserves all **33,046** frozen research pairs and joins current and
+prior LMMD sentiment, current and prior Financial BERT sentiment, derived
+year-over-year sentiment changes, and Stage 7F market-reaction outcomes.
+
+Final Stage 8A validation:
+
+- **33,046 rows × 111 columns**;
+- **0 missing** LMMD current sentiment;
+- **0 missing** LMMD prior sentiment;
+- **0 missing** LMMD sentiment change;
+- **0 missing** Financial BERT current sentiment;
+- **0 missing** Financial BERT prior sentiment;
+- **0 missing** Financial BERT sentiment change.
+
+The canonical output is:
+
+``` text
+data/interim/paper2/analysis/empirical_panel.csv
+```
+
+The empirical panel preserves both sentiment definitions by design:
+
+``` text
+level:
+    sentiment_t
+
+change:
+    sentiment_t - sentiment_(t-1)
+```
+
+The level and change specifications are estimated separately in the first
+pass to avoid obscuring interpretation through their mechanical relationship.
+
+### Stage 8B --- preserved first-look regressions
+
+A deliberately narrow set of **12 first-look regressions** was run before
+Stage 6D LLM sentiment is implemented:
+
+``` text
+2 sentiment models
+× 2 sentiment definitions (level/change)
+× 3 CAR windows
+= 12 regressions
+```
+
+The common first-look specification is:
+
+``` text
+CAR
+  ~ sentiment
+  + noveltyCNum
+  + sentiment × noveltyCNum
+  + absLogLengthChange
+  + fiscal-year fixed effects
+```
+
+with standard errors clustered by `edinetCode`.
+
+The pre-specified event windows remain:
+
+``` text
+[0,0]
+[0,1]
+[-1,1]
+```
+
+Industry fixed effects are not yet included because a canonical Paper 2
+industry classification has not yet been constructed.
+
+The untouched first-look output files from **2026-09-29** have been preserved
+under:
+
+``` text
+data/interim/paper2/regressions/baseline/first look_20260929/
+```
+
+The most notable provisional interaction results are:
+
+| Sentiment specification | CAR window | Interaction coefficient | t-statistic | p-value |
+|---|---:|---:|---:|---:|
+| Financial BERT level × novelty | `[-1,1]` | **0.157363** | **2.754** | **0.005881** |
+| Financial BERT level × novelty | `[0,1]` | **0.085776** | **1.818** | **0.06909** |
+| LMMD change × novelty | `[-1,1]` | **0.959298** | **2.025** | **0.04282** |
+| LMMD change × novelty | `[0,1]` | **0.766284** | **1.930** | **0.05363** |
+
+These results are explicitly **provisional first-look evidence**, not final
+paper findings. The specification should not be retuned in response to these
+results.
+
+The initial economic-magnitude calculation for the strongest result,
+Financial BERT level × novelty in CAR `[-1,1]`, implies that a one-standard-
+deviation increase in BERT sentiment is associated with approximately:
+
+``` text
+novelty 25th percentile   +1.5 bp
+novelty median            +3.4 bp
+novelty 75th percentile   +6.6 bp
+novelty 90th percentile  +12.2 bp
+novelty 95th percentile  +18.2 bp
+```
+
+The LMMD-change interaction has a different shape: its marginal effect is
+negative at low/moderate novelty, attenuates as novelty rises, and becomes
+positive only in the upper novelty tail. This contrast is retained for later
+testing and interpretation rather than treated as a final conclusion.
+
 ## Open empirical decisions
 
 The main remaining design decisions are:
 
--   whether sentence-level or changed-text analyses are needed beyond
+-   canonical industry classification and industry fixed effects;
+-   exact Stage 6D generative-model specification, prompt, context/chunking,
+    and aggregation design;
+-   how LMMD, Financial BERT, and GPT sentiment should be normalized for
+    direct cross-model economic-magnitude comparisons;
+-   whether sentence-level or changed-text analyses add enough value beyond
     the frozen document-level baseline;
--   how to define persistent versus novel portions of text in secondary
-    analyses;
--   whether grouped novelty portfolios/bins add value beyond the planned
-    continuous interaction;
--   how LMMD, Japanese Financial BERT, and GPT sentiment are normalized
-    for comparison;
--   the remaining control set and fixed-effects structure;
--   which robustness analyses are sufficiently informative to include in
-    the final paper;
--   whether firm- or industry-relative novelty transformations improve
+-   whether grouped novelty portfolios/bins are useful as descriptive
+    supplements to the continuous interaction;
+-   which pre-planned robustness analyses belong in the main paper versus
+    appendix;
+-   whether firm- or industry-relative novelty transformations add useful
     interpretation beyond the absolute baseline.
 
 ## Immediate next steps
 
-1. **Freeze the CSV-driven Stage 7A venue override implementation.**
-   - Re-run Stages 7A--7F once and confirm the validated counts above are unchanged.
-   - Commit the canonical venue override CSV and final Stage 7 production code.
+1. **Commit and freeze the Stage 8A/8B code and the 2026-09-29 first-look checkpoint.**
+   - Preserve the first-look regression outputs separately from all later
+     robustness work.
 2. **Stage 6D --- GPT / generative sentiment.**
-   - Freeze model/version, prompt, context/chunking strategy, aggregation rule, and structured output schema before production scoring.
-3. **Integrate final sentiment and market-reaction measures into the regression specification.**
-4. **Run the planned robustness suite and begin final results/tables writing.**
+   - Freeze model/version, prompt, context/chunking strategy, aggregation rule,
+     and structured output schema before production scoring.
+   - Score the same frozen research-universe documents independently of
+     novelty and returns.
+3. **Extend Stage 8 to the LLM measure using the same empirical architecture.**
+   - Construct current, prior, and change sentiment consistently where the
+     model design supports it.
+   - Run the same pre-specified CAR windows and interaction structure.
+4. **Add a canonical industry classification and industry fixed effects.**
+5. **Run the planned robustness suite.**
+   - C-raw and secondary novelty representations;
+   - 2018 exclusion;
+   - signed length change;
+   - top 5% / top 10% absolute-length-change exclusions;
+   - selected alternative sentiment outputs where methodologically justified.
+6. **Build final marginal-effect tables/figures and begin the empirical-results section.**
+7. **Complete final paper integration and consistency review.**
 
 ## Current bottleneck
 
-Stages 1--5 are complete through the baseline word-token novelty layer. Stage 6A is complete and frozen, Stage 6B LMMD is complete and frozen, Stage 6C Financial BERT is complete and frozen, and Stage 7 market-reaction construction is complete and validated.
+Stages 1--7 are complete and frozen through the market-reaction pipeline.
+Stage 8A provides a validated regression-ready panel, and Stage 8B has
+established a preserved, pre-LLM empirical checkpoint.
 
 The primary remaining implementation bottleneck is now:
 
-> **Stage 6D GPT / generative sentiment, followed by final regression integration and robustness analysis.**
+> **Stage 6D GPT / generative sentiment, followed by industry fixed effects,
+> the pre-planned robustness suite, and final results integration.**
 
-Further literature review should now be driven primarily by unresolved methodological or theoretical questions that emerge from the empirical work rather than by broad literature searching.
+The project is no longer primarily a data-engineering exercise. The core
+empirical architecture is operational, and the remaining risk is whether the
+provisional interaction patterns survive the full model comparison and
+robustness design.
+
+Further literature review should now be driven primarily by unresolved
+methodological or theoretical questions that emerge from the empirical work
+rather than by broad literature searching.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately **72--76%**.
+**Overall paper:** approximately **78--82%**.
 
-The data, text-processing, novelty, lexical/contextual sentiment, and event-study infrastructure are largely complete. The remaining substantive work is GPT sentiment, final model integration, robustness analysis, interpretation, and paper writing.
+The core corpus, extraction, longitudinal matching, novelty construction,
+lexical/contextual sentiment, market-reaction infrastructure, regression-ready
+panel, and first-look empirical specification are complete. The remaining
+substantive work is Stage 6D generative sentiment, industry fixed effects,
+robustness analysis, final tables/figures, interpretation, and empirical-results
+writing.

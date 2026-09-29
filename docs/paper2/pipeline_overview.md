@@ -1,8 +1,10 @@
 # Paper 2 Pipeline Overview
 
 This document summarizes the implemented Paper 2 data pipeline through
-Stage 6C contextual sentiment and the completed Stage 7A--7C foundation
-for market-reaction construction. Stages 1--3 cover EDINET acquisition,
+Stage 8B first-look empirical regressions. Stages 1--7 are complete and
+frozen through market-reaction construction; Stage 8A constructs the
+regression-ready empirical panel and Stage 8B provides the preserved
+pre-LLM first-look regression checkpoint. Stages 1--3 cover EDINET acquisition,
 MD&A extraction, and longitudinal reporting-period matching. Stage 4
 prepares six validated Japanese token representations. Stage 5 fits
 corpus-wide TF-IDF representations, computes adjacent-period cosine
@@ -45,17 +47,17 @@ diagnostics are complete.
     intentionally deferred while Stage 7 market-reaction construction proceeds.
 -   **Stage 7A --- Market-event eligibility and price coverage:** complete,
     validated, and frozen. Of 33,046 research-eligible filing events,
-    32,134 (97.24%) satisfy the TSE listing-history and estimation-window
+    32,126 (97.24%) satisfy the TSE listing-history and estimation-window
     requirements.
 -   **Stage 7B --- Timestamp-aware event trading dates:** complete,
-    validated, and frozen for all 32,134 Stage 7A-eligible events. The
+    validated, and frozen for all 32,126 Stage 7A-eligible events. The
     canonical assignment uses the EDINET submission timestamp, the observed
     TSE trading calendar, and regime-specific 15:00 / 15:30 JST close times.
 -   **Stage 7C --- TOPIX market-return preparation:** complete, validated,
     and frozen. Official J-Quants TOPIX contains 2,440 daily observations
-    from 2016-09-28 through 2026-09-25; all 32,134 Stage 7B events have the
+    from 2016-09-28 through 2026-09-25; all 32,126 Stage 7B events have the
     full 101 TOPIX observations in the inclusive `[-120,-20]` estimation
-    window. Stage 7D market-model estimation is next.
+    window. Stages 7D--7F are complete and frozen; Stage 8 empirical integration is now implemented.
 
 The current corpus contains **37,807 Annual Securities Reports** and
 **37,757 successfully extracted MD&A sections**.
@@ -2017,8 +2019,148 @@ The eight TOKYO PRO events removed by the final Stage 7A historical-venue correc
 7F  Final market-reaction table and QC                 COMPLETE / FROZEN
 ```
 
-The next substantive pipeline task is Stage 6D GPT / generative sentiment, followed by final regression integration and robustness analysis.
+# Stage 8 --- Empirical Integration and First-Look Regressions
+
+## Stage 8A --- Regression-Ready Empirical Panel
+
+Stage 8A is implemented and validated. It preserves the frozen **33,046**
+Stage 6A research pairs as the authoritative universe and joins:
+
+- Stage 6B LMMD document-level sentiment;
+- Stage 6C Financial BERT document-level sentiment;
+- Stage 7F market-reaction outcomes and window-specific sample flags.
+
+Both current- and prior-document sentiment are joined explicitly and the
+year-over-year change is constructed once in the canonical empirical panel:
+
+``` text
+LMMD:
+    lmmd_sentiment_curr
+    lmmd_sentiment_prev
+    lmmd_sentiment_change = curr - prev
+
+Financial BERT:
+    financial_bert_sentiment_curr
+    financial_bert_sentiment_prev
+    financial_bert_sentiment_change = curr - prev
+```
+
+`bertProbabilityNet` current/prior/change is also preserved for later
+robustness work, while the primary Financial BERT measure remains `bertNet`.
+
+Canonical output:
+
+``` text
+data/interim/paper2/analysis/
+    empirical_panel.csv
+    empirical_panel_summary.json
+```
+
+Final validation:
+
+| Metric | Result |
+|---|---:|
+| Research-pair rows | **33,046** |
+| Columns | **111** |
+| Missing LMMD current sentiment | **0** |
+| Missing LMMD prior sentiment | **0** |
+| Missing LMMD sentiment change | **0** |
+| Missing BERT current sentiment | **0** |
+| Missing BERT prior sentiment | **0** |
+| Missing BERT sentiment change | **0** |
+
+Fiscal-year fixed effects are derived from the current filing's fiscal-period
+end. The firm identifier for clustered standard errors is `edinetCode`.
+
+## Stage 8B --- Preserved First-Look Baseline Regressions
+
+Stage 8B is implemented as a deliberately narrow diagnostic before Stage 6D
+LLM scoring. The purpose is to test whether the core Paper 2 mechanism shows
+empirical signal without specification searching.
+
+The first-look specification is fixed as:
+
+``` text
+CAR
+  ~ sentiment
+  + noveltyCNum
+  + sentiment × noveltyCNum
+  + absLogLengthChange
+  + fiscal-year fixed effects
+```
+
+with standard errors clustered by firm (`edinetCode`).
+
+The same specification is run for:
+
+``` text
+2 sentiment models:
+    LMMD
+    Financial BERT
+
+2 sentiment definitions:
+    current level
+    change from prior filing
+
+3 pre-specified CAR windows:
+    [0,0]
+    [0,1]
+    [-1,1]
+```
+
+for a total of **12 regressions**. Industry fixed effects are intentionally
+not included yet because a canonical Paper 2 industry classification has not
+been constructed.
+
+The untouched first-look outputs from **2026-09-29** are preserved separately
+under:
+
+``` text
+data/interim/paper2/regressions/baseline/first look_20260929/
+```
+
+The most notable provisional interaction results are:
+
+| Sentiment specification | CAR window | Interaction coefficient | t-statistic | p-value |
+|---|---:|---:|---:|---:|
+| Financial BERT current level × novelty | `[-1,1]` | **0.157363** | **2.754** | **0.005881** |
+| Financial BERT current level × novelty | `[0,1]` | **0.085776** | **1.818** | **0.06909** |
+| LMMD sentiment change × novelty | `[-1,1]` | **0.959298** | **2.025** | **0.04282** |
+| LMMD sentiment change × novelty | `[0,1]` | **0.766284** | **1.930** | **0.05363** |
+
+These are explicitly **first-look / provisional** results rather than final
+paper findings. No specification should be changed in response to them before
+the planned robustness work.
+
+For the strongest first-look result, Financial BERT current sentiment ×
+novelty in CAR `[-1,1]`, the implied marginal effect of a one-standard-
+deviation increase in BERT sentiment rises materially with textual novelty.
+Using the empirical novelty distribution, the approximate effect ranges from
+about **+1.5 bp** at the 25th percentile of novelty to **+18.2 bp** at the
+95th percentile.
+
+The LMMD-change interaction has a different shape: the marginal effect of a
+one-standard-deviation increase in LMMD sentiment change is negative at low
+and moderate novelty, attenuates as novelty rises, and becomes positive only
+in the upper novelty tail. This contrast is retained as a hypothesis for
+later interpretation rather than treated as a final conclusion.
+
+## Stage 8 Status
+
+``` text
+8A  Regression-ready empirical panel                    COMPLETE / VALIDATED
+8B  Fixed first-look LMMD/BERT regressions              COMPLETE / PRESERVED
+```
+
+The next substantive implementation task is Stage 6D GPT / generative
+sentiment. After Stage 6D, the same Stage 8 architecture should be extended
+to the generative measure before industry fixed effects, robustness
+specifications, final tables/figures, and results writing.
 
 # Stage 6D --- GPT / Generative Sentiment (next)
 
-Stage 6D is the next sentiment layer. It should use the same research-universe documents, be constructed independently of novelty and market outcomes, and preserve a comparable document-level output architecture. Model/version, prompt, context/chunking strategy, aggregation rule, and structured output schema should be frozen before full production scoring.
+Stage 6D remains the next sentiment layer. It should use the same
+research-universe documents, be constructed independently of novelty and
+market outcomes, and preserve a comparable document-level output architecture.
+Model/version, prompt, context/chunking strategy, aggregation rule, and
+structured output schema should be frozen before full production scoring.
