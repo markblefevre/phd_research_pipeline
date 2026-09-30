@@ -15,14 +15,16 @@ lmmd_sentiment = false
 lmmd_plots = false
 financial_bert_sentiment = false
 financial_bert_plots = false
+llm_sentiment = true
+llm_plots = false
 market_reaction_eligibility = false
 market_reaction_event_dates = false
 market_reaction_topix = false
 market_reaction_market_model = false
 market_reaction_abnormal_returns = false
-market_reaction_final_table = true
-empirical_panel = true
-baseline_regressions = true
+market_reaction_final_table = false
+empirical_panel = false
+baseline_regressions = false
 
 ## STAGE 1 EDINET_DOWNLOAD
 [edinet_download]
@@ -178,8 +180,6 @@ overwrite = false
 # negative_absent_id = 0
 # negative_present_id = 1
 
-# Optional plotting/QC stage after production scoring.
-# Add under [stages]: financial_bert_plots = false
 [financial_bert_plots]
 output_dir = "outputs/paper2/figures/sentiment/financial_bert"
 formats = ["pdf", "png"]
@@ -187,6 +187,34 @@ dpi = 180
 min_year_observations = 25
 # If [lmmd_sentiment].output_csv is not available in config, set explicitly:
 # lmmd_csv = "data/interim/paper2/sentiment/lmmd/lmmd_sentiment.csv"
+
+## STAGE 6D LLM SENTIMENT
+[llm_sentiment]
+source_root = "~/paper2_stage4/mdna"
+# Production universe should come from the frozen Stage 4 manifest.
+manifest_csv = "data/interim/paper2/tokens/sudachi_c_raw/manifest.csv"
+prompt_file = "configs/paper2/prompts/llm_sentiment_v2.md"
+model = "gpt-6-sol"
+reasoning_effort = "none"
+target_unit_chars = 1050
+max_unit_chars = 1400
+min_narrative_line_chars = 20
+output_csv = "data/interim/paper2/sentiment/llm/llm_sentiment.csv"
+raw_units_dir = "data/interim/paper2/sentiment/llm/units"
+resume = true
+overwrite = false
+dry_run = false
+max_retries = 3
+retry_base_seconds = 2.0
+# Optional integration-test limiter:
+max_documents = 200
+
+## STAGE 6D LLM VISUALIZATION / QC
+[llm_plots]
+output_dir = "outputs/paper2/figures/sentiment/llm"
+formats = ["pdf", "png"]
+dpi = 180
+min_year_observations = 25
 
 ## STAGE 7A MARKET-REACTION EVENT ELIGIBILITY
 [market_reaction_eligibility]
