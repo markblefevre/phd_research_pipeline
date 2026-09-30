@@ -444,6 +444,7 @@ def discover_documents(
     mdna_root: Path,
     doc_ids: Sequence[str] | None = None,
     manifest_csv: Path | None = None,
+    max_documents: int | None = None,
 ) -> List[tuple[str, Path]]:
     """Discover prototype documents by docID or production documents from a manifest.
 
@@ -451,7 +452,10 @@ def discover_documents(
     The prototype path is the initial validated route.
     """
     if doc_ids:
-        return [(str(doc_id), _find_doc_file(mdna_root, str(doc_id))) for doc_id in doc_ids]
+        ids = [str(doc_id) for doc_id in doc_ids]
+        if max_documents is not None:
+            ids = ids[:max_documents]
+        return [(doc_id, _find_doc_file(mdna_root, doc_id)) for doc_id in ids]
 
     if manifest_csv is None:
         raise ValueError("Either doc_ids or manifest_csv must be provided")
@@ -463,6 +467,8 @@ def discover_documents(
         raise ValueError(f"Manifest must contain docID; columns={list(manifest.columns)}")
 
     ids = [x for x in manifest["docID"].dropna().astype(str).tolist() if x.strip()]
+    if max_documents is not None:
+        ids = ids[:max_documents]
     return [(doc_id, _find_doc_file(mdna_root, doc_id)) for doc_id in ids]
 
 
@@ -544,15 +550,16 @@ def score_llm_corpus(
 
     prompt_text = prompt_file.read_text(encoding="utf-8").strip()
     prompt_sha256 = _sha256_text(prompt_text)
+
+    if max_documents is not None and max_documents <= 0:
+        raise ValueError("max_documents must be positive when provided")
+
     documents = discover_documents(
         mdna_root=mdna_root,
         doc_ids=doc_ids,
         manifest_csv=manifest_csv,
+        max_documents=max_documents,
     )
-    if max_documents is not None:
-        if max_documents <= 0:
-            raise ValueError("max_documents must be positive when provided")
-        documents = documents[:max_documents]
     if not documents:
         raise RuntimeError("No documents selected for Stage 6D")
 
