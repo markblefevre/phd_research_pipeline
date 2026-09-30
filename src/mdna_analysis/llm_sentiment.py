@@ -27,6 +27,8 @@ import os
 import re
 import subprocess
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -510,6 +512,7 @@ def score_llm_corpus(
     doc_ids: Sequence[str] | None = None,
     manifest_csv: Path | None = None,
     max_documents: int | None = None,
+    max_concurrent_requests: int = 1,
     target_unit_chars: int = 1050,
     max_unit_chars: int = 1400,
     min_narrative_line_chars: int = 20,
@@ -553,6 +556,8 @@ def score_llm_corpus(
 
     if max_documents is not None and max_documents <= 0:
         raise ValueError("max_documents must be positive when provided")
+    if max_concurrent_requests <= 0:
+        raise ValueError("max_concurrent_requests must be positive")
 
     documents = discover_documents(
         mdna_root=mdna_root,
@@ -565,7 +570,17 @@ def score_llm_corpus(
 
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     raw_units_dir.mkdir(parents=True, exist_ok=True)
-    client = None if dry_run else OpenAI()  # type: ignore[operator]
+
+    thread_state = threading.local()
+
+    def _get_client() -> Any:
+        if dry_run:
+            return None
+        client = getattr(thread_state, "client", None)
+        if client is None:
+            client = OpenAI()  # type: ignore[operator]
+            thread_state.client = client
+        return client
 
     rows: List[Dict[str, Any]] = []
     total_input_tokens = 0
@@ -573,14 +588,19 @@ def score_llm_corpus(
     started = datetime.now(timezone.utc)
 
     logger.info(
-        "LLM sentiment start: docs=%d model=%s dry_run=%s prompt=%s",
+        "LLM sentiment start: docs=%d model=%s dry_run=%s concurrency=%d prompt=%s",
         len(documents),
         model,
         dry_run,
+        max_concurrent_requests,
         prompt_file,
     )
 
-    for idx, (doc_id, source_path) in enumerate(documents, start=1):
+    def _process_document(
+        idx: int,
+        doc_id: str,
+        source_path: Path,
+    ) -> tuple[int, Dict[str, Any], int, int]:
         raw_json = raw_units_dir / f"{doc_id}.json"
 
         if raw_json.exists() and resume and not overwrite and not dry_run:
@@ -589,10 +609,7 @@ def score_llm_corpus(
             aggregate = aggregate_document(units, scores)
             cleaning = payload.get("cleaning", {})
             usage = payload.get("response", {}).get("usage", {}) or {}
-            total_input_tokens += int(usage.get("input_tokens") or 0)
-            total_output_tokens += int(usage.get("output_tokens") or 0)
-
-            rows.append({
+            row = {
                 "docID": doc_id,
                 "sourcePath": str(source_path),
                 "status": "resumed",
@@ -600,8 +617,13 @@ def score_llm_corpus(
                 "narrativeChars": cleaning.get("narrative_chars"),
                 "retentionShare": cleaning.get("retention_share"),
                 **aggregate,
-            })
-            continue
+            }
+            return (
+                idx,
+                row,
+                int(usage.get("input_tokens") or 0),
+                int(usage.get("output_tokens") or 0),
+            )
 
         text = source_path.read_text(encoding="utf-8")
         narrative, cleaning_diag = clean_mdna_narrative(
@@ -640,7 +662,7 @@ def score_llm_corpus(
                 "units": [asdict(u) for u in units],
             }
             _write_json(raw_json.with_name(f"{doc_id}.dry_run.json"), preview_payload)
-            rows.append({
+            row = {
                 "docID": doc_id,
                 "sourcePath": str(source_path),
                 "status": "dry_run",
@@ -648,10 +670,10 @@ def score_llm_corpus(
                 "narrativeChars": cleaning_diag.narrative_chars,
                 "retentionShare": cleaning_diag.retention_share,
                 "llmNumUnits": len(units),
-            })
-            continue
+            }
+            return idx, row, 0, 0
 
-        assert client is not None
+        client = _get_client()
         scores, response_meta = score_units_openai(
             client=client,
             units=units,
@@ -665,8 +687,8 @@ def score_llm_corpus(
         aggregate = aggregate_document(units, scores)
 
         usage = response_meta.get("usage", {})
-        total_input_tokens += int(usage.get("input_tokens") or 0)
-        total_output_tokens += int(usage.get("output_tokens") or 0)
+        input_tokens = int(usage.get("input_tokens") or 0)
+        output_tokens = int(usage.get("output_tokens") or 0)
 
         score_by_id = {s.id: s for s in scores}
         payload = {
@@ -695,7 +717,7 @@ def score_llm_corpus(
         }
         _write_json(raw_json, payload)
 
-        rows.append({
+        row = {
             "docID": doc_id,
             "sourcePath": str(source_path),
             "status": "scored",
@@ -703,7 +725,32 @@ def score_llm_corpus(
             "narrativeChars": cleaning_diag.narrative_chars,
             "retentionShare": cleaning_diag.retention_share,
             **aggregate,
-        })
+        }
+        return idx, row, input_tokens, output_tokens
+
+    results_by_index: Dict[int, Dict[str, Any]] = {}
+
+    if max_concurrent_requests == 1:
+        for idx, (doc_id, source_path) in enumerate(documents, start=1):
+            result_idx, row, input_tokens, output_tokens = _process_document(
+                idx, doc_id, source_path
+            )
+            results_by_index[result_idx] = row
+            total_input_tokens += input_tokens
+            total_output_tokens += output_tokens
+    else:
+        with ThreadPoolExecutor(max_workers=max_concurrent_requests) as executor:
+            futures = {
+                executor.submit(_process_document, idx, doc_id, source_path): idx
+                for idx, (doc_id, source_path) in enumerate(documents, start=1)
+            }
+            for future in as_completed(futures):
+                result_idx, row, input_tokens, output_tokens = future.result()
+                results_by_index[result_idx] = row
+                total_input_tokens += input_tokens
+                total_output_tokens += output_tokens
+
+    rows = [results_by_index[i] for i in sorted(results_by_index)]
 
     out = pd.DataFrame(rows)
     out.to_csv(output_csv, index=False, encoding="utf-8")
@@ -723,6 +770,7 @@ def score_llm_corpus(
         "document_count": len(documents),
         "doc_ids": [doc_id for doc_id, _ in documents],
         "max_documents": max_documents,
+        "max_concurrent_requests": max_concurrent_requests,
         "target_unit_chars": target_unit_chars,
         "max_unit_chars": max_unit_chars,
         "min_narrative_line_chars": min_narrative_line_chars,
