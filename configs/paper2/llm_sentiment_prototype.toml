@@ -1,0 +1,33 @@
+[run]
+paper = "paper2"
+run_id = "auto"
+
+[llm_sentiment]
+# Local SSD copy already used by the Paper 2 sentiment workflow.
+source_root = "~/paper2_stage4/mdna"
+
+# Toyota FY2021/FY2022 and MUFG FY2021/FY2022.
+# The doer searches recursively below source_root for these docIDs.
+doc_ids = ["S100LO6W", "S100OC13", "S100LT95", "S100OG6F"]
+
+prompt_file = "configs/paper2/prompts/llm_sentiment_v2.md"
+
+# Prototype with the higher-capability model first. We can then run the same
+# four documents with gpt-6-luna for a direct model comparison.
+model = "gpt-6-sol"
+reasoning_effort = "none"
+
+# Provisional until Toyota/MUFG inspection is complete.
+target_unit_chars = 1050
+max_unit_chars = 1400
+min_narrative_line_chars = 20
+
+output_csv = "data/interim/paper2/sentiment/llm/prototype/llm_sentiment_prototype_sol2.csv"
+raw_units_dir = "data/interim/paper2/sentiment/llm/prototype/units_sol2"
+
+resume = true
+overwrite = false
+dry_run = false
+
+max_retries = 3
+retry_base_seconds = 2.0
