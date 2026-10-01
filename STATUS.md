@@ -1,6 +1,6 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-09-29
+**Last updated:** 2026-10-01
 
 ## Current thesis
 
@@ -787,6 +787,114 @@ The frozen diagnostic conclusion is therefore narrow: **greater textual novelty 
 
 Stage 6C should now be treated as **complete, reproducible, canonicalized, and frozen**.
 
+
+### Stage 6D --- GPT / generative sentiment
+
+Stage 6D is now **implemented, prompt-frozen, integration-tested, and in
+production scoring** on the same frozen **37,473-document** research universe
+used by Stage 4, LMMD, and Financial BERT. Full-corpus scoring is not yet
+complete, so Stage 6D should not yet be treated as frozen.
+
+The production specification is:
+
+``` text
+model                  = gpt-6-sol
+reasoning_effort       = none
+prompt                  = llm_sentiment_v2.md
+target_unit_chars       = 1050
+max_unit_chars          = 1400
+min_narrative_line_chars = 20
+aggregation             = non-whitespace narrative-character weighted
+resume                  = true
+overwrite               = false
+```
+
+The model scores original Japanese MD&A text only. It receives no prior-year
+text, novelty measure, market return, or other outcome information. Positive
+and negative tone are scored independently on 0--4 ordinal scales, allowing a
+unit to contain both positive and negative financial tone. The structured
+output also records `temporal_focus` (`realized`, `forward`, `mixed`, or
+`atemporal`) and a `risk_related` indicator.
+
+Document-level outputs include character-weighted positive, negative, and net
+sentiment; equal-weight counterparts; median unit net tone; unit count;
+retained narrative characters; forward-looking share; and risk-related share.
+Raw unit-level text, scores, model metadata, prompt hash, source hash, token
+usage, and response identifiers are retained in per-document JSON files for
+auditability and resumability.
+
+Two prompt versions were tested on a four-document Toyota/MUFG smoke set.
+Version 1 established that GPT-6 Sol, Luna, and Astra produced the same
+document-level sentiment signs and the same qualitative year-over-year
+movements despite unit-level differences. Version 2 then tightened the
+operational definition of temporal focus and made the risk flag more
+conservative while intentionally leaving the core sentiment scale nearly
+unchanged. Sol v1 versus Sol v2 retained a document-level net-sentiment
+correlation of approximately **0.94**; unit-net correlation was approximately
+**0.943**, with **87.3% unit sign agreement**. The major intended change was
+temporal classification, particularly a sharp reduction in mechanically
+forward-looking classifications.
+
+The production choice is therefore **GPT-6 Sol with prompt v2**. The
+Sol/Luna/Astra comparison is treated as a methodology robustness check rather
+than as the research question. The paper's primary comparison remains
+**lexical / bag-of-words versus contextual BERT versus generative LLM**.
+
+A 100-document production integration run completed successfully using prompt
+v2 and Sol. The scorer processed **100 documents** in approximately **327
+seconds of scoring time**, using **663,416 input tokens** and **14,561 output
+tokens**. Mean `llmNet` was approximately **0.0825** and the median was
+approximately **0.0891**. Character-weighted and equal-weight document scores
+were very close, providing a useful check that unit-length weighting is not
+driving the aggregate measure.
+
+The initial production implementation exposed an avoidable filesystem
+bottleneck: the manifest supplied document IDs, but the scorer recursively
+searched the local MD&A tree for each document. This was replaced by direct
+manifest-driven path construction using:
+
+``` text
+~/paper2_stage4/mdna/<edinetCode>/<docID>.txt
+```
+
+The Stage 4 manifest therefore defines the exact research universe while the
+local SSD provides the physical source text. No recursive corpus crawl is
+required for production scoring.
+
+API scoring is I/O-bound, so Stage 6D now supports configurable thread-based
+request concurrency while preserving one-document-per-JSON checkpointing.
+Empirical throughput tests showed substantial gains from modest concurrency.
+Four concurrent requests were stable and materially faster than serial
+scoring; eight concurrent requests produced further short-run speedup but
+approached the organization's **500,000 tokens-per-minute** ceiling and
+generated HTTP 429 rate-limit retries under sustained load. A concurrency
+setting around **6** is currently being used as a practical compromise, with
+the exact sustainable rate constrained by API token limits rather than local
+CPU/GPU capacity.
+
+Production scoring is fully resumable. A document is checkpointed immediately
+after successful scoring, so interrupted runs reuse completed JSONs and retry
+only missing documents. At least **2,000 document scores** have been completed
+and preserved. The unrestricted 37,473-document run has been launched, but a
+subsequent continuation paused when the API account exhausted its available
+credits. This is an external billing constraint rather than a scoring or
+pipeline failure; completed checkpoints remain valid and the run can continue
+after credits are restored.
+
+Canonical Stage 6D outputs are:
+
+``` text
+data/interim/paper2/sentiment/llm/
+    llm_sentiment.csv
+    llm_sentiment.metadata.json
+    units/
+        <docID>.json
+```
+
+A dedicated LLM visualization/QC stage is planned but should be finalized only
+after full-corpus scoring. Stage 8 has not yet been extended to the LLM measure.
+
+
 ## Current hypothesis structure
 
 ### H1 --- Conditional contextual advantage
@@ -1125,7 +1233,7 @@ pass to avoid obscuring interpretation through their mechanical relationship.
 ### Stage 8B --- preserved first-look regressions
 
 A deliberately narrow set of **12 first-look regressions** was run before
-Stage 6D LLM sentiment is implemented:
+Stage 6D LLM sentiment was available for full empirical integration:
 
 ``` text
 2 sentiment models
@@ -1215,55 +1323,60 @@ The main remaining design decisions are:
 
 ## Immediate next steps
 
-1. **Commit and freeze the Stage 8A/8B code and the 2026-09-29 first-look checkpoint.**
-   - Preserve the first-look regression outputs separately from all later
-     robustness work.
-2. **Stage 6D --- GPT / generative sentiment.**
-   - Freeze model/version, prompt, context/chunking strategy, aggregation rule,
-     and structured output schema before production scoring.
-   - Score the same frozen research-universe documents independently of
-     novelty and returns.
+1. **Complete Stage 6D full-corpus GPT scoring.**
+   - Restore API credits and resume from the existing per-document checkpoints.
+   - Keep the frozen Sol + prompt-v2 specification unchanged.
+   - Monitor sustained 429 behavior and keep concurrency below the practical TPM ceiling.
+2. **Run Stage 6D full-sample QC and visualization.**
+   - Validate score distributions, forward/risk shares, unit-count and length diagnostics,
+     and weighted-versus-equal-weight sensitivity.
+   - Compare LLM sentiment with LMMD and Financial BERT without tuning any model to the comparison.
 3. **Extend Stage 8 to the LLM measure using the same empirical architecture.**
-   - Construct current, prior, and change sentiment consistently where the
-     model design supports it.
-   - Run the same pre-specified CAR windows and interaction structure.
+   - Construct current, prior, and change sentiment consistently where supported.
+   - Run the same pre-specified CAR windows and sentiment × novelty interaction structure.
 4. **Add a canonical industry classification and industry fixed effects.**
 5. **Run the planned robustness suite.**
    - C-raw and secondary novelty representations;
-   - 2018 exclusion;
+   - FY2018 exclusion;
    - signed length change;
    - top 5% / top 10% absolute-length-change exclusions;
    - selected alternative sentiment outputs where methodologically justified.
 6. **Build final marginal-effect tables/figures and begin the empirical-results section.**
 7. **Complete final paper integration and consistency review.**
-
 ## Current bottleneck
 
 Stages 1--7 are complete and frozen through the market-reaction pipeline.
-Stage 8A provides a validated regression-ready panel, and Stage 8B has
-established a preserved, pre-LLM empirical checkpoint.
+Stage 8A provides a validated regression-ready panel, and Stage 8B preserves
+the pre-LLM first-look empirical checkpoint.
 
-The primary remaining implementation bottleneck is now:
+Stage 6D is no longer a design bottleneck: the model, prompt, chunking,
+aggregation, structured-output schema, local-SSD data path, resumability, and
+concurrency architecture are implemented and tested. The immediate operational
+bottleneck is now **completion of full-corpus LLM scoring**, currently limited
+by external API credits / throughput rather than by unresolved methodology.
 
-> **Stage 6D GPT / generative sentiment, followed by industry fixed effects,
-> the pre-planned robustness suite, and final results integration.**
+After full Stage 6D scoring, the substantive bottlenecks become:
+
+> **LLM QC and Stage 8 integration, canonical industry fixed effects, the
+> pre-planned robustness suite, and final results interpretation/writing.**
 
 The project is no longer primarily a data-engineering exercise. The core
-empirical architecture is operational, and the remaining risk is whether the
-provisional interaction patterns survive the full model comparison and
-robustness design.
+empirical architecture is operational, and the remaining research risk is
+whether the provisional interaction patterns survive the complete
+lexical/contextual/generative comparison and robustness design.
 
 Further literature review should now be driven primarily by unresolved
 methodological or theoretical questions that emerge from the empirical work
 rather than by broad literature searching.
-
 ## Rough completion estimate
 
-**Overall paper:** approximately **78--82%**.
+**Overall paper:** approximately **82--85%**.
 
 The core corpus, extraction, longitudinal matching, novelty construction,
 lexical/contextual sentiment, market-reaction infrastructure, regression-ready
-panel, and first-look empirical specification are complete. The remaining
-substantive work is Stage 6D generative sentiment, industry fixed effects,
-robustness analysis, final tables/figures, interpretation, and empirical-results
-writing.
+panel, and first-look empirical specification are complete. Stage 6D is now
+methodologically implemented and partially production-scored rather than still
+awaiting design. The remaining substantive work is completion/QC of the
+37,473-document LLM run, Stage 8 LLM integration, industry fixed effects,
+robustness analysis, final tables/figures, interpretation, and
+empirical-results writing.

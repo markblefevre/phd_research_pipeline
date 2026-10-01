@@ -14,7 +14,9 @@ analysis-panel foundation. Stage 6B provides the completed and frozen
 LMMD lexical sentiment benchmark. Stage 6C provides the completed and
 frozen Japanese Financial BERT measure using two chABSA-fine-tuned
 binary classifiers; full-corpus scoring and sentiment/novelty
-diagnostics are complete.
+diagnostics are complete. Stage 6D now provides the implemented GPT /
+generative-sentiment layer; its specification is frozen and production
+scoring is underway on the same 37,473-document universe.
 
 ## Current Pipeline Status
 
@@ -43,8 +45,9 @@ diagnostics are complete.
     complete, full-corpus scored, diagnostically validated, and frozen
     for all 37,473 research-universe documents. Full-sample LMMD
     comparison and novelty-disagreement diagnostics are complete.
--   **Stage 6D --- GPT / generative sentiment:** not yet implemented and
-    intentionally deferred while Stage 7 market-reaction construction proceeds.
+-   **Stage 6D --- GPT / generative sentiment:** implemented, prompt-frozen,
+    integration-tested, and in resumable production scoring on the full
+    37,473-document universe. Full-corpus scoring is still in progress.
 -   **Stage 7A --- Market-event eligibility and price coverage:** complete,
     validated, and frozen. Of 33,046 research-eligible filing events,
     32,126 (97.24%) satisfy the TSE listing-history and estimation-window
@@ -108,9 +111,11 @@ flowchart TD
     X --> Z[Stage 6B<br/>LMMD lexical sentiment]
     X --> AA[Stage 6C<br/>Financial BERT sentiment]
     AB[chABSA model-development workflow] --> AA
+    X --> AD[Stage 6D<br/>GPT generative sentiment]
     Y --> AC[Later sentiment / market-data integration]
     Z --> AC
     AA --> AC
+    AD --> AC
 ```
 
 ------------------------------------------------------------------------
@@ -2152,15 +2157,180 @@ later interpretation rather than treated as a final conclusion.
 8B  Fixed first-look LMMD/BERT regressions              COMPLETE / PRESERVED
 ```
 
-The next substantive implementation task is Stage 6D GPT / generative
-sentiment. After Stage 6D, the same Stage 8 architecture should be extended
-to the generative measure before industry fixed effects, robustness
-specifications, final tables/figures, and results writing.
+The next empirical-integration task is to complete Stage 6D production scoring
+and then extend the same Stage 8 architecture to the generative measure before
+industry fixed effects, robustness specifications, final tables/figures, and
+results writing.
 
-# Stage 6D --- GPT / Generative Sentiment (next)
+# Stage 6D --- GPT / Generative Sentiment
 
-Stage 6D remains the next sentiment layer. It should use the same
-research-universe documents, be constructed independently of novelty and
-market outcomes, and preserve a comparable document-level output architecture.
-Model/version, prompt, context/chunking strategy, aggregation rule, and
-structured output schema should be frozen before full production scoring.
+## Status
+
+Stage 6D is **implemented, prompt-frozen, integration-tested, and in resumable
+production scoring**. It uses the same frozen **37,473-document** research
+universe as Stage 4, Stage 6B, and Stage 6C.
+
+Full-corpus scoring is not yet complete, so Stage 6D is not yet frozen.
+
+## Production Specification
+
+``` text
+model                    = gpt-6-sol
+reasoning_effort         = none
+prompt                   = configs/paper2/prompts/llm_sentiment_v2.md
+target_unit_chars        = 1050
+max_unit_chars           = 1400
+min_narrative_line_chars = 20
+aggregation              = non-whitespace narrative-character weighted
+resume                   = true
+overwrite                = false
+```
+
+The scorer uses original Japanese MD&A text only. It does not receive prior-year
+text, novelty, returns, or any other market outcome.
+
+Each narrative unit receives independent:
+
+``` text
+positive       0..4
+negative       0..4
+temporal_focus realized | forward | mixed | atemporal
+risk_related   true | false
+```
+
+Positive and negative tone are intentionally non-exclusive.
+
+## Prompt Development and Freeze
+
+A four-document Toyota/MUFG smoke set was used to compare GPT-6 Sol, Luna, and
+Astra under prompt v1. All three models produced the same document-level sign
+and the same qualitative year-over-year movement, while unit-level judgments
+showed expected disagreement.
+
+Prompt v2 was then introduced specifically to tighten `temporal_focus` and make
+`risk_related` more conservative without materially redesigning the sentiment
+scale. Sol v1 versus Sol v2 retained approximately **0.94 document-level
+net-sentiment correlation** and approximately **0.943 unit-net correlation**,
+with **87.3% unit sign agreement**.
+
+The production choice is therefore:
+
+``` text
+GPT-6 Sol + llm_sentiment_v2.md
+```
+
+The cross-LLM smoke test is retained as methodological robustness evidence. The
+paper's primary comparison remains lexical/LMMD versus contextual Financial
+BERT versus generative LLM.
+
+## Narrative Cleaning and Unit Construction
+
+The raw MD&A is normalized deterministically and obvious flattened-table /
+non-narrative fragments are conservatively removed. Retained Japanese prose is
+split at sentence boundaries and packed into units targeted at approximately
+1,050 non-whitespace characters, with a soft maximum of 1,400 characters.
+Overlong single sentences are retained whole rather than silently truncated.
+
+The document-level output preserves both character-weighted and equal-weight
+aggregates:
+
+``` text
+llmPositive
+llmNegative
+llmNet
+llmPositiveEqualWeight
+llmNegativeEqualWeight
+llmNetEqualWeight
+llmMedianUnitNet
+llmNumUnits
+llmNarrativeChars
+llmForwardShare
+llmRiskShare
+```
+
+Per-document raw JSON also stores source SHA-256, prompt SHA-256, model,
+reasoning setting, cleaning diagnostics, unit text, structured model output,
+token usage, and response metadata.
+
+## Manifest-Driven SSD Input
+
+The exact universe is supplied by the frozen Stage 4
+`sudachi_c_raw/manifest.csv`. Production text is read from the local SSD:
+
+``` text
+~/paper2_stage4/mdna/<edinetCode>/<docID>.txt
+```
+
+An early implementation recursively searched the MD&A tree separately for each
+document and became impractical at full-corpus scale. Production discovery now
+uses the manifest's `edinetCode` and `docID` to construct each SSD path
+directly. This eliminates recursive corpus crawling while preserving the
+canonical manifest as the universe definition.
+
+## Resume and Concurrency
+
+Each successful document is written immediately to:
+
+``` text
+data/interim/paper2/sentiment/llm/units/<docID>.json
+```
+
+With `resume = true` and `overwrite = false`, restarts reuse completed JSON
+checkpoints and score only missing documents.
+
+The API workload is network/model-latency bound, so the production scorer
+supports configurable thread-based concurrency. Empirical tests showed:
+
+- serial scoring was substantially slower;
+- 4 concurrent requests produced stable sustained speedup;
+- 8 concurrent requests produced further short-run speedup but approached the
+  organization's **500,000-token-per-minute** limit and generated HTTP 429
+  retries under sustained load;
+- a setting around **6 concurrent requests** is currently used as a practical
+  throughput/rate-limit compromise.
+
+Local CPU/GPU capacity is therefore not the dominant Stage 6D bottleneck; API
+token throughput is.
+
+## Integration and Production Checks
+
+A 100-document production integration run completed successfully with:
+
+``` text
+documents       = 100
+input tokens    = 663,416
+output tokens   = 14,561
+elapsed scoring = ~327 s
+mean llmNet     = 0.0825
+median llmNet   = 0.0891
+```
+
+Weighted and equal-weight document scores were very close, indicating that
+character weighting is not mechanically dominating the document measure.
+
+Subsequent resumable runs expanded the checkpointed sample through at least
+**2,000 documents** while preserving stable aggregate sentiment magnitudes.
+The unrestricted 37,473-document run has been launched successfully. A later
+continuation paused when the API account exhausted its available credits;
+this is an external billing constraint rather than a pipeline or scoring
+failure, and completed per-document checkpoints remain reusable.
+
+Canonical outputs are:
+
+``` text
+data/interim/paper2/sentiment/llm/
+    llm_sentiment.csv
+    llm_sentiment.metadata.json
+    units/
+        <docID>.json
+```
+
+## Remaining Stage 6D Work
+
+1. restore API credits and resume to all 37,473 documents;
+2. complete full-sample distribution/QC checks;
+3. add the dedicated LLM visualization/QC stage;
+4. compare LLM with LMMD and Financial BERT without post-hoc model tuning;
+5. extend Stage 8 to current/prior/change LLM sentiment and the same
+   sentiment × novelty interaction architecture;
+6. freeze Stage 6D after full-corpus validation.
