@@ -15,8 +15,8 @@ lmmd_sentiment = false
 lmmd_plots = false
 financial_bert_sentiment = false
 financial_bert_plots = false
-llm_sentiment = true
-llm_plots = false
+llm_sentiment = false
+llm_plots = true
 market_reaction_eligibility = false
 market_reaction_event_dates = false
 market_reaction_topix = false
@@ -207,7 +207,8 @@ dry_run = false
 max_retries = 3
 retry_base_seconds = 2.0
 # Optional integration-test limiter:
-max_documents = 200
+#max_documents = 2000
+max_concurrent_requests = 8
 
 ## STAGE 6D LLM VISUALIZATION / QC
 [llm_plots]
