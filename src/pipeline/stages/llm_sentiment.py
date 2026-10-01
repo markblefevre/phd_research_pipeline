@@ -76,6 +76,8 @@ def run_stage_llm_sentiment(
         if max_documents is not None:
             max_documents = int(max_documents)
 
+        max_concurrent_requests = int(stage_cfg.get("max_concurrent_requests", 1))
+
         model = str(stage_cfg.get("model", "gpt-6-sol"))
         reasoning_effort = str(stage_cfg.get("reasoning_effort", "none"))
 
@@ -85,6 +87,10 @@ def run_stage_llm_sentiment(
         logger.info("Stage llm_sentiment: reasoning_effort=%s", reasoning_effort)
         logger.info("Stage llm_sentiment: doc_ids=%s", doc_ids)
         logger.info("Stage llm_sentiment: max_documents=%s", max_documents)
+        logger.info(
+            "Stage llm_sentiment: max_concurrent_requests=%s",
+            max_concurrent_requests,
+        )
         logger.info("Stage llm_sentiment: output=%s", output_csv)
 
         out = score_llm_corpus(
@@ -98,6 +104,7 @@ def run_stage_llm_sentiment(
             doc_ids=doc_ids,
             manifest_csv=manifest_csv,
             max_documents=max_documents,
+            max_concurrent_requests=max_concurrent_requests,
             target_unit_chars=int(stage_cfg.get("target_unit_chars", 1050)),
             max_unit_chars=int(stage_cfg.get("max_unit_chars", 1400)),
             min_narrative_line_chars=int(
