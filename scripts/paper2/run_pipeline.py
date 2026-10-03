@@ -37,6 +37,7 @@ from src.pipeline.stages.market_reaction_abnormal_returns import (run_stage_mark
 from src.pipeline.stages.market_reaction_final_table import (run_stage_market_reaction_final_table)
 from src.pipeline.stages.empirical_panel import (run_stage_empirical_panel)
 from src.pipeline.stages.baseline_regressions import (run_stage_baseline_regressions)
+from src.pipeline.stages.marginal_effects import run_stage_marginal_effects
 
 # ----------------------------
 # Helpers
@@ -285,6 +286,11 @@ def main() -> int:
         run_stage_baseline_regressions(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage baseline_regressions disabled")
+    # Stage 8C: standardized marginal effects and multiple-testing diagnostics
+    if bool(stages.get("marginal_effects", False)):
+        run_stage_marginal_effects(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage marginal_effects disabled")
     
     logger.info("Pipeline done: paper=%s run_id=%s", paper, run_id)
     logger.info("Outputs base: %s", out_base)

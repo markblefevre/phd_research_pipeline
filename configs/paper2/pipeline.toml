@@ -16,7 +16,7 @@ lmmd_plots = false
 financial_bert_sentiment = false
 financial_bert_plots = false
 llm_sentiment = false
-llm_plots = true
+llm_plots = false
 market_reaction_eligibility = false
 market_reaction_event_dates = false
 market_reaction_topix = false
@@ -25,6 +25,7 @@ market_reaction_abnormal_returns = false
 market_reaction_final_table = false
 empirical_panel = false
 baseline_regressions = false
+marginal_effects = true
 
 ## STAGE 1 EDINET_DOWNLOAD
 [edinet_download]
@@ -285,7 +286,39 @@ output_dir = "data/interim/paper2/regressions/baseline"
 windows = [[0,0], [0,1], [-1,1]]
 novelty_column = "noveltyCNum"
 length_control = "absLogLengthChange"
-sentiment_models = ["lmmd", "financial_bert"]
+sentiment_models = ["lmmd", "financial_bert", "llm"]
 include_year_fixed_effects = true
 include_industry_fixed_effects = false
 cluster_by_firm = true
+
+## STAGE 8C MARGINAL EFFECTS / MULTIPLE TESTING
+[marginal_effects]
+panel_csv = "data/interim/paper2/analysis/empirical_panel.csv"
+baseline_summary_csv = "data/interim/paper2/regressions/baseline/baseline_regression_summary.csv"
+output_dir = "data/interim/paper2/regressions/marginal_effects"
+figure_dir = "outputs/paper2/figures/regressions/marginal_effects"
+
+windows = [[0,0], [0,1], [-1,1]]
+novelty_column = "noveltyCNum"
+length_control = "absLogLengthChange"
+sentiment_models = ["lmmd", "financial_bert", "llm"]
+
+include_year_fixed_effects = true
+include_industry_fixed_effects = false
+cluster_by_firm = true
+firm_cluster_column = "edinetCode"
+
+percentiles = [0.25, 0.50, 0.75, 0.90, 0.95]
+ci_level = 0.95
+
+formats = ["png", "pdf"]
+dpi = 180
+
+# Pre-declared paper plots. All 18 regression combinations still receive
+# diagnostic marginal-effect plots and all 18 enter Holm/Bonferroni correction.
+publication_specs = ["lmmd:change", "financial_bert:level", "llm:level"]
+
+# Stage 8C refits the same Stage 8B equations only to recover covariance
+# matrices. This tolerance verifies that the interaction coefficients and
+# raw p-values reproduce Stage 8B.
+verification_tolerance = 1e-10
