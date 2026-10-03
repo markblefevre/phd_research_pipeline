@@ -1,24 +1,33 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-03
 
 ## Current thesis
 
-The paper asks whether greater NLP sophistication becomes more
-economically useful when financial disclosures contain more textually
-novel information.
+The project now has two clearly separated empirical layers.
 
-Rather than treating the study as a simple comparison of LMMD, Japanese
-Financial BERT, and GPT, the paper now focuses on a conditional
-question:
+The **full-document benchmark** asks whether the economic usefulness of
+lexical, contextual, and generative sentiment depends on how textually novel
+the annual-report MD&A is relative to the firm's prior filing. That benchmark
+is now implemented through Stage 8C and is being frozen as a completed
+checkpoint.
 
-> **Does contextual NLP add more value when financial disclosures
-> contain genuinely new information?**
+The advisor-driven **primary next design** asks a more direct information-
+location question:
 
-More precisely, the study asks whether the relative economic
-informativeness of contextual and generative sentiment measures
-increases as disclosure language becomes more textually novel relative
-to the firm's prior report.
+> **Do markets respond differently to sentiment contained in persistent
+> disclosure language versus newly introduced or substantially revised
+> language?**
+
+The next phase will therefore decompose consecutive-year MD&A text into
+persistent/repeated, revised, and newly introduced components, score sentiment
+within those components, and test whether market reactions differ across them.
+
+The completed full-document benchmark remains important because it establishes
+the baseline result that contextual/generative sentiment becomes more
+economically informative as whole-document textual novelty rises. It does not,
+however, identify whether the market response is specifically attributable to
+sentiment in the changed text.
 
 ## What is complete
 
@@ -40,20 +49,28 @@ the narrative is now embedded in the prose.
 
 ### Research gap
 
-The gap is no longer:
+The gap is no longer framed as:
 
 > Which sentiment model performs best on Japanese annual reports?
 
-Okada et al. (2025) already makes that framing too weak.
+Okada et al. (2025) already makes that framing too weak.
 
-The current gap is:
+The completed benchmark addresses the conditional question:
 
 > **Whether the relative economic usefulness of lexical, contextual, and
-> generative sentiment measures depends systematically on textual
-> novelty.**
+> generative sentiment measures depends systematically on whole-document
+> textual novelty.**
 
-The design therefore shifts from an unconditional comparison of
-sentiment technologies to a conditional comparison.
+The primary next-stage research question is more direct:
+
+> **Whether sentiment located in newly introduced or substantially revised
+> disclosure language has a different market association from sentiment
+> located in persistent language.**
+
+This separates **what the text says** (sentiment) from **where the information
+is located** (persistent versus changed disclosure), while retaining the
+whole-document sentiment × novelty analysis as a frozen benchmark rather than
+discarding it.
 
 ### Key literature positioning
 
@@ -790,211 +807,76 @@ Stage 6C should now be treated as **complete, reproducible, canonicalized, and f
 
 ### Stage 6D --- GPT / generative sentiment
 
-Stage 6D is now **implemented, prompt-frozen, integration-tested, and in
-production scoring** on the same frozen **37,473-document** research universe
-used by Stage 4, LMMD, and Financial BERT. Full-corpus scoring is not yet
-complete, so Stage 6D should not yet be treated as frozen.
+Stage 6D is now **complete, full-corpus scored, QC-visualized, and frozen** on
+the same **37,473-document** research universe used by Stage 4, LMMD, and
+Financial BERT.
 
-The production specification is:
+The frozen production specification is:
 
 ``` text
-model                  = gpt-6-sol
-reasoning_effort       = none
-prompt                  = llm_sentiment_v2.md
-target_unit_chars       = 1050
-max_unit_chars          = 1400
+model                    = gpt-6-sol
+reasoning_effort         = none
+prompt                   = configs/paper2/prompts/llm_sentiment_v2.md
+prompt SHA-256           = 326e4698aed9575f16e26ed33e097fc0c3d4f68be1e6c774672fcd013e4801ff
+target_unit_chars        = 1050
+max_unit_chars           = 1400
 min_narrative_line_chars = 20
-aggregation             = non-whitespace narrative-character weighted
-resume                  = true
-overwrite               = false
+aggregation              = non-whitespace narrative-character weighted
+resume                   = true
+overwrite                = false
 ```
 
 The model scores original Japanese MD&A text only. It receives no prior-year
 text, novelty measure, market return, or other outcome information. Positive
-and negative tone are scored independently on 0--4 ordinal scales, allowing a
-unit to contain both positive and negative financial tone. The structured
-output also records `temporal_focus` (`realized`, `forward`, `mixed`, or
+and negative tone are scored independently on 0--4 ordinal scales. Structured
+unit output also records temporal focus (`realized`, `forward`, `mixed`, or
 `atemporal`) and a `risk_related` indicator.
 
-Document-level outputs include character-weighted positive, negative, and net
-sentiment; equal-weight counterparts; median unit net tone; unit count;
-retained narrative characters; forward-looking share; and risk-related share.
-Raw unit-level text, scores, model metadata, prompt hash, source hash, token
-usage, and response identifiers are retained in per-document JSON files for
-auditability and resumability.
+Document-level outputs retain character-weighted and equal-weight positive,
+negative, and net sentiment, median unit net tone, unit count, retained
+narrative characters, forward-looking share, and risk-related share.
+Per-document JSON files preserve unit text, structured scores, source/prompt
+hashes, token usage, model metadata, and response IDs for auditability.
 
-Two prompt versions were tested on a four-document Toyota/MUFG smoke set.
-Version 1 established that GPT-6 Sol, Luna, and Astra produced the same
-document-level sentiment signs and the same qualitative year-over-year
-movements despite unit-level differences. Version 2 then tightened the
-operational definition of temporal focus and made the risk flag more
-conservative while intentionally leaving the core sentiment scale nearly
-unchanged. Sol v1 versus Sol v2 retained a document-level net-sentiment
-correlation of approximately **0.94**; unit-net correlation was approximately
-**0.943**, with **87.3% unit sign agreement**. The major intended change was
-temporal classification, particularly a sharp reduction in mechanically
-forward-looking classifications.
-
-The production choice is therefore **GPT-6 Sol with prompt v2**. The
-Sol/Luna/Astra comparison is treated as a methodology robustness check rather
-than as the research question. The paper's primary comparison remains
-**lexical / bag-of-words versus contextual BERT versus generative LLM**.
-
-A 100-document production integration run completed successfully using prompt
-v2 and Sol. The scorer processed **100 documents** in approximately **327
-seconds of scoring time**, using **663,416 input tokens** and **14,561 output
-tokens**. Mean `llmNet` was approximately **0.0825** and the median was
-approximately **0.0891**. Character-weighted and equal-weight document scores
-were very close, providing a useful check that unit-length weighting is not
-driving the aggregate measure.
-
-The initial production implementation exposed an avoidable filesystem
-bottleneck: the manifest supplied document IDs, but the scorer recursively
-searched the local MD&A tree for each document. This was replaced by direct
-manifest-driven path construction using:
+The full production run completed for **37,473 / 37,473 documents**. Final
+document-level `llmNet` has:
 
 ``` text
-~/paper2_stage4/mdna/<edinetCode>/<docID>.txt
+mean   = 0.091485
+median = 0.110465
 ```
 
-The Stage 4 manifest therefore defines the exact research universe while the
-local SSD provides the physical source text. No recursive corpus crawl is
-required for production scoring.
-
-API scoring is I/O-bound, so Stage 6D now supports configurable thread-based
-request concurrency while preserving one-document-per-JSON checkpointing.
-Empirical throughput tests showed substantial gains from modest concurrency.
-Four concurrent requests were stable and materially faster than serial
-scoring; eight concurrent requests produced further short-run speedup but
-approached the organization's **500,000 tokens-per-minute** ceiling and
-generated HTTP 429 rate-limit retries under sustained load. A concurrency
-setting around **6** is currently being used as a practical compromise, with
-the exact sustainable rate constrained by API token limits rather than local
-CPU/GPU capacity.
-
-Production scoring is fully resumable. A document is checkpointed immediately
-after successful scoring, so interrupted runs reuse completed JSONs and retry
-only missing documents. At least **2,000 document scores** have been completed
-and preserved. The unrestricted 37,473-document run has been launched, but a
-subsequent continuation paused when the API account exhausted its available
-credits. This is an external billing constraint rather than a scoring or
-pipeline failure; completed checkpoints remain valid and the run can continue
-after credits are restored.
-
-Canonical Stage 6D outputs are:
+The completed full run took approximately **2,540 seconds** of scoring time.
+The canonical output is:
 
 ``` text
-data/interim/paper2/sentiment/llm/
-    llm_sentiment.csv
-    llm_sentiment.metadata.json
-    units/
-        <docID>.json
+data/interim/paper2/sentiment/llm/llm_sentiment.csv
 ```
 
-A dedicated LLM visualization/QC stage is planned but should be finalized only
-after full-corpus scoring. Stage 8 has not yet been extended to the LLM measure.
+with raw per-document checkpoints under:
 
+``` text
+data/interim/paper2/sentiment/llm/units/
+```
 
-## Current hypothesis structure
+A dedicated LLM visualization/QC stage now produces reproducible distribution
+and fiscal-year diagnostics under:
 
-### H1 --- Conditional contextual advantage
+``` text
+outputs/paper2/figures/sentiment/llm/
+```
 
-**The relative economic informativeness of contextual and generative
-sentiment measures, compared with a domain-specific lexical measure,
-increases with textual novelty.**
+Prompt development was frozen before the production run. A four-document
+Toyota/MUFG smoke set showed that GPT-6 Sol, Luna, and Astra produced the same
+document-level sentiment signs and qualitative year-over-year movements under
+the initial prompt. Prompt v2 tightened temporal-focus and risk classification
+without materially redesigning the sentiment scale. Sol v1 versus Sol v2
+retained approximately **0.94 document-level net-sentiment correlation** and
+approximately **0.943 unit-net correlation**, with **87.3% unit sign
+agreement**.
 
-This is now the core hypothesis and maps directly to the research gap.
-
-### H2 --- Novelty and market relevance
-
-**Sentiment measured in more textually novel disclosure is more strongly
-associated with market reactions than sentiment measured in more
-persistent disclosure.**
-
-This is a supporting hypothesis rather than the main contribution.
-
-### Secondary / robustness analyses
-
-The following should not be headline hypotheses unless further
-literature development justifies them:
-
--   year-over-year sentiment innovation
--   model rankings across full / novel / persistent text
--   numerical-change robustness
--   alternative novelty definitions
-
-Model-ranking changes should be treated as an empirical implication of
-H1 rather than as a separate hypothesis.
-
-## Preliminary novelty sniff tests
-
-Before formalizing Stage 4 novelty measurement, consecutive-year MD&A
-disclosures were examined for three large Japanese firms with very
-different business models: Toyota, MUFG, and Sony.
-
-The purpose was not to establish the final novelty methodology, but to
-determine whether simple year-over-year textual similarity produces
-economically interpretable variation before committing to full-sample
-implementation.
-
-A rough TF-IDF cosine similarity measure based on Japanese character
-3--5-grams was applied to successive MD&A disclosures. Both raw text and
-a version with numerical strings normalized were examined.
-
-Several preliminary lessons emerged:
-
--   **Year-over-year textual novelty is clearly present and economically
-    interpretable.** Large similarity breaks often correspond to
-    identifiable events such as COVID-related disruption,
-    accounting-regime changes, reporting-segment reorganizations, or
-    major changes in business perimeter.
--   **Numerical changes materially affect measured similarity.**
-    Normalizing numbers substantially increases similarity in many
-    firm-years, especially for highly quantitative disclosures. Raw
-    novelty and linguistically normalized novelty therefore capture
-    related but distinct concepts and should both be retained during
-    methodological development.
--   **Baseline textual persistence differs substantially across firms
-    and industries.** Toyota exhibits relatively stable but visibly
-    changing operational MD&A; MUFG shows greater annual structural and
-    financial-statement variation; Sony contains unusually persistent
-    accounting and valuation language, with normalized similarity often
-    close to one.
--   **Whole-document similarity can be dominated by persistent
-    boilerplate.** Sony provides a particularly clear example:
-    economically meaningful changes can occur within an MD&A whose large
-    accounting-policy sections remain almost unchanged.
--   **Structural disclosure changes can generate apparent novelty that
-    is not purely economic information.** Examples include
-    accounting-standard changes, segment reorganizations, and changes in
-    consolidation perimeter. These cases should be diagnosed rather than
-    automatically treated as errors.
--   **Novelty and sentiment appear conceptually distinct.** Large
-    textual changes can accompany either deterioration or improvement in
-    business conditions, supporting the planned use of novelty as a
-    conditioning variable rather than a directional sentiment measure.
-
-These observations strengthen the motivation for including **industry
-fixed effects** in the empirical specification. They also suggest that
-absolute textual novelty may not be directly comparable across all
-industries because normal disclosure persistence appears to differ
-systematically by business type.
-
-Accordingly, Stage 4 should preserve a simple absolute novelty measure
-as the baseline while also retaining the possibility of robustness
-specifications based on:
-
--   numerical normalization;
--   industry-relative novelty;
--   firm-relative novelty where sufficient longitudinal history exists;
--   alternative treatment of persistent versus changed portions of the
-    MD&A;
--   explicit flags for major accounting, segment, or
-    disclosure-structure changes.
-
-The three-firm exercise should be treated as a methodological diagnostic
-rather than evidence for the paper's hypotheses.
-
+The canonical generative benchmark is therefore **GPT-6 Sol + prompt v2**.
+Stage 6D should now be treated as **complete and frozen**.
 
 ### Stage 7 --- Market-reaction construction
 
@@ -1191,33 +1073,36 @@ The historical-venue correction changed upstream attribution of eight invalid ob
 
 Stage 7 should therefore be treated as **complete and frozen** once the CSV-driven venue override implementation reproduces these same counts.
 
-## Stage 8 --- empirical integration and first-look checkpoint
+## Stage 8 --- full-document benchmark integration and interpretation
 
-Stage 8A and Stage 8B are now implemented.
+Stage 8A--8C are now implemented and validated. Together they form the frozen
+**whole-document sentiment × novelty benchmark**.
 
 ### Stage 8A --- regression-ready empirical panel
 
-Stage 8A preserves all **33,046** frozen research pairs and joins current and
-prior LMMD sentiment, current and prior Financial BERT sentiment, derived
-year-over-year sentiment changes, and Stage 7F market-reaction outcomes.
+Stage 8A preserves all **33,046** frozen research pairs and joins current,
+prior, and year-over-year change measures for:
+
+- LMMD lexical sentiment;
+- Japanese Financial BERT sentiment;
+- GPT-6 Sol LLM sentiment;
+
+together with Stage 7F market-reaction outcomes.
 
 Final Stage 8A validation:
 
-- **33,046 rows × 111 columns**;
-- **0 missing** LMMD current sentiment;
-- **0 missing** LMMD prior sentiment;
-- **0 missing** LMMD sentiment change;
-- **0 missing** Financial BERT current sentiment;
-- **0 missing** Financial BERT prior sentiment;
-- **0 missing** Financial BERT sentiment change.
+- **33,046 rows × 135 columns**;
+- **0 missing** current, prior, or change sentiment values for LMMD;
+- **0 missing** current, prior, or change sentiment values for Financial BERT;
+- **0 missing** current, prior, or change sentiment values for the LLM.
 
-The canonical output is:
+The canonical output remains:
 
 ``` text
 data/interim/paper2/analysis/empirical_panel.csv
 ```
 
-The empirical panel preserves both sentiment definitions by design:
+The empirical panel preserves both sentiment definitions:
 
 ``` text
 level:
@@ -1227,22 +1112,9 @@ change:
     sentiment_t - sentiment_(t-1)
 ```
 
-The level and change specifications are estimated separately in the first
-pass to avoid obscuring interpretation through their mechanical relationship.
+### Stage 8B --- full three-model benchmark regressions
 
-### Stage 8B --- preserved first-look regressions
-
-A deliberately narrow set of **12 first-look regressions** was run before
-Stage 6D LLM sentiment was available for full empirical integration:
-
-``` text
-2 sentiment models
-× 2 sentiment definitions (level/change)
-× 3 CAR windows
-= 12 regressions
-```
-
-The common first-look specification is:
+The fixed benchmark specification is:
 
 ``` text
 CAR
@@ -1255,128 +1127,194 @@ CAR
 
 with standard errors clustered by `edinetCode`.
 
-The pre-specified event windows remain:
+It is estimated for:
 
 ``` text
-[0,0]
-[0,1]
-[-1,1]
+3 sentiment models:
+    LMMD
+    Financial BERT
+    GPT-6 Sol
+
+2 sentiment definitions:
+    current level
+    change from prior filing
+
+3 pre-specified CAR windows:
+    [0,0]
+    [0,1]
+    [-1,1]
 ```
 
-Industry fixed effects are not yet included because a canonical Paper 2
-industry classification has not yet been constructed.
+for **18 regressions**.
 
-The untouched first-look output files from **2026-09-29** have been preserved
-under:
+The untouched pre-LLM 12-regression checkpoint from 2026-09-29 remains
+preserved under:
 
 ``` text
 data/interim/paper2/regressions/baseline/first look_20260929/
 ```
 
-The most notable provisional interaction results are:
+The strongest final benchmark interaction results are:
 
-| Sentiment specification | CAR window | Interaction coefficient | t-statistic | p-value |
+| Sentiment specification | CAR window | Interaction coefficient | t-statistic | raw p-value |
 |---|---:|---:|---:|---:|
+| GPT-6 Sol level × novelty | `[-1,1]` | **0.055811** | **3.031** | **0.002434** |
 | Financial BERT level × novelty | `[-1,1]` | **0.157363** | **2.754** | **0.005881** |
-| Financial BERT level × novelty | `[0,1]` | **0.085776** | **1.818** | **0.06909** |
+| GPT-6 Sol level × novelty | `[0,1]` | **0.035542** | **2.280** | **0.02260** |
 | LMMD change × novelty | `[-1,1]` | **0.959298** | **2.025** | **0.04282** |
 | LMMD change × novelty | `[0,1]` | **0.766284** | **1.930** | **0.05363** |
+| Financial BERT level × novelty | `[0,1]` | **0.085776** | **1.818** | **0.06909** |
 
-These results are explicitly **provisional first-look evidence**, not final
-paper findings. The specification should not be retuned in response to these
-results.
+The `[0,0]` interaction estimates are weak for all six model/specification
+combinations. The stronger conditional pattern appears in `[0,1]` and
+especially `[-1,1]`.
 
-The initial economic-magnitude calculation for the strongest result,
-Financial BERT level × novelty in CAR `[-1,1]`, implies that a one-standard-
-deviation increase in BERT sentiment is associated with approximately:
+### Stage 8C --- standardized marginal effects and multiple testing
+
+Stage 8C is now implemented as a separate interpretation layer over the frozen
+Stage 8B specifications. It refits the same equations only to recover the
+covariance matrices required for marginal effects and verifies exact
+reproduction of Stage 8B.
+
+Final verification differences are effectively numerical zero:
 
 ``` text
-novelty 25th percentile   +1.5 bp
-novelty median            +3.4 bp
-novelty 75th percentile   +6.6 bp
-novelty 90th percentile  +12.2 bp
-novelty 95th percentile  +18.2 bp
+max interaction coefficient difference = 1.11e-16
+max raw-p-value difference              = 8.76e-17
 ```
 
-The LMMD-change interaction has a different shape: its marginal effect is
-negative at low/moderate novelty, attenuates as novelty rises, and becomes
-positive only in the upper novelty tail. This contrast is retained for later
-testing and interpretation rather than treated as a final conclusion.
+Stage 8C computes the marginal effect of a **one-sample-standard-deviation
+increase in sentiment** at the 25th, 50th, 75th, 90th, and 95th percentiles of
+`noveltyCNum`, with 95% confidence intervals. It produces **90 marginal-effect
+rows** across all 18 regressions.
+
+The strongest economic-magnitude pattern is GPT-6 Sol level sentiment for
+CAR `[-1,1]`:
+
+| Novelty percentile | Marginal effect of +1 SD sentiment | 95% CI |
+|---:|---:|---:|
+| 25th | **+0.8 bp** | -5.5 to +7.1 bp |
+| 50th | **+3.2 bp** | -2.6 to +9.0 bp |
+| 75th | **+7.2 bp** | +1.4 to +13.0 bp |
+| 90th | **+14.3 bp** | +6.1 to +22.5 bp |
+| 95th | **+21.8 bp** | +9.6 to +34.0 bp |
+
+Financial BERT level sentiment shows the same qualitative pattern for
+CAR `[-1,1]`, rising from approximately **+1.5 bp** at the 25th novelty
+percentile to **+18.1 bp** at the 95th percentile. LMMD sentiment change has a
+different profile: its point estimate rises with novelty but its conditional
+95% confidence interval crosses zero at all reported percentiles.
+
+Stage 8C also treats all **18 interaction tests as one multiple-testing
+family** and reports raw, Bonferroni, and Holm-adjusted p-values. The GPT-6 Sol
+level × novelty interaction for CAR `[-1,1]` survives both adjustments:
+
+``` text
+raw p          ≈ 0.002434
+Bonferroni p   ≈ 0.043814
+Holm p         ≈ 0.043814
+```
+
+The BERT and LMMD interaction results do not survive 5% family-wise correction
+across all 18 tests.
+
+Stage 8C produces both diagnostic plots and publication-oriented marginal-
+effect figures with semi-transparent 95% confidence ribbons. The benchmark
+interpretation is therefore:
+
+> **Whole-document contextual/generative sentiment is more strongly associated
+> with filing-period market reactions when the disclosure is more textually
+> novel, with the clearest evidence for GPT-6 Sol level sentiment over the
+> `[-1,1]` event window.**
+
+This benchmark does **not** establish that sentiment specifically within newly
+introduced text drives the response. That identification question is the
+purpose of the next passage-level persistent/revised/new design.
+
+Stage 8A--8C should now be treated as **complete and frozen as the
+whole-document benchmark**.
 
 ## Open empirical decisions
 
-The main remaining design decisions are:
+The major remaining decisions now belong to the **next-stage passage-level
+design**, not to the frozen whole-document benchmark:
 
--   canonical industry classification and industry fixed effects;
--   exact Stage 6D generative-model specification, prompt, context/chunking,
-    and aggregation design;
--   how LMMD, Financial BERT, and GPT sentiment should be normalized for
-    direct cross-model economic-magnitude comparisons;
--   whether sentence-level or changed-text analyses add enough value beyond
-    the frozen document-level baseline;
--   whether grouped novelty portfolios/bins are useful as descriptive
-    supplements to the continuous interaction;
--   which pre-planned robustness analyses belong in the main paper versus
-    appendix;
--   whether firm- or industry-relative novelty transformations add useful
-    interpretation beyond the absolute baseline.
+-   exact alignment unit for consecutive-year MD&A text (sentence, paragraph,
+    or passage);
+-   operational definitions and thresholds for `persistent`, `revised`, and
+    `new` language;
+-   treatment of moved/reordered text versus genuinely new disclosure;
+-   whether component sentiment should be normalized by component length,
+    full-document length, or both;
+-   minimum changed-text content required for reliable component sentiment;
+-   primary regression structure for novel/revised versus persistent
+    sentiment and the formal equality test between their coefficients;
+-   manual validation protocol on representative consecutive filings;
+-   placement of industry fixed effects and the previously planned
+    whole-document robustness suite relative to the new primary design.
+
+The existing Stage 8 benchmark specification should **not** be retuned in
+response to its observed significance pattern.
 
 ## Immediate next steps
 
-1. **Complete Stage 6D full-corpus GPT scoring.**
-   - Restore API credits and resume from the existing per-document checkpoints.
-   - Keep the frozen Sol + prompt-v2 specification unchanged.
-   - Monitor sustained 429 behavior and keep concurrency below the practical TPM ceiling.
-2. **Run Stage 6D full-sample QC and visualization.**
-   - Validate score distributions, forward/risk shares, unit-count and length diagnostics,
-     and weighted-versus-equal-weight sensitivity.
-   - Compare LLM sentiment with LMMD and Financial BERT without tuning any model to the comparison.
-3. **Extend Stage 8 to the LLM measure using the same empirical architecture.**
-   - Construct current, prior, and change sentiment consistently where supported.
-   - Run the same pre-specified CAR windows and sentiment × novelty interaction structure.
-4. **Add a canonical industry classification and industry fixed effects.**
-5. **Run the planned robustness suite.**
-   - C-raw and secondary novelty representations;
-   - FY2018 exclusion;
-   - signed length change;
-   - top 5% / top 10% absolute-length-change exclusions;
-   - selected alternative sentiment outputs where methodologically justified.
-6. **Build final marginal-effect tables/figures and begin the empirical-results section.**
-7. **Complete final paper integration and consistency review.**
+1. **Freeze the full-document benchmark checkpoint.**
+   - Commit Stage 8A--8C code, pipeline wiring, and `pipeline.toml`.
+   - Preserve the final Stage 8B/8C machine-readable outputs and figures.
+   - Preserve the pre-LLM first-look checkpoint separately.
+2. **Update project documentation and benchmark memo.**
+   - Record the Stage 6D completion, Stage 8 results, multiple-testing
+     treatment, and economic magnitudes.
+   - Make explicit that the benchmark is complete but is not the final
+     identification strategy.
+3. **Design the persistent/revised/new text decomposition.**
+   - Start with a small manually inspectable set of consecutive filings
+     (including the existing Toyota/MUFG examples).
+   - Compare candidate alignment units and similarity thresholds before
+     committing to a full-corpus implementation.
+4. **Implement the next pipeline stage for passage-level alignment and
+   classification.**
+5. **Score sentiment separately within persistent and changed text and build
+   the corresponding regression panel.**
+6. **Only after the new primary design is stable, decide which previously
+   planned whole-document robustness tests remain necessary for the paper or
+   appendix.**
+
 ## Current bottleneck
 
-Stages 1--7 are complete and frozen through the market-reaction pipeline.
-Stage 8A provides a validated regression-ready panel, and Stage 8B preserves
-the pre-LLM first-look empirical checkpoint.
+There is no longer a corpus-construction, LLM-scoring, market-reaction, or
+full-document empirical-integration bottleneck. Stages 1--7 are complete and
+frozen, Stage 6D is fully scored and frozen, and Stage 8A--8C provide a
+validated three-model whole-document benchmark.
 
-Stage 6D is no longer a design bottleneck: the model, prompt, chunking,
-aggregation, structured-output schema, local-SSD data path, resumability, and
-concurrency architecture are implemented and tested. The immediate operational
-bottleneck is now **completion of full-corpus LLM scoring**, currently limited
-by external API credits / throughput rather than by unresolved methodology.
+The substantive bottleneck has shifted to the advisor-driven identification
+question:
 
-After full Stage 6D scoring, the substantive bottlenecks become:
+> **How should consecutive Japanese MD&A disclosures be decomposed into
+> persistent, revised, and newly introduced text in a way that is
+> economically interpretable, reproducible, and suitable for component-level
+> sentiment measurement?**
 
-> **LLM QC and Stage 8 integration, canonical industry fixed effects, the
-> pre-planned robustness suite, and final results interpretation/writing.**
+The next research risk is therefore methodological rather than operational:
+whether the passage-level decomposition can cleanly separate changed from
+persistent disclosure and whether the associated sentiment components show
+distinct market relationships.
 
-The project is no longer primarily a data-engineering exercise. The core
-empirical architecture is operational, and the remaining research risk is
-whether the provisional interaction patterns survive the complete
-lexical/contextual/generative comparison and robustness design.
+The whole-document benchmark should remain frozen while this next design is
+developed.
 
-Further literature review should now be driven primarily by unresolved
-methodological or theoretical questions that emerge from the empirical work
-rather than by broad literature searching.
 ## Rough completion estimate
 
-**Overall paper:** approximately **82--85%**.
+**Overall paper:** approximately **80--85%**.
 
-The core corpus, extraction, longitudinal matching, novelty construction,
-lexical/contextual sentiment, market-reaction infrastructure, regression-ready
-panel, and first-look empirical specification are complete. Stage 6D is now
-methodologically implemented and partially production-scored rather than still
-awaiting design. The remaining substantive work is completion/QC of the
-37,473-document LLM run, Stage 8 LLM integration, industry fixed effects,
-robustness analysis, final tables/figures, interpretation, and
-empirical-results writing.
+The full corpus, extraction, longitudinal matching, novelty construction,
+three sentiment measures, market-reaction infrastructure, regression-ready
+panel, 18-regression whole-document benchmark, multiple-testing treatment, and
+marginal-effect interpretation are complete.
+
+The percentage is intentionally not increased despite completion of Stage 6D
+and Stage 8 because the advisor-driven persistent/revised/new decomposition is
+a substantive new empirical layer rather than a minor robustness check. The
+remaining work is concentrated in that passage-level design, its validation
+and regressions, final robustness choices, results writing, and full-paper
+integration.
