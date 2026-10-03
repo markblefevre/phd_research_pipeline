@@ -1,68 +1,191 @@
 # Paper 2 — Next Steps
 
-**Updated:** 2026-10-01  
-**Strategy:** Finish and freeze the existing full-document sentiment × novelty experiment as a benchmark, then pivot to the advisor's proposed persistent-versus-novel disclosure design.
+**Updated:** 2026-10-03  
+**Strategy:** The full-document sentiment × novelty benchmark is complete and frozen. The next phase is the advisor-driven persistent-versus-new/revised disclosure design.
 
-## 1. Immediate priorities: finish the benchmark
+## 1. Freeze and preserve the completed benchmark
 
-- [ ] **Finish the current Sol run.** It is approximately 95% complete as of this update. Preserve the exact model identifier, prompt version, parameters, run metadata, document IDs, failures, retries, and token/cost records. Check coverage and duplicates; rerun only failed or missing documents if necessary.
-- [ ] **Freeze full-document sentiment outputs.** Confirm unique document-level LMMD, Japanese Financial BERT, and Sol scores and consistent scoring direction. Document missingness and any cross-model differences in sample coverage.
-- [ ] **Finish Stage 7 historical-venue audit.** After the EDINET archive is available locally, audit **all 32,134 provisionally eligible events**, not only market-model failures. In particular, resolve Tokyo PRO Market and historical listing status at each filing date. Document ambiguous cases rather than assuming eligibility.
-- [ ] **Correct and rerun Stage 7.** Revise 7A eligibility, update hardcoded expected counts only after verifying the audit, and rerun `7A → 7B → 7D → 7E → 7F`. Stage 7C TOPIX data need not be rebuilt unless its source changes. Save the final attrition ledger and QC summaries.
-- [ ] **Construct the regression-ready benchmark panel.** Start from Stage 7F's full research-pair table; join each sentiment model's *current-filing* score by a validated unique document key. Preserve eligibility, model-estimation, and window-specific CAR flags. Audit join cardinality, missingness, dates, and common-sample counts.
+- [x] **Complete GPT-6 Sol scoring.** Full-corpus scoring is complete for **37,473 / 37,473** research-universe documents using the frozen Sol + prompt-v2 specification.
+- [x] **Freeze full-document sentiment outputs.** LMMD, Japanese Financial BERT, and GPT-6 Sol document-level outputs are complete and integrated on the same research universe.
+- [x] **Complete and freeze Stage 7.** Historical venue eligibility has been audited and Stage 7A–7F are complete.
+- [x] **Construct the regression-ready benchmark panel.** Stage 8A contains **33,046 rows × 135 columns** with zero missing current/prior/change sentiment values for all three sentiment families.
+- [x] **Run the fixed benchmark regressions.** Stage 8B contains **18 regressions**: 3 sentiment models × 2 sentiment definitions × 3 CAR windows.
+- [x] **Add interpretation and multiple-testing controls.** Stage 8C computes standardized marginal effects, 95% confidence intervals, Bonferroni-adjusted p-values, Holm-adjusted p-values, and publication-style confidence-band figures.
+- [x] **Preserve the benchmark memo and outputs.** Treat the full-document analysis as a completed benchmark checkpoint rather than as the final identification strategy.
+- [ ] **Create the Git freeze checkpoint.** Commit Stage 8A–8C code, pipeline wiring, `pipeline.toml`, `STATUS.md`, `pipeline_overview.md`, `NEXT_STEPS.md`, and the benchmark memo after confirming `git status` contains no unrelated changes.
 
-### Current provisional Stage 7 checkpoint
+### Frozen Stage 7 / Stage 8 checkpoint
 
-These counts **will change if the venue audit changes eligibility**:
-
-| Measure | Provisional count |
+| Measure | Final count |
 |---|---:|
 | Research pairs | 33,046 |
-| Stage 7A eligible | 32,134 |
+| Stage 7A eligible | 32,126 |
 | Stage 7D models estimated | 31,698 |
 | CAR(0,0) final sample | 31,241 |
 | CAR(0,1) final sample | 31,069 |
 | CAR(-1,1) final sample | 30,926 |
+| Stage 8A empirical-panel rows | 33,046 |
+| Stage 8B regressions | 18 |
+| Stage 8C marginal-effect rows | 90 |
 
-## 2. Benchmark regressions: bounded scope
+### Frozen benchmark result
 
-- [ ] Pre-specify a compact set of regressions for each CAR window: sentiment alone; sentiment plus document-level cosine novelty; and sentiment × novelty, with consistent controls and fixed-effects choices.
-- [ ] Include the established `absLogLengthChange` control; document any other controls and standard-error clustering choices before examining the results.
-- [ ] Run LMMD, BERT, and Sol on their available samples **and** on an identical common sample for defensible cross-model comparisons.
-- [ ] Report coefficient estimates, uncertainty, observations, fit statistics, sample attrition, and basic diagnostics. Check the impact of extreme CAR observations without choosing specifications solely for significance.
-- [ ] Preserve scripts, configuration, tables, plots, and a short methodology/results memo. Explicitly label these as **full-document benchmark results**, not evidence isolating sentiment in changed passages.
+The strongest interaction is GPT-6 Sol **current-level sentiment × textual novelty** for CAR `[-1,1]`:
 
-**Stop condition:** Once the benchmark regressions, essential diagnostics, and reproducible outputs are complete, freeze this design. Do not expand to additional LLMs or open-ended tuning unless a concrete data-quality problem requires it.
+``` text
+interaction coefficient = 0.055811
+t-statistic             = 3.031
+raw p-value              = 0.002434
+Bonferroni p-value       ≈ 0.0438
+Holm p-value             ≈ 0.0438
+```
 
-## 3. Pivot: advisor's proposed central research question
+At the **95th percentile of textual novelty**, a one-standard-deviation increase in Sol sentiment is associated with approximately **+21.8 bp** of CAR `[-1,1]`, with an approximate 95% confidence interval of **+9.6 to +34.0 bp**.
 
-**Core question:** Do markets respond to sentiment in persistent disclosure language or in newly introduced and substantially revised language?
+This result should be retained as the **whole-document benchmark**. It does not identify whether the market response comes specifically from sentiment in changed text.
 
-- [ ] Rewrite the proposal and introduction around disclosure persistence, arrival of new information, immediate price incorporation, and possible delayed response. Distinguish Paper 2's economic question from Paper 1's sentiment-method comparison.
-- [ ] Design an auditable **passage-level decomposition** of successive Japanese MD&A filings: persistent, substantially revised, and genuinely new passages. Retain revision/new labels separately even if combined into one novel component in the main analysis.
-- [ ] Pilot on a small, manually reviewed sample of consecutive filings. Assess passage alignment, false novelty from formatting or reordering, document coverage, and preservation of surrounding context.
-- [ ] Freeze the decomposition method and scale it across eligible filing pairs. Retain the existing document-level cosine novelty as a benchmark or robustness measure, not as a substitute for passage classification.
-- [ ] Measure LMMD, BERT, and selected LLM sentiment separately for persistent and novel components. Specify how short passages, mixed sentiment, component size, and context are handled.
-- [ ] Estimate immediate market-response models comparing component-level sentiment. Formally test differences between persistent and novel coefficients on matched samples and comparable controls.
-- [ ] Design longer-horizon tests separately, including expected-return benchmarks, overlapping observations, and inference. Treat delayed incorporation as a hypothesis, not a presumption.
-- [ ] Compare the revised design with the frozen full-document benchmark on identical observations wherever feasible. Test whether decomposition and more sophisticated sentiment models add incremental economic information.
+**Stop condition:** The full-document benchmark is frozen. Do not add alternative LLMs, additional CAR windows, or significance-driven specification changes unless a concrete data-quality problem is discovered.
 
-## 4. Deliverables and decision gates
+## 2. Primary pivot: persistent versus new/revised disclosure
+
+**Core question:** Do markets respond differently to sentiment in persistent disclosure language versus newly introduced or substantially revised language?
+
+The first objective is not to score sentiment again. It is to construct a defensible **text decomposition** that identifies where disclosure content is persistent versus changed.
+
+### 2A. Define the decomposition
+
+- [ ] Choose the primary alignment unit: sentence, paragraph, or short passage.
+- [ ] Define operational categories:
+  - **persistent / repeated**
+  - **substantially revised**
+  - **new**
+- [ ] Preserve `revised` and `new` separately in intermediate data even if the main empirical specification later combines them into a single `changed` component.
+- [ ] Define how to handle reordered text so that moved but unchanged language is not falsely classified as novel.
+- [ ] Define similarity thresholds before examining market-response results.
+- [ ] Decide whether matching should use lexical similarity, embeddings, or a staged hybrid approach.
+
+### 2B. Pilot before scaling
+
+- [ ] Build a small manually reviewed pilot sample of consecutive filings.
+- [ ] Include representative firms already used in development, such as Toyota and MUFG, plus several cases with:
+  - low document-level novelty;
+  - high document-level novelty;
+  - large MD&A length changes;
+  - obvious disclosure restructuring.
+- [ ] For each pilot pair, inspect:
+  - passage alignment quality;
+  - false novelty from formatting/reordering;
+  - false persistence from generic boilerplate;
+  - treatment of inserted/deleted sections;
+  - surrounding context preservation.
+- [ ] Compare candidate decomposition methods on the same manually inspected examples.
+- [ ] Freeze the decomposition method before full-corpus execution.
+
+**Decision gate:** Do not scale to all 33,046 pairs until the passage-level decomposition is manually defensible.
+
+## 3. Component-level sentiment
+
+After the decomposition is frozen:
+
+- [ ] Construct text components for each filing pair:
+  - persistent text;
+  - revised text;
+  - new text;
+  - optionally combined changed text = revised + new.
+- [ ] Compute component size measures:
+  - characters;
+  - tokens;
+  - passage counts;
+  - share of current MD&A.
+- [ ] Measure sentiment separately within each component.
+- [ ] Start with methods that can be computed cleanly from the decomposed text:
+  - LMMD;
+  - Financial BERT;
+  - GPT-6 Sol only if the existing unit-level scores can be mapped reliably, otherwise evaluate whether a targeted rerun is justified.
+- [ ] Keep sentiment measurement separate from the text-selection algorithm.
+- [ ] Define minimum component-size rules before regression analysis.
+- [ ] Preserve short/empty-component flags rather than silently imputing sentiment.
+
+### Important implementation principle
+
+Do **not** assume the full 37,473-document Sol corpus must be rerun.
+
+The first task is to determine whether the existing Sol unit-level JSON can be mapped cleanly to persistent versus changed passages. If not, consider a **targeted component-level Sol rerun** only after the decomposition is frozen. The decomposition itself should not depend on Sol.
+
+## 4. Primary component-level regressions
+
+The central immediate-response specification should compare sentiment located in different disclosure components directly.
+
+A conceptual starting point is:
+
+``` text
+CAR_it
+  ~ sentiment_persistent_it
+  + sentiment_changed_it
+  + component-size controls
+  + standard firm/report controls
+  + fixed effects
+```
+
+with a formal test:
+
+``` text
+H0: beta_persistent = beta_changed
+```
+
+Planned work:
+
+- [ ] Pre-specify the primary component-level sentiment variables and controls.
+- [ ] Decide whether `new` and `revised` are combined in the main specification or entered separately.
+- [ ] Include component-size controls so sentiment estimates are not mechanically driven by how much text appears in each category.
+- [ ] Use matched observations where both persistent and changed components are measurable.
+- [ ] Preserve the Stage 7 CAR windows `[0,0]`, `[0,1]`, and `[-1,1]` unless there is a methodological reason to change them.
+- [ ] Cluster standard errors consistently with the benchmark.
+- [ ] Formally test equality of persistent and changed sentiment coefficients.
+- [ ] Compare component-level results with the frozen whole-document benchmark on identical observations where feasible.
+
+**Stop condition:** Do not tune passage thresholds or sentiment construction after observing which version produces stronger return coefficients.
+
+## 5. Secondary extensions
+
+Only after the persistent-versus-changed design is stable:
+
+- [ ] Decide whether forward-looking versus non-forward-looking sentiment adds enough incremental value to warrant a separate analysis.
+- [ ] Consider a two-dimensional decomposition only if empirically and conceptually useful:
+
+``` text
+                    Persistent        Changed
+Forward-looking     PF sentiment      CF sentiment
+Other               PO sentiment      CO sentiment
+```
+
+- [ ] Design longer-horizon return tests separately. Treat delayed incorporation as a hypothesis, not an assumption.
+- [ ] Revisit the previously planned whole-document robustness suite only where it remains relevant:
+  - C-raw novelty;
+  - FY2018 exclusion;
+  - signed length change;
+  - top 5% / top 10% absolute-length-change exclusions;
+  - industry fixed effects.
+
+These are secondary to establishing the new primary design.
+
+## 6. Deliverables and decision gates
 
 | Gate | Required output | Decision |
 |---|---|---|
-| A | Completed and QC-checked Sol scoring | Freeze full-document sentiment inputs |
-| B | Historical-venue audit and rerun Stage 7 QC | Freeze event-study outcomes and sample |
-| C | Regression-ready panel, tables, diagnostics, benchmark memo | Freeze original design and pivot |
-| D | Validated pilot passage decomposition | Approve full-corpus decomposition |
-| E | Component-level sentiment and immediate-response regressions | Assess central research hypotheses |
-| F | Longer-horizon tests and matched benchmark comparisons | Prepare revised paper's results narrative |
+| A | Full-document benchmark committed and documented | Freeze original design |
+| B | Manually validated passage-alignment pilot | Approve decomposition method |
+| C | Full-corpus persistent/revised/new decomposition | Freeze text-selection layer |
+| D | Component-level LMMD/BERT/Sol sentiment dataset | Freeze sentiment inputs |
+| E | Immediate-response component regressions and coefficient-equality tests | Assess central hypothesis |
+| F | Selected robustness and longer-horizon tests | Prepare final empirical narrative |
 
-## 5. Document roles
+## 7. Document roles
 
 - `STATUS.md`: factual completion state, blockers, current counts, and next execution step.
-- `pipeline_overview.md` (or the project's canonical pipeline summary): stage architecture, inputs/outputs, commands, and implementation decisions.
-- **`NEXT_STEPS.md` (this file):** priorities, research decisions, stop conditions, and milestones.
-- `DAILY_LOG.md`: optional dated research journal; preserve historical entries, but do not treat old “tomorrow” items as the current work plan.
+- `pipeline_overview.md`: implemented stage architecture, inputs/outputs, code paths, and frozen implementation decisions.
+- **`NEXT_STEPS.md` (this file):** research priorities, decision gates, stop conditions, and planned work.
+- `full_document_benchmark_2026-10-03.md`: frozen interpretation of the completed whole-document benchmark.
+- `DAILY_LOG.md`: optional dated research journal; historical entries are not the current work plan.
 
-**Immediate next action:** Complete and QC the nearly finished Sol run. In parallel, finish the venue audit when the local EDINET archive is ready. Then construct the common-sample benchmark regression panel.
+**Immediate next action:** Finish the Git freeze commit for the full-document benchmark. Then design and manually test the persistent/revised/new passage decomposition on a small set of consecutive filings before writing any full-corpus Stage 9 code.
