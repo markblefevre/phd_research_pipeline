@@ -212,6 +212,7 @@ runs/
 
 # Paper 1 specific ignores
 src/mdna_analysis/openai/
+outputs/paper1/
 
 # Paper 2 specific ignores
 # Definitely exclude raw files from EDINET
@@ -228,3 +229,10 @@ data/interim/paper2/mdna/qc/
 # Exclude models
 # It contains downloaded/trained model weights, checkpoints, HF artifacts, caches
 models/
+
+# Exclude run outputs
+outputs/paper2/
+
+# Exclude interim files
+# But remember stage7_venue_overrides.csv, already being tracked
+data/interim/paper2/
