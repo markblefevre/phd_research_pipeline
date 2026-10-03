@@ -450,8 +450,9 @@ def discover_documents(
 ) -> List[tuple[str, Path]]:
     """Discover prototype documents by docID or production documents from a manifest.
 
-    Production manifest support is intentionally minimal and expects a `docID` column.
-    The prototype path is the initial validated route.
+    Prototype `doc_ids` retain the flexible recursive lookup used for smoke tests.
+    Production discovery uses the frozen manifest's `edinetCode` + `docID` fields
+    to construct the exact local-SSD MD&A path directly, avoiding recursive crawling.
     """
     if doc_ids:
         ids = [str(doc_id) for doc_id in doc_ids]
@@ -465,13 +466,38 @@ def discover_documents(
         raise FileNotFoundError(manifest_csv)
 
     manifest = pd.read_csv(manifest_csv, dtype=str)
-    if "docID" not in manifest.columns:
-        raise ValueError(f"Manifest must contain docID; columns={list(manifest.columns)}")
 
-    ids = [x for x in manifest["docID"].dropna().astype(str).tolist() if x.strip()]
+    required = {"docID", "edinetCode"}
+    missing = required - set(manifest.columns)
+    if missing:
+        raise ValueError(
+            f"Manifest missing required columns {sorted(missing)}; "
+            f"columns={list(manifest.columns)}"
+        )
+
+    rows = manifest.dropna(subset=["docID", "edinetCode"]).copy()
+    rows["docID"] = rows["docID"].astype(str).str.strip()
+    rows["edinetCode"] = rows["edinetCode"].astype(str).str.strip()
+    rows = rows[(rows["docID"] != "") & (rows["edinetCode"] != "")]
+
     if max_documents is not None:
-        ids = ids[:max_documents]
-    return [(doc_id, _find_doc_file(mdna_root, doc_id)) for doc_id in ids]
+        rows = rows.iloc[:max_documents]
+
+    documents: List[tuple[str, Path]] = []
+    for row in rows.itertuples(index=False):
+        doc_id = str(row.docID)
+        edinet_code = str(row.edinetCode)
+        source_path = mdna_root / edinet_code / f"{doc_id}.txt"
+
+        if not source_path.exists():
+            raise FileNotFoundError(
+                f"MD&A file not found for docID={doc_id}, "
+                f"edinetCode={edinet_code}: {source_path}"
+            )
+
+        documents.append((doc_id, source_path))
+
+    return documents
 
 
 def _write_json(path: Path, payload: Dict[str, Any]) -> None:
