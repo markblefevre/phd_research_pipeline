@@ -216,9 +216,15 @@ src/mdna_analysis/openai/
 # Paper 2 specific ignores
 # Definitely exclude raw files from EDINET
 data/raw/paper2/edinet/
+
 # Checkpoint is the last successful date we processed, ie. state
 data/interim/paper2/edinet/download_checkpoint.json
 data/interim/paper2/edinet/filings.csv
+
 # Exclude MDNA extraction and QC
 data/interim/paper2/mdna/**/*.txt
 data/interim/paper2/mdna/qc/
+
+# Exclude models
+# It contains downloaded/trained model weights, checkpoints, HF artifacts, caches
+models/
