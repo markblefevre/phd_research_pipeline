@@ -213,6 +213,8 @@ runs/
 # Paper 1 specific ignores
 src/mdna_analysis/openai/
 outputs/paper1/
+data/interim/paper1/
+data/raw/
 
 # Paper 2 specific ignores
 # Definitely exclude raw files from EDINET
