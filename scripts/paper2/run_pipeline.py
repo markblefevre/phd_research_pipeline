@@ -27,6 +27,8 @@ from src.pipeline.stages.lmmd_sentiment import run_stage_lmmd_sentiment
 from src.pipeline.stages.lmmd_plots import run_stage_lmmd_plots
 from src.pipeline.stages.financial_bert_sentiment import run_stage_financial_bert_sentiment
 from src.pipeline.stages.financial_bert_plots import run_stage_financial_bert_plots
+from src.pipeline.stages.llm_sentiment import run_stage_llm_sentiment
+from src.pipeline.stages.llm_plots import run_stage_llm_plots
 from src.pipeline.stages.market_reaction_eligibility import run_stage_market_reaction_eligibility
 from src.pipeline.stages.market_reaction_event_dates import run_stage_market_reaction_event_dates
 from src.pipeline.stages.market_reaction_topix import run_stage_market_reaction_topix
@@ -230,6 +232,17 @@ def main() -> int:
     else:
         logger.info("Stage financial_bert_plots disabled")
 
+    # Stage 6D: LLM sentiment
+    if bool(stages.get("llm_sentiment", False)):
+        run_stage_llm_sentiment(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage llm_sentiment disabled")
+    # Stage 6D: LLM visualization / QC
+    if bool(stages.get("llm_plots", False)):
+        run_stage_llm_plots(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage llm_plots disabled")
+        
     # Stage 7A: market-reaction event eligibility
     if bool(stages.get("market_reaction_eligibility", False)):
         run_stage_market_reaction_eligibility(paper=paper, cfg=cfg, logger=logger)
