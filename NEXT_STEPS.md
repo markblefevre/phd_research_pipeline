@@ -180,7 +180,38 @@ These are secondary to establishing the new primary design.
 | E | Immediate-response component regressions and coefficient-equality tests | Assess central hypothesis |
 | F | Selected robustness and longer-horizon tests | Prepare final empirical narrative |
 
-## 7. Document roles
+
+## 7. Downstream paper-output generation
+
+Treat publication tables and figures as a reproducible **reporting layer** downstream of the frozen analytical stages. Reporting code should read canonical pipeline outputs and must not modify research data or empirical results.
+
+Planned work:
+
+- [ ] **Add reproducible LaTeX table generation** to the Paper 2 pipeline/reporting layer.
+- [ ] Create a standalone generator for **Table 1 --- Sample Construction** using canonical frozen outputs rather than hard-coded counts.
+  - initial EDINET Annual Securities Reports;
+  - successful MD&A extractions;
+  - unique MD&A documents in the research-pair universe;
+  - standard annual research pairs;
+  - Stage 7A market-eligible filing events;
+  - final CAR samples for `[0,0]`, `[0,1]`, and `[-1,1]`.
+- [ ] Generate Table 1 to a stable paper-output path such as:
+  ``` text
+  outputs/paper2/tables/table1_sample_construction.tex
+  ```
+- [ ] Create **Table 2 --- Descriptive Statistics** from the final regression-ready empirical panel.
+- [ ] Keep Table 2 flexible until the persistent-versus-novel information variables are frozen so that the final component-level measures can be added without changing the table-generation architecture.
+- [ ] Prefer small standalone scripts that can also be invoked by `run_pipeline.py`, for example:
+  ``` text
+  scripts/paper2/make_table1_sample_construction.py
+  scripts/paper2/make_table2_descriptive_statistics.py
+  ```
+- [ ] Add validation checks so generated table counts reproduce the corresponding frozen pipeline summaries exactly.
+- [ ] Keep paper-output generation read-only with respect to upstream research artifacts.
+
+**Design principle:** analytical stages produce the canonical data and results; the reporting layer converts those frozen outputs into reproducible LaTeX tables and publication figures.
+
+## 8. Document roles
 
 - `STATUS.md`: factual completion state, blockers, current counts, and next execution step.
 - `pipeline_overview.md`: implemented stage architecture, inputs/outputs, code paths, and frozen implementation decisions.
