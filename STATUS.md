@@ -1,6 +1,6 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-10-03
+**Last updated:** 2026-10-05
 
 ## Current thesis
 
@@ -1233,6 +1233,163 @@ purpose of the next passage-level persistent/revised/new design.
 
 Stage 8A--8C should now be treated as **complete and frozen as the
 whole-document benchmark**.
+
+
+## Passage-level alignment benchmark and lessons
+
+A manually reviewed alignment/classification benchmark has now been completed for
+the Toyota/MUFG development sample used to design the persistent-versus-changed
+text decomposition.
+
+The benchmark contains **150 current-year MD&A sentences**. Each row includes the
+current sentence, prior-year retrieval candidates, sentence-level similarity
+scores, neighboring-sentence context, paragraph/chunk context where available,
+and three manual annotation fields:
+
+``` text
+manual_label
+manual_confidence
+manual_notes
+```
+
+After a full review of the workbook, including re-checking previously annotated
+rows against the complete retrieval context, the final manual labels are:
+
+``` text
+novel       79
+persistent  71
+total      150
+```
+
+Several earlier manual judgments were corrected once the complete current/prior
+context was visible. This confirmed that benchmark review must evaluate the
+economic proposition and retrieval correctness together rather than treating the
+top embedding match as automatically valid.
+
+### Working operational definition
+
+The benchmark review produced a clearer economic definition of the two classes.
+
+**Persistent** text conveys essentially the same economic proposition as the
+prior-year disclosure. Wording may change, sentences may be split or merged, and
+modest annual numerical updates may occur without making the underlying
+information substantively new.
+
+**Novel** text introduces a materially different fact, direction, magnitude,
+entity, driver, measurement basis, or economic interpretation relative to the
+prior disclosure.
+
+The distinction is therefore explicitly **informational**, not merely lexical:
+
+> **Textual similarity is not the same as informational persistence.**
+
+Likewise, a changed number is not automatically novel. The relevant question is
+whether the numerical change materially changes the economic information conveyed
+by the sentence.
+
+### Main benchmark lessons
+
+1. **Exact and near-exact repetition is an easy persistent case.**
+   Identical substantive sentences, recurring headings, formulas, accounting
+   labels, and definitions provide useful positive controls for the persistent
+   class.
+
+2. **High embedding similarity can coexist with clearly novel information.**
+   Reused reporting templates often retain cosine similarities above 0.95 even
+   when the underlying economics change substantially. Important examples
+   include revenue/expense reversals, cash-flow reversals, capital-ratio
+   deterioration, and changed entities.
+
+3. **Direction reversals are especially strong novelty signals.**
+   Increase versus decrease, improvement versus deterioration, profit versus
+   loss, and analogous sign reversals are generally high-confidence novel cases.
+
+4. **Magnitude matters when it is central to the proposition.**
+   A modest annual update to a stock balance may remain persistent when the
+   economic interpretation is unchanged. By contrast, a large change in a
+   growth rate, annual increase/decrease, yield, margin, capital ratio, cash-flow
+   movement, or other economically central quantity can make a sentence novel
+   even when the sign remains unchanged.
+
+5. **Named entities and accounting concepts must be preserved.**
+   A one-token entity substitution can make an otherwise identical sentence
+   novel. Retrieval also repeatedly confused structurally similar but
+   economically different concepts, including:
+   - domestic versus overseas disclosures;
+   - interest received versus interest paid;
+   - service transactions versus trading transactions;
+   - different credit-quality ratios;
+   - different subsidiaries.
+
+6. **Sentence-level max-cosine retrieval is not sufficient.**
+   The highest-similarity sentence sometimes matches the reporting template
+   rather than the correct economic concept. This is a retrieval error, not a
+   classification ambiguity.
+
+7. **Best sentence ±1 sentence is particularly useful.**
+   Neighboring context often recovers the correct prior information when a
+   company merges or splits propositions across years. One benchmark example
+   showed a current sentence combining two propositions that had appeared in
+   adjacent prior-year sentences; sentence-only matching made part of the
+   current sentence appear new, while ±1 context correctly showed both
+   propositions were persistent.
+
+8. **Large paragraph/chunk context is useful but can contaminate the target.**
+   A paragraph may contain both persistent boilerplate and genuinely new
+   quantitative information. Classifying the entire paragraph can therefore
+   cause novel neighboring information to make an unchanged target sentence look
+   novel. Paragraph context should support interpretation rather than replace
+   the sentence-level classification target.
+
+9. **Short headings and table labels need special treatment.**
+   For short units, exact phrase containment, entity identity, and accounting
+   concept matching can be more reliable than embeddings. A short current label
+   may correspond to a phrase embedded inside a longer prior-year sentence.
+
+10. **Methodological or definitional changes are themselves novel information.**
+    Changes in segment-allocation methodology, disclosure definitions, or
+    measurement basis should not be treated as routine persistence merely because
+    similar reporting language appears elsewhere.
+
+### Implications for the production design
+
+The benchmark suggests that the production system should separate **retrieval**
+from **classification**.
+
+A practical hierarchy is:
+
+``` text
+1. exact / near-exact phrase and entity checks
+2. sentence-embedding retrieval of multiple prior candidates
+3. candidate expansion with ±1 neighboring sentence
+4. concept/entity consistency check
+5. LLM classification of persistent versus novel information
+```
+
+The classifier should receive the **current target sentence** plus a small set of
+high-quality prior-year candidate contexts. It should not infer persistence from
+cosine similarity alone.
+
+The prompt/classifier should explicitly reason about:
+
+``` text
+same economic proposition?
+same named entity / accounting concept?
+same direction?
+same economically important magnitude?
+same driver or causal explanation?
+same measurement / disclosure basis?
+```
+
+Numerical changes should be interpreted in context rather than through a fixed
+percentage threshold. The benchmark indicates that materiality depends on the
+role the number plays in the proposition.
+
+The 150-row manually reviewed workbook should now be treated as the initial
+gold-standard development set for retrieval and classification experiments.
+It can be used to compare sentence-only, sentence-plus-neighbor, and broader
+context retrieval strategies before committing to the full 33,046-pair corpus.
+
 
 ## Open empirical decisions
 
