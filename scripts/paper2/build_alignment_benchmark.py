@@ -34,7 +34,7 @@ Example
 python build_alignment_benchmark.py \
     --pair Toyota:/path/to/prior.txt:/path/to/current.txt \
     --pair MUFG:/path/to/prior.txt:/path/to/current.txt \
-    --output japanese_mdna_alignment_candidates.xlsx \
+    --output data/manual/paper2/alignment/japanese_mdna_alignment_candidates.xlsx \
     --sample-per-company 75 \
     --seed 42
 """
@@ -460,7 +460,7 @@ def main() -> None:
     ap.add_argument(
         "--output",
         type=Path,
-        default=Path("japanese_mdna_alignment_candidates.xlsx"),
+        default=Path("data/manual/paper2/alignment/japanese_mdna_alignment_candidates.xlsx"),
     )
     ap.add_argument("--sample-per-company", type=int, default=75)
     ap.add_argument("--batch-size", type=int, default=32)

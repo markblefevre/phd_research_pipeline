@@ -29,8 +29,8 @@ Important:
 Example
 -------
 python scripts/paper2/retrieve_alignment_candidates.py \
-    --benchmark japanese_mdna_alignment_candidates.xlsx \
-    --output japanese_mdna_retrieval_context_test.xlsx \
+    --benchmark data/manual/paper2/alignment/japanese_mdna_alignment_candidates.xlsx \
+    --output data/interim/paper2/alignment/japanese_mdna_retrieval_context_top10.xlsx \
     --top-k 3
 """
 
@@ -523,13 +523,13 @@ def main() -> None:
     ap.add_argument(
         "--benchmark",
         type=Path,
-        default=Path("japanese_mdna_alignment_candidates.xlsx"),
+        default=Path("data/manual/paper2/alignment/japanese_mdna_alignment_candidates.xlsx"),
         help="Existing benchmark workbook.",
     )
     ap.add_argument(
         "--output",
         type=Path,
-        default=Path("japanese_mdna_retrieval_context_test.xlsx"),
+        default=Path("data/interim/paper2/alignment/japanese_mdna_retrieval_context_top10.xlsx"),
     )
     ap.add_argument("--top-k", type=int, default=3)
     ap.add_argument("--batch-size", type=int, default=32)

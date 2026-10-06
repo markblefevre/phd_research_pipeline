@@ -10,7 +10,7 @@ sentence text so the correct prior-year counterpart can be annotated explicitly.
 Example
 -------
 python scripts/paper2/prepare_alignment_gold_annotation.py \
-  --benchmark japanese_mdna_retrieval_context_test_completed.xlsx \
+  --benchmark data/interim/paper2/alignment/japanese_mdna_retrieval_context_top10.xlsx \
   --output japanese_mdna_alignment_gold_candidates.xlsx
 """
 
