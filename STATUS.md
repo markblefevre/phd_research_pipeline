@@ -1,6 +1,6 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-06
 
 ## Current thesis
 
@@ -20,8 +20,11 @@ location question:
 > language?**
 
 The next phase will therefore decompose consecutive-year MD&A text into
-persistent/repeated, revised, and newly introduced components, score sentiment
-within those components, and test whether market reactions differ across them.
+**persistent** versus **novel** information, score sentiment within those
+components, and test whether market reactions differ across them. The earlier
+three-way persistent/revised/new framing has been simplified: substantially
+revised information is treated as novel when it changes the economic
+proposition.
 
 The completed full-document benchmark remains important because it establishes
 the baseline result that contextual/generative sentiment becomes more
@@ -1385,80 +1388,141 @@ Numerical changes should be interpreted in context rather than through a fixed
 percentage threshold. The benchmark indicates that materiality depends on the
 role the number plays in the proposition.
 
-The 150-row manually reviewed workbook should now be treated as the initial
-gold-standard development set for retrieval and classification experiments.
-It can be used to compare sentence-only, sentence-plus-neighbor, and broader
-context retrieval strategies before committing to the full 33,046-pair corpus.
+The 150-row manually reviewed workbook is now the frozen development benchmark
+for retrieval and classification. Of the 150 current-year sentences, **129**
+have a defensible gold prior-year counterpart and **21** are intentional
+no-match cases.
+
+### Retrieval and concept-aware reranking benchmark
+
+The retrieval experiment was expanded from Top-3 to **Top-10** candidates so
+that a second-stage reranker could meaningfully improve Recall@3 rather than
+only reorder an already fixed three-candidate set.
+
+The final dense-retrieval results on the 129 gold-aligned rows are:
+
+| Model / method | Recall@1 | Recall@3 | Recall@10 | MRR@10 |
+|---|---:|---:|---:|---:|
+| Ruri cosine baseline | **0.8372** | **0.9457** | **0.9690** | **0.8885** |
+| Ruri + IDF-weighted containment, λ=0.02 | **0.8527** | **0.9612** | **0.9690** | **0.9050** |
+| Sarashina cosine baseline | 0.7597 | 0.9302 | 0.9767 | 0.8425 |
+
+The Ruri Top-10 candidate pool therefore contains the correct prior-year
+sentence in **125 / 129 cases (96.9%)**. Sarashina has slightly higher
+candidate-pool recall, but weaker ranking quality. Ruri provides the stronger
+overall retrieval backbone.
+
+A transparent concept-aware reranker was added on top of dense retrieval. It
+uses literal Japanese EDINET/IFRS concept aliases weighted by corpus-derived
+inverse document frequency (IDF). The production candidate score is:
+
+``` text
+score = cosine + 0.02 * IDF-weighted containment
+```
+
+The IDF corpus is the full **37,757-document** successfully extracted MD&A
+corpus. Common accounting language therefore receives little weight, while
+rarer concept overlap receives more weight.
+
+The selected reranker improves Ruri Recall@1, Recall@3, and MRR@10
+simultaneously. On the benchmark it produces **two net Top-1 fixes and zero
+Top-1 regressions** relative to cosine-only ranking.
+
+The remaining errors are informative but do not justify continued tuning.
+Some highly templated disclosures differ mainly in the specific accounting
+line item (for example, trading versus service-transaction balances), and
+literal taxonomy aliases do not always capture the economically decisive
+compound concept. Further hand-tuning these edge cases would risk overfitting
+the small Toyota/MUFG development benchmark.
+
+The retrieval/reranking design is therefore **frozen** as:
+
+``` text
+Ruri Top-10 dense sentence retrieval
+    -> IDF-weighted concept containment reranking (lambda = 0.02)
+    -> compact prior-year context for persistent-vs-novel classification
+```
+
+Sentence ±1 context remains useful as supporting evidence for split/merged
+propositions, but the target classification unit remains the current sentence.
+Paragraph context is diagnostic support rather than the primary classification
+unit.
 
 
 ## Open empirical decisions
 
-The major remaining decisions now belong to the **next-stage passage-level
-design**, not to the frozen whole-document benchmark:
+The major retrieval decision is now closed. The remaining decisions belong to
+the **persistent-versus-novel classification and downstream empirical design**:
 
--   exact alignment unit for consecutive-year MD&A text (sentence, paragraph,
-    or passage);
--   operational definitions and thresholds for `persistent`, `revised`, and
-    `new` language;
--   treatment of moved/reordered text versus genuinely new disclosure;
+-   final prompt / classifier specification for deciding whether a current
+    sentence conveys the same economic proposition as the retrieved prior-year
+    context;
+-   treatment of split and merged propositions when the relevant prior
+    information spans neighboring sentences;
+-   whether production classification should return only a binary label or
+    also preserve a structured rationale / confidence score for audit;
+-   how sentence-level persistent and novel classifications should be
+    aggregated back to document-level text components;
 -   whether component sentiment should be normalized by component length,
     full-document length, or both;
--   minimum changed-text content required for reliable component sentiment;
--   primary regression structure for novel/revised versus persistent
-    sentiment and the formal equality test between their coefficients;
--   manual validation protocol on representative consecutive filings;
+-   minimum persistent/novel text content required for reliable component
+    sentiment;
+-   primary regression structure for novel versus persistent sentiment and the
+    formal equality test between their coefficients;
+-   final manual validation protocol beyond the Toyota/MUFG development set;
 -   placement of industry fixed effects and the previously planned
     whole-document robustness suite relative to the new primary design.
 
-The existing Stage 8 benchmark specification should **not** be retuned in
-response to its observed significance pattern.
+The existing Stage 8 benchmark specification and the frozen retrieval/reranking
+configuration should **not** be retuned in response to downstream results.
 
 ## Immediate next steps
 
-1. **Freeze the full-document benchmark checkpoint.**
-   - Commit Stage 8A--8C code, pipeline wiring, and `pipeline.toml`.
-   - Preserve the final Stage 8B/8C machine-readable outputs and figures.
-   - Preserve the pre-LLM first-look checkpoint separately.
-2. **Update project documentation and benchmark memo.**
-   - Record the Stage 6D completion, Stage 8 results, multiple-testing
-     treatment, and economic magnitudes.
-   - Make explicit that the benchmark is complete but is not the final
-     identification strategy.
-3. **Design the persistent/revised/new text decomposition.**
-   - Start with a small manually inspectable set of consecutive filings
-     (including the existing Toyota/MUFG examples).
-   - Compare candidate alignment units and similarity thresholds before
-     committing to a full-corpus implementation.
-4. **Implement the next pipeline stage for passage-level alignment and
-   classification.**
-5. **Score sentiment separately within persistent and changed text and build
-   the corresponding regression panel.**
-6. **Only after the new primary design is stable, decide which previously
+1. **Freeze and document the alignment/retrieval checkpoint.**
+   - Preserve the completed 150-row benchmark and the merged Top-10 gold
+     workbook.
+   - Preserve the final Ruri Top-10 + IDF-containment evaluation outputs.
+   - Record the selected λ = 0.02 configuration and benchmark metrics.
+2. **Clean the experimental alignment workspace.**
+   - Keep one clearly named production retrieval script and one evaluator.
+   - Move superseded retrieval/reranking scripts to an archive rather than
+     deleting them immediately.
+   - Move obsolete Top-3, intermediate annotation, and exploratory XLSX/CSV
+     outputs to an archive so the canonical benchmark is unambiguous.
+3. **Implement persistent-versus-novel classification.**
+   - Feed each current sentence plus the frozen Ruri-ranked prior-year
+     candidates / compact context to the classifier.
+   - Explicitly reason about economic proposition, entity/accounting concept,
+     direction, magnitude, driver, and measurement basis.
+4. **Validate classification on the frozen 150-row benchmark.**
+   - Report accuracy / confusion matrix and review disagreement cases.
+   - Do not alter the frozen retrieval stage merely to rescue individual
+     benchmark errors.
+5. **Scale the validated classifier to the full longitudinal corpus.**
+6. **Construct persistent and novel text components, score sentiment within
+   each component, and build the corresponding regression panel.**
+7. **Only after the new primary design is stable, decide which previously
    planned whole-document robustness tests remain necessary for the paper or
    appendix.**
 
 ## Current bottleneck
 
-There is no longer a corpus-construction, LLM-scoring, market-reaction, or
-full-document empirical-integration bottleneck. Stages 1--7 are complete and
-frozen, Stage 6D is fully scored and frozen, and Stage 8A--8C provide a
-validated three-model whole-document benchmark.
+There is no longer a corpus-construction, sentiment-scoring, market-reaction,
+whole-document empirical-integration, or sentence-retrieval bottleneck.
+Stages 1--8C provide the frozen full-document benchmark, and the
+passage-alignment work now provides a validated retrieval backbone for the
+advisor-driven next design.
 
-The substantive bottleneck has shifted to the advisor-driven identification
-question:
+The substantive bottleneck has shifted one step downstream:
 
-> **How should consecutive Japanese MD&A disclosures be decomposed into
-> persistent, revised, and newly introduced text in a way that is
-> economically interpretable, reproducible, and suitable for component-level
-> sentiment measurement?**
+> **Can the retrieved prior-year context be used to classify current Japanese
+> MD&A sentences reproducibly as persistent versus novel economic information,
+> and can those resulting text components support separate sentiment
+> measurement?**
 
-The next research risk is therefore methodological rather than operational:
-whether the passage-level decomposition can cleanly separate changed from
-persistent disclosure and whether the associated sentiment components show
-distinct market relationships.
-
-The whole-document benchmark should remain frozen while this next design is
-developed.
+The main research risk is now classification and aggregation rather than
+candidate retrieval. The retrieval benchmark should remain frozen while this
+next stage is developed.
 
 ## Rough completion estimate
 
@@ -1469,9 +1533,9 @@ three sentiment measures, market-reaction infrastructure, regression-ready
 panel, 18-regression whole-document benchmark, multiple-testing treatment, and
 marginal-effect interpretation are complete.
 
-The percentage is intentionally not increased despite completion of Stage 6D
-and Stage 8 because the advisor-driven persistent/revised/new decomposition is
-a substantive new empirical layer rather than a minor robustness check. The
-remaining work is concentrated in that passage-level design, its validation
-and regressions, final robustness choices, results writing, and full-paper
-integration.
+The percentage is intentionally not increased materially because the
+advisor-driven persistent-versus-novel decomposition is a substantive new
+empirical layer rather than a minor robustness check. Retrieval for that layer
+is now largely solved and frozen; the remaining work is concentrated in
+classification, component construction, sentiment scoring, regressions, final
+robustness choices, results writing, and full-paper integration.
