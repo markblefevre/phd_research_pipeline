@@ -1,6 +1,6 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-07
 
 ## Current thesis
 
@@ -12,19 +12,18 @@ the annual-report MD&A is relative to the firm's prior filing. That benchmark
 is now implemented through Stage 8C and is being frozen as a completed
 checkpoint.
 
-The advisor-driven **primary next design** asks a more direct information-
+The advisor-driven **primary design** now asks a more direct information-
 location question:
 
 > **Do markets respond differently to sentiment contained in persistent
-> disclosure language versus newly introduced or substantially revised
-> language?**
+> disclosure language versus novel disclosure language?**
 
-The next phase will therefore decompose consecutive-year MD&A text into
-**persistent** versus **novel** information, score sentiment within those
-components, and test whether market reactions differ across them. The earlier
-three-way persistent/revised/new framing has been simplified: substantially
-revised information is treated as novel when it changes the economic
-proposition.
+The passage-level definition and retrieval architecture are frozen on a manually
+reviewed 150-sentence Toyota/MUFG benchmark. Full-corpus retrieval is now complete
+for all 33,046 research-eligible annual-report pairs. A pair-level GPT-6 Luna
+classification architecture has also been validated in two independent benchmark
+runs and selected for production. The next operational step is full-corpus
+pair-level Luna classification, followed by component-level sentiment scoring.
 
 The completed full-document benchmark remains important because it establishes
 the baseline result that contextual/generative sentiment becomes more
@@ -66,12 +65,11 @@ The completed benchmark addresses the conditional question:
 
 The primary next-stage research question is more direct:
 
-> **Whether sentiment located in newly introduced or substantially revised
-> disclosure language has a different market association from sentiment
-> located in persistent language.**
+> **Whether sentiment located in novel disclosure language has a different
+> market association from sentiment located in persistent language.**
 
 This separates **what the text says** (sentiment) from **where the information
-is located** (persistent versus changed disclosure), while retaining the
+is located** (persistent versus novel disclosure), while retaining the
 whole-document sentiment × novelty analysis as a frozen benchmark rather than
 discarding it.
 
@@ -1232,310 +1230,290 @@ interpretation is therefore:
 
 This benchmark does **not** establish that sentiment specifically within newly
 introduced text drives the response. That identification question is the
-purpose of the next passage-level persistent/revised/new design.
+purpose of the next passage-level persistent/novel design.
 
 Stage 8A--8C should now be treated as **complete and frozen as the
 whole-document benchmark**.
 
 
-## Passage-level alignment benchmark and lessons
+## Passage-level persistent/novel benchmark and frozen Stage 6E design
 
-A manually reviewed alignment/classification benchmark has now been completed for
-the Toyota/MUFG development sample used to design the persistent-versus-changed
-text decomposition.
+The passage-level methodology is now **frozen** after a manually reviewed
+Toyota/MUFG benchmark containing **150 current-year MD&A sentences**.
 
-The benchmark contains **150 current-year MD&A sentences**. Each row includes the
-current sentence, prior-year retrieval candidates, sentence-level similarity
-scores, neighboring-sentence context, paragraph/chunk context where available,
-and three manual annotation fields:
+The final production taxonomy has two labels only:
 
 ``` text
-manual_label
-manual_confidence
-manual_notes
+persistent = 83
+novel      = 67
 ```
 
-After a full review of the workbook, including re-checking previously annotated
-rows against the complete retrieval context, the final manual labels are:
+The operational definition is:
+
+- **persistent** when the same economic/disclosure proposition recurs, even if
+  wording changes, sentences split/merge, or routine annual numerical values
+  update;
+- **novel** when the current sentence introduces or materially changes the
+  proposition, including direction/sign, entity, subsidiary, segment,
+  geography, product/business, accounting metric, driver/causal explanation,
+  strategic/operational content, or measurement/classification/disclosure
+  basis.
+
+A changed number alone does **not** imply novelty. The same metric, entity,
+direction, and proposition with only an updated magnitude is generally
+persistent. Direction reversals, different accounting concepts, changed scope,
+changed drivers, and methodological/definition changes are novel.
+
+### Frozen retrieval architecture
+
+Retrieval remains sentence based and is now complete over the full corpus:
 
 ``` text
-novel       79
-persistent  71
-total      150
+current sentence
+    ↓
+Ruri-v3-310m top 10 prior-year sentences
+    ↓
+EDINET/IFRS corpus-IDF concept reranking
+score = cosine + 0.02 × weighted_jaccard
+    ↓
+retain top 3 prior-year indices
 ```
 
-Several earlier manual judgments were corrected once the complete current/prior
-context was visible. This confirmed that benchmark review must evaluate the
-economic proposition and retrieval correctness together rather than treating the
-top embedding match as automatically valid.
+The EDINET/IFRS concept dictionary contains normalized Japanese accounting
+aliases built from the EDINET and IFRS taxonomies. Corpus-IDF is computed from
+the Paper 2 MD&A corpus so generic accounting labels receive little weight
+while rarer concept matches matter more.
 
-### Working operational definition
+### Retrieval benchmark
 
-The benchmark review produced a clearer economic definition of the two classes.
-
-**Persistent** text conveys essentially the same economic proposition as the
-prior-year disclosure. Wording may change, sentences may be split or merged, and
-modest annual numerical updates may occur without making the underlying
-information substantively new.
-
-**Novel** text introduces a materially different fact, direction, magnitude,
-entity, driver, measurement basis, or economic interpretation relative to the
-prior disclosure.
-
-The distinction is therefore explicitly **informational**, not merely lexical:
-
-> **Textual similarity is not the same as informational persistence.**
-
-Likewise, a changed number is not automatically novel. The relevant question is
-whether the numerical change materially changes the economic information conveyed
-by the sentence.
-
-### Main benchmark lessons
-
-1. **Exact and near-exact repetition is an easy persistent case.**
-   Identical substantive sentences, recurring headings, formulas, accounting
-   labels, and definitions provide useful positive controls for the persistent
-   class.
-
-2. **High embedding similarity can coexist with clearly novel information.**
-   Reused reporting templates often retain cosine similarities above 0.95 even
-   when the underlying economics change substantially. Important examples
-   include revenue/expense reversals, cash-flow reversals, capital-ratio
-   deterioration, and changed entities.
-
-3. **Direction reversals are especially strong novelty signals.**
-   Increase versus decrease, improvement versus deterioration, profit versus
-   loss, and analogous sign reversals are generally high-confidence novel cases.
-
-4. **Magnitude matters when it is central to the proposition.**
-   A modest annual update to a stock balance may remain persistent when the
-   economic interpretation is unchanged. By contrast, a large change in a
-   growth rate, annual increase/decrease, yield, margin, capital ratio, cash-flow
-   movement, or other economically central quantity can make a sentence novel
-   even when the sign remains unchanged.
-
-5. **Named entities and accounting concepts must be preserved.**
-   A one-token entity substitution can make an otherwise identical sentence
-   novel. Retrieval also repeatedly confused structurally similar but
-   economically different concepts, including:
-   - domestic versus overseas disclosures;
-   - interest received versus interest paid;
-   - service transactions versus trading transactions;
-   - different credit-quality ratios;
-   - different subsidiaries.
-
-6. **Sentence-level max-cosine retrieval is not sufficient.**
-   The highest-similarity sentence sometimes matches the reporting template
-   rather than the correct economic concept. This is a retrieval error, not a
-   classification ambiguity.
-
-7. **Best sentence ±1 sentence is particularly useful.**
-   Neighboring context often recovers the correct prior information when a
-   company merges or splits propositions across years. One benchmark example
-   showed a current sentence combining two propositions that had appeared in
-   adjacent prior-year sentences; sentence-only matching made part of the
-   current sentence appear new, while ±1 context correctly showed both
-   propositions were persistent.
-
-8. **Large paragraph/chunk context is useful but can contaminate the target.**
-   A paragraph may contain both persistent boilerplate and genuinely new
-   quantitative information. Classifying the entire paragraph can therefore
-   cause novel neighboring information to make an unchanged target sentence look
-   novel. Paragraph context should support interpretation rather than replace
-   the sentence-level classification target.
-
-9. **Short headings and table labels need special treatment.**
-   For short units, exact phrase containment, entity identity, and accounting
-   concept matching can be more reliable than embeddings. A short current label
-   may correspond to a phrase embedded inside a longer prior-year sentence.
-
-10. **Methodological or definitional changes are themselves novel information.**
-    Changes in segment-allocation methodology, disclosure definitions, or
-    measurement basis should not be treated as routine persistence merely because
-    similar reporting language appears elsewhere.
-
-### Implications for the production design
-
-The benchmark suggests that the production system should separate **retrieval**
-from **classification**.
-
-A practical hierarchy is:
+There are **129** rows with a gold prior-sentence alignment and **21**
+intentional no-match cases. On the 129 alignment rows:
 
 ``` text
-1. exact / near-exact phrase and entity checks
-2. sentence-embedding retrieval of multiple prior candidates
-3. candidate expansion with ±1 neighboring sentence
-4. concept/entity consistency check
-5. LLM classification of persistent versus novel information
+Raw Ruri cosine:
+  Recall@1  = 0.8372
+  Recall@3  = 0.9457
+  Recall@10 = 0.9690
+  MRR@10    = 0.8885
+
+Ruri + corpus-IDF Jaccard reranking, lambda = 0.02:
+  Recall@1  = 0.8450
+  Recall@3  = 0.9690
+  Recall@10 = 0.9690
+  MRR@10    = 0.9018
 ```
 
-The classifier should receive the **current target sentence** plus a small set of
-high-quality prior-year candidate contexts. It should not infer persistence from
-cosine similarity alone.
+Thus every gold sentence already present anywhere in the Ruri top-10 pool is
+moved into the top three under the selected reranker.
 
-The prompt/classifier should explicitly reason about:
+### Sentence-level classifier benchmark
+
+The original v1 prompt produced:
 
 ``` text
-same economic proposition?
-same named entity / accounting concept?
-same direction?
-same economically important magnitude?
-same driver or causal explanation?
-same measurement / disclosure basis?
+accuracy = 0.9400
+macro-F1 = 0.9394
 ```
 
-Numerical changes should be interpreted in context rather than through a fixed
-percentage threshold. The benchmark indicates that materiality depends on the
-role the number plays in the proposition.
-
-The 150-row manually reviewed workbook is now the frozen development benchmark
-for retrieval and classification. Of the 150 current-year sentences, **129**
-have a defensible gold prior-year counterpart and **21** are intentional
-no-match cases.
-
-### Retrieval and concept-aware reranking benchmark
-
-The retrieval experiment was expanded from Top-3 to **Top-10** candidates so
-that a second-stage reranker could meaningfully improve Recall@3 rather than
-only reorder an already fixed three-candidate set.
-
-The final dense-retrieval results on the 129 gold-aligned rows are:
-
-| Model / method | Recall@1 | Recall@3 | Recall@10 | MRR@10 |
-|---|---:|---:|---:|---:|
-| Ruri cosine baseline | **0.8372** | **0.9457** | **0.9690** | **0.8885** |
-| Ruri + IDF-weighted containment, λ=0.02 | **0.8527** | **0.9612** | **0.9690** | **0.9050** |
-| Sarashina cosine baseline | 0.7597 | 0.9302 | 0.9767 | 0.8425 |
-
-The Ruri Top-10 candidate pool therefore contains the correct prior-year
-sentence in **125 / 129 cases (96.9%)**. Sarashina has slightly higher
-candidate-pool recall, but weaker ranking quality. Ruri provides the stronger
-overall retrieval backbone.
-
-A transparent concept-aware reranker was added on top of dense retrieval. It
-uses literal Japanese EDINET/IFRS concept aliases weighted by corpus-derived
-inverse document frequency (IDF). The production candidate score is:
+The v1.1 prompt on raw Ruri top-3 produced:
 
 ``` text
-score = cosine + 0.02 * IDF-weighted containment
+accuracy = 0.9533
+macro-F1 = 0.9529
+persistent F1 = 0.9576
+novel F1      = 0.9481
 ```
 
-The IDF corpus is the full **37,757-document** successfully extracted MD&A
-corpus. Common accounting language therefore receives little weight, while
-rarer concept overlap receives more weight.
-
-The selected reranker improves Ruri Recall@1, Recall@3, and MRR@10
-simultaneously. On the benchmark it produces **two net Top-1 fixes and zero
-Top-1 regressions** relative to cosine-only ranking.
-
-The remaining errors are informative but do not justify continued tuning.
-Some highly templated disclosures differ mainly in the specific accounting
-line item (for example, trading versus service-transaction balances), and
-literal taxonomy aliases do not always capture the economically decisive
-compound concept. Further hand-tuning these edge cases would risk overfitting
-the small Toyota/MUFG development benchmark.
-
-The retrieval/reranking design is therefore **frozen** as:
+The frozen sentence-level comparator using **IDF-reranked top-3 + Luna v1.1**
+produced:
 
 ``` text
-Ruri Top-10 dense sentence retrieval
-    -> IDF-weighted concept containment reranking (lambda = 0.02)
-    -> compact prior-year context for persistent-vs-novel classification
+accuracy       = 0.9600
+macro-F1       = 0.9596
+persistent F1  = 0.9634
+novel F1       = 0.9559
+errors         = 6 / 150
 ```
 
-Sentence ±1 context remains useful as supporting evidence for split/merged
-propositions, but the target classification unit remains the current sentence.
-Paragraph context is diagnostic support rather than the primary classification
-unit.
+This remains the high-accuracy benchmark comparator, but it would require one
+Luna request per current-year sentence at production scale.
 
+### Full-corpus retrieval completion
+
+The retrieval-only production pass is now **complete** across all **33,046**
+research-eligible annual-report pairs. It used Apple MPS for Ruri embedding and
+made no OpenAI calls.
+
+Final continuation-run diagnostics were:
+
+``` text
+pairs_available       = 33,046
+pairs_written         = 33,044
+pairs_skipped_resume  = 2
+sentences_written     = 3,463,953
+retrieval_only        = true
+device                = mps
+completed             = 2026-10-06 19:14:23
+```
+
+The two skipped pairs were the previously completed smoke-test pairs, so all
+33,046 research pairs have retrieval checkpoints. The canonical retrieval
+artifact is:
+
+``` text
+data/interim/paper2/alignment/persistent_novel/retrieval_pairs.jsonl
+```
+
+The file is approximately **8.15 GB** (8,150,429,023 bytes). A working SSD copy
+is maintained at:
+
+``` text
+~/paper2_stage4/stage6e_work/retrieval_pairs.jsonl
+```
+
+### Pair-level Luna production architecture
+
+A production-scale optimization was tested after retrieval completed. Instead
+of sending one Luna request per current sentence, one request is constructed
+for each prior/current annual-report pair. Each request contains:
+
+1. the complete prior-year MD&A as indexed sentences (`P0`, `P1`, ...);
+2. the complete current-year MD&A as indexed sentences (`C0`, `C1`, ...);
+3. for every current sentence, the frozen retrieval map identifying its top-3
+   prior-year candidate indices; and
+4. one pair-level classification instruction.
+
+Retrieval scores are not sent to Luna. The top-3 mapping remains the primary
+evidence, while the full documents provide supplemental context for
+split/merge, recurring disclosure, and proposition-level interpretation.
+
+The benchmark harness is:
+
+``` text
+scripts/paper2/test_persistent_novel_pair_level.py
+configs/paper2/prompts/persistent_novel_pair_classifier_test_v1.md
+```
+
+The Toyota and MUFG pair inputs were approximately 36,040 and 25,373 input
+tokens respectively, comfortably below the model context limit.
+
+Two independent unchanged Luna runs were performed on the same 150 gold
+sentences:
+
+| Architecture / run | Accuracy | Macro-F1 | Persistent F1 | Novel F1 | Errors |
+|---|---:|---:|---:|---:|---:|
+| Frozen sentence-level comparator | 0.9600 | 0.9596 | 0.9634 | 0.9559 | 6 |
+| Pair-level run 1 | 0.9467 | 0.9461 | 0.9518 | 0.9403 | 8 |
+| Pair-level run 2 | 0.9533 | 0.9529 | 0.9576 | 0.9481 | 7 |
+
+The two pair-level replications are stable and balanced across classes. Their
+mean accuracy is approximately **95.0%**, only about one percentage point below
+the sentence-level comparator. Error analysis also showed that the pair-level
+and sentence-level mistakes were not nested: the first pair-level run corrected
+all six sentence-level errors but introduced eight different errors. This
+supports treating the two designs as slightly different contextual decision
+rules rather than interpreting the small aggregate difference as evidence of a
+major quality loss.
+
+### Production decision
+
+The **pair-level Luna architecture is selected and frozen for full-corpus Stage
+6E classification**. No further prompt tuning, reranker search, grouping-size
+experiments, or benchmark optimization is planned.
+
+The reason is the scale/quality tradeoff:
+
+``` text
+sentence-level requests   ≈ 3.46 million
+pair-level requests       = 33,046
+request-count reduction   ≈ 99%
+
+sampled sentence-level input ≈ 837.5 tokens / sentence
+pair-level benchmark input   ≈ 101.7 tokens / sentence
+input-token reduction        ≈ 87.9%
+```
+
+Observed pair-level output was approximately 34 tokens per classified sentence
+because the benchmark retained a short reason for auditability. Production
+output format can be revisited only if necessary for cost/runtime, but the
+classification methodology itself is frozen.
+
+Expected final Stage 6E outputs remain:
+
+``` text
+data/interim/paper2/alignment/persistent_novel/
+    retrieval_pairs.jsonl
+    classified_pairs.jsonl
+    persistent_novel_sentences.csv
+    persistent_novel_documents.csv
+    persistent_novel_split.metadata.json
+```
 
 ## Open empirical decisions
 
-The major retrieval decision is now closed. The remaining decisions belong to
-the **persistent-versus-novel classification and downstream empirical design**:
+The main remaining decisions now occur **after** the frozen decomposition:
 
--   final prompt / classifier specification for deciding whether a current
-    sentence conveys the same economic proposition as the retrieved prior-year
-    context;
--   treatment of split and merged propositions when the relevant prior
-    information spans neighboring sentences;
--   whether production classification should return only a binary label or
-    also preserve a structured rationale / confidence score for audit;
--   how sentence-level persistent and novel classifications should be
-    aggregated back to document-level text components;
--   whether component sentiment should be normalized by component length,
-    full-document length, or both;
--   minimum persistent/novel text content required for reliable component
-    sentiment;
--   primary regression structure for novel versus persistent sentiment and the
-    formal equality test between their coefficients;
--   final manual validation protocol beyond the Toyota/MUFG development set;
--   placement of industry fixed effects and the previously planned
-    whole-document robustness suite relative to the new primary design.
+- how persistent and novel sentiment should be normalized when component
+  lengths differ materially;
+- minimum component size, if any, for reliable sentiment measurement;
+- whether the primary regression uses both persistent and novel sentiment in
+  levels, changes, or both;
+- the formal equality test between persistent- and novel-sentiment
+  coefficients;
+- which whole-document robustness analyses remain necessary once the
+  component-level design is estimated.
 
-The existing Stage 8 benchmark specification and the frozen retrieval/reranking
-configuration should **not** be retuned in response to downstream results.
+The full-document Stage 8 benchmark specification remains frozen and should
+not be retuned in response to the passage-level results.
 
 ## Immediate next steps
 
-1. **Freeze and document the alignment/retrieval checkpoint.**
-   - Preserve the completed 150-row benchmark and the merged Top-10 gold
-     workbook.
-   - Preserve the final Ruri Top-10 + IDF-containment evaluation outputs.
-   - Record the selected λ = 0.02 configuration and benchmark metrics.
-2. **Clean the experimental alignment workspace.**
-   - Keep one clearly named production retrieval script and one evaluator.
-   - Move superseded retrieval/reranking scripts to an archive rather than
-     deleting them immediately.
-   - Move obsolete Top-3, intermediate annotation, and exploratory XLSX/CSV
-     outputs to an archive so the canonical benchmark is unambiguous.
-3. **Implement persistent-versus-novel classification.**
-   - Feed each current sentence plus the frozen Ruri-ranked prior-year
-     candidates / compact context to the classifier.
-   - Explicitly reason about economic proposition, entity/accounting concept,
-     direction, magnitude, driver, and measurement basis.
-4. **Validate classification on the frozen 150-row benchmark.**
-   - Report accuracy / confusion matrix and review disagreement cases.
-   - Do not alter the frozen retrieval stage merely to rescue individual
-     benchmark errors.
-5. **Scale the validated classifier to the full longitudinal corpus.**
-6. **Construct persistent and novel text components, score sentiment within
-   each component, and build the corresponding regression panel.**
-7. **Only after the new primary design is stable, decide which previously
-   planned whole-document robustness tests remain necessary for the paper or
-   appendix.**
+1. **Productionize the validated pair-level Luna classifier.**
+   - Adapt the benchmark pair-level request construction to the production
+     Stage 6E doer.
+   - Preserve pair-atomic checkpoint/resume behavior.
+   - Prefer Batch API execution if operationally convenient.
+2. **Run full-corpus Stage 6E classification.**
+   - Classify all 33,046 prior/current document pairs using the frozen retrieval
+     checkpoints and pair-level Luna design.
+   - Export sentence-level labels and document-level `persistentText` /
+     `novelText` components.
+3. **QC and freeze Stage 6E.**
+   - Check failures, missing/duplicate sentence indices, class/confidence
+     distributions, component shares, and extreme 0%/100% cases.
+   - Perform a small production audit without reopening benchmark tuning.
+4. **Implement Stage 6F component-level sentiment.**
+   - Score persistent and novel text separately.
+   - Construct persistent/novel sentiment levels and year-over-year changes.
+5. **Build the component-level empirical panel and regressions.**
+   - Estimate persistent and novel sentiment coefficients jointly.
+   - Test formally whether their market associations differ.
+   - Retain the frozen whole-document Stage 8 benchmark as context.
+6. **Complete robustness, tables, figures, and writing.**
 
 ## Current bottleneck
 
-There is no longer a corpus-construction, sentiment-scoring, market-reaction,
-whole-document empirical-integration, or sentence-retrieval bottleneck.
-Stages 1--8C provide the frozen full-document benchmark, and the
-passage-alignment work now provides a validated retrieval backbone for the
-advisor-driven next design.
+The methodological definition, retrieval design, and classifier architecture
+are **no longer bottlenecks**. Full-corpus retrieval is also complete.
 
-The substantive bottleneck has shifted one step downstream:
-
-> **Can the retrieved prior-year context be used to classify current Japanese
-> MD&A sentences reproducibly as persistent versus novel economic information,
-> and can those resulting text components support separate sentiment
-> measurement?**
-
-The main research risk is now classification and aggregation rather than
-candidate retrieval. The retrieval benchmark should remain frozen while this
-next stage is developed.
+The immediate bottleneck is now **production execution of the frozen pair-level
+Luna classifier across 33,046 document pairs**. Once Stage 6E classification
+and QC complete, the substantive research bottleneck shifts to Stage 6F and the
+component-level regressions: whether sentiment in novel text has a different
+market association from sentiment in persistent text.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately **80--85%**.
+**Overall paper:** approximately **82--87%**.
 
 The full corpus, extraction, longitudinal matching, novelty construction,
-three sentiment measures, market-reaction infrastructure, regression-ready
-panel, 18-regression whole-document benchmark, multiple-testing treatment, and
-marginal-effect interpretation are complete.
+three whole-document sentiment measures, market-reaction infrastructure,
+regression-ready panel, 18-regression whole-document benchmark,
+multiple-testing treatment, marginal-effect interpretation, persistent/novel
+methodology, and full-corpus retrieval are complete.
 
-The percentage is intentionally not increased materially because the
-advisor-driven persistent-versus-novel decomposition is a substantive new
-empirical layer rather than a minor robustness check. Retrieval for that layer
-is now largely solved and frozen; the remaining work is concentrated in
-classification, component construction, sentiment scoring, regressions, final
-robustness choices, results writing, and full-paper integration.
+The remaining work is concentrated in **full-corpus pair-level Luna
+classification**, Stage 6F component-level sentiment, the resulting
+persistent-versus-novel regressions, final robustness choices, results writing,
+and full-paper integration. Stage 6E model/retrieval development should not be
+reopened absent a genuine production failure.

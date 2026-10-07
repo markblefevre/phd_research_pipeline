@@ -9,10 +9,12 @@ constructs the three-model regression-ready panel, Stage 8B estimates the fixed
 multiple-testing adjustments, and confidence-band figures.
 
 The whole-document benchmark is now a preserved checkpoint rather than the
-final identification strategy. Stage 6E implements the advisor-driven binary
-decomposition of consecutive-year MD&A text into **persistent** and **novel**
-sentence components. Full-corpus retrieval is complete and the validated
-pair-level GPT-6 Luna classifier is the next production step.
+final identification strategy. Stage 6E now implements the advisor-driven
+passage-level decomposition of consecutive-year MD&A text into **persistent**
+and **novel** sentence components. The retrieval methodology is frozen from the final 150-sentence Toyota/MUFG
+benchmark and full-corpus retrieval is complete. A pair-level GPT-6 Luna
+classification architecture has been validated in two independent benchmark
+runs and selected for production; full-corpus classification is the next step.
 
 ## Current Pipeline Status
 
@@ -34,6 +36,10 @@ pair-level GPT-6 Luna classifier is the next production step.
     and frozen for all 37,473 documents.
 -   **Stage 6D --- GPT-6 Sol generative sentiment:** complete, full-corpus
     scored, QC-visualized, and frozen for all 37,473 documents.
+-   **Stage 6E --- Persistent/novel MD&A decomposition:** methodology and
+    retrieval frozen; full-corpus retrieval complete for all 33,046 pairs. Pair-level
+    GPT-6 Luna classification validated twice on the 150-sentence benchmark and
+    selected for production. Full-corpus Luna classification is next.
 -   **Stage 7A--7F --- Market-reaction construction:** complete, validated,
     and frozen. Stage 7A retains 32,126 eligible events; valid CAR samples are
     31,241 `[0,0]`, 31,069 `[0,1]`, and 30,926 `[-1,1]`.
@@ -47,10 +53,6 @@ pair-level GPT-6 Luna classifier is the next production step.
     and validated; 90 marginal-effect rows, Holm and Bonferroni adjustment
     across all 18 interaction tests, and publication-oriented confidence-band
     figures.
--   **Stage 6E --- Persistent/novel MD&A decomposition:** binary methodology
-    frozen; full-corpus retrieval complete for all 33,046 pairs; pair-level GPT-6
-    Luna architecture validated in two benchmark replications and selected for
-    production. Full-corpus classification is next.
 
 The current corpus contains **37,807 Annual Securities Reports** and
 **37,757 successfully extracted MD&A sections**.
@@ -109,7 +111,7 @@ flowchart TD
     AE --> AF[Stage 8B<br/>18 benchmark regressions]
     AF --> AG[Stage 8C<br/>Marginal effects + multiple testing]
     AG --> AH[Frozen whole-document benchmark]
-    AH --> AI[Stage 6E<br/>Persistent / novel decomposition]
+    P --> AI[Stage 6E<br/>Persistent / novel decomposition]
 ```
 
 ------------------------------------------------------------------------
@@ -2190,10 +2192,9 @@ contextual/generative sentiment is more strongly associated with short-window
 market reactions when textual novelty is high. It does not identify whether
 that response comes specifically from sentiment in changed text.
 
-The next empirical layer therefore decomposes consecutive-year MD&A language
-into binary persistent and novel sentence components before component-level
-sentiment and market-reaction analysis. Stage 6E retrieval is complete and the
-pair-level Luna classifier is ready for full-corpus production.
+The next planned pipeline layer will therefore decompose consecutive-year MD&A
+language into persistent/repeated, revised, and newly introduced components
+before component-level sentiment and market-reaction analysis.
 
 # Stage 6D --- GPT / Generative Sentiment
 
@@ -2317,7 +2318,6 @@ Stage 8C with zero missing current/prior/change sentiment values across the
 33,046 research pairs.
 
 Stage 6D should therefore be treated as **complete and frozen**.
-
 
 ------------------------------------------------------------------------
 
