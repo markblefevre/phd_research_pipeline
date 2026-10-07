@@ -17,6 +17,7 @@ financial_bert_sentiment = false
 financial_bert_plots = false
 llm_sentiment = false
 llm_plots = false
+persistent_novel_split = true
 market_reaction_eligibility = false
 market_reaction_event_dates = false
 market_reaction_topix = false
@@ -25,7 +26,7 @@ market_reaction_abnormal_returns = false
 market_reaction_final_table = false
 empirical_panel = false
 baseline_regressions = false
-marginal_effects = true
+marginal_effects = false
 
 ## STAGE 1 EDINET_DOWNLOAD
 [edinet_download]
@@ -217,6 +218,43 @@ output_dir = "outputs/paper2/figures/sentiment/llm"
 formats = ["pdf", "png"]
 dpi = 180
 min_year_observations = 25
+
+
+## STAGE 6E PERSISTENT / NOVEL MD&A DECOMPOSITION
+[persistent_novel_split]
+# Frozen benchmark architecture (2026-10-06):
+# Ruri top-10 -> EDINET/IFRS corpus-IDF Jaccard rerank -> top-3 -> GPT-6 Luna v1.1.
+pairs_csv = "data/interim/paper2/longitudinal/research_eligible_pairs.csv"
+source_root = "~/paper2_stage4/mdna"
+concepts_csv = "data/interim/paper2/alignment/edinet_concept_dictionary.csv"
+idf_cache = "data/interim/paper2/alignment/concept_alias_idf.csv"
+prompt_file = "configs/paper2/prompts/persistent_novel_classifier_v1_1.md"
+
+retriever_model = "cl-nagoya/ruri-v3-310m"
+retrieval_top_k = 10
+rerank_top_k = 3
+rerank_variant = "cosine_plus_idf_jaccard"
+rerank_lambda = 0.02
+min_sentence_chars = 12
+embedding_batch_size = 32
+device = "auto"
+
+classifier_model = "gpt-6-luna"
+reasoning_effort = "none"
+output_dir = "data/interim/paper2/alignment/persistent_novel"
+resume = true
+overwrite = false
+max_retries = 3
+retry_base_seconds = 2.0
+max_concurrent_requests = 4
+
+# Safety gate for the first full-corpus pass. Keep true until retrieval-only
+# output has established the actual sentence/API-call count and passed QC.
+retrieval_only = true
+
+# Optional smoke-test limiters. Leave commented for production.
+# max_pairs = 2
+# max_sentences = 10
 
 ## STAGE 7A MARKET-REACTION EVENT ELIGIBILITY
 [market_reaction_eligibility]
