@@ -29,6 +29,7 @@ from src.pipeline.stages.financial_bert_sentiment import run_stage_financial_ber
 from src.pipeline.stages.financial_bert_plots import run_stage_financial_bert_plots
 from src.pipeline.stages.llm_sentiment import run_stage_llm_sentiment
 from src.pipeline.stages.llm_plots import run_stage_llm_plots
+from src.pipeline.stages.persistent_novel_split import run_stage_persistent_novel_split
 from src.pipeline.stages.market_reaction_eligibility import run_stage_market_reaction_eligibility
 from src.pipeline.stages.market_reaction_event_dates import run_stage_market_reaction_event_dates
 from src.pipeline.stages.market_reaction_topix import run_stage_market_reaction_topix
@@ -243,6 +244,13 @@ def main() -> int:
         run_stage_llm_plots(paper=paper, cfg=cfg, logger=logger)
     else:
         logger.info("Stage llm_plots disabled")
+        
+
+    # Stage 6E: persistent/novel sentence decomposition
+    if bool(stages.get("persistent_novel_split", False)):
+        run_stage_persistent_novel_split(paper=paper, cfg=cfg, logger=logger)
+    else:
+        logger.info("Stage persistent_novel_split disabled")
         
     # Stage 7A: market-reaction event eligibility
     if bool(stages.get("market_reaction_eligibility", False)):
