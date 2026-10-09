@@ -1,35 +1,40 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-10-07
+**Last updated:** 2026-10-09
 
 ## Current thesis
 
 The project now has two clearly separated empirical layers.
 
 The **full-document benchmark** asks whether the economic usefulness of
-lexical, contextual, and generative sentiment depends on how textually novel
-the annual-report MD&A is relative to the firm's prior filing. That benchmark
-is now implemented through Stage 8C and is being frozen as a completed
-checkpoint.
+lexical, contextual, and generative sentiment depends on how textually
+novel the annual-report MD&A is relative to the firm's prior filing.
+That benchmark is now implemented through Stage 8C and is being frozen
+as a completed checkpoint.
 
-The advisor-driven **primary design** now asks a more direct information-
-location question:
+The advisor-driven **primary design** now asks a more direct
+information- location question:
 
 > **Do markets respond differently to sentiment contained in persistent
 > disclosure language versus novel disclosure language?**
 
-The passage-level definition and retrieval architecture are frozen on a manually
-reviewed 150-sentence Toyota/MUFG benchmark. Full-corpus retrieval is now complete
-for all 33,046 research-eligible annual-report pairs. A pair-level GPT-6 Luna
-classification architecture has also been validated in two independent benchmark
-runs and selected for production. The next operational step is full-corpus
-pair-level Luna classification, followed by component-level sentiment scoring.
+The passage-level definition, retrieval architecture, and pair-level
+GPT-6 Luna classification design are frozen on a manually reviewed
+150-sentence Toyota/MUFG benchmark. Full-corpus Stage 6E classification
+is now complete for all **33,046** research-eligible annual-report pairs
+and **3,463,989** current-year sentences. A targeted synchronous
+completion repair added **447** classifications across **341**
+incomplete pair responses without overwriting existing classifications.
+The original collector was then rerun unchanged and assembled all
+**33,046** pairs with **zero classification failures**. Stage 6E is
+therefore complete, validated, and frozen. The next substantive step is
+Stage 6F component-level sentiment scoring.
 
-The completed full-document benchmark remains important because it establishes
-the baseline result that contextual/generative sentiment becomes more
-economically informative as whole-document textual novelty rises. It does not,
-however, identify whether the market response is specifically attributable to
-sentiment in the changed text.
+The completed full-document benchmark remains important because it
+establishes the baseline result that contextual/generative sentiment
+becomes more economically informative as whole-document textual novelty
+rises. It does not, however, identify whether the market response is
+specifically attributable to sentiment in the changed text.
 
 ## What is complete
 
@@ -55,7 +60,7 @@ The gap is no longer framed as:
 
 > Which sentiment model performs best on Japanese annual reports?
 
-Okada et al. (2025) already makes that framing too weak.
+Okada et al. (2025) already makes that framing too weak.
 
 The completed benchmark addresses the conditional question:
 
@@ -65,13 +70,14 @@ The completed benchmark addresses the conditional question:
 
 The primary next-stage research question is more direct:
 
-> **Whether sentiment located in novel disclosure language has a different
-> market association from sentiment located in persistent language.**
+> **Whether sentiment located in novel disclosure language has a
+> different market association from sentiment located in persistent
+> language.**
 
-This separates **what the text says** (sentiment) from **where the information
-is located** (persistent versus novel disclosure), while retaining the
-whole-document sentiment × novelty analysis as a frozen benchmark rather than
-discarding it.
+This separates **what the text says** (sentiment) from **where the
+information is located** (persistent versus novel disclosure), while
+retaining the whole-document sentiment × novelty analysis as a frozen
+benchmark rather than discarding it.
 
 ### Key literature positioning
 
@@ -734,16 +740,31 @@ sentiment methods.
 
 ### Stage 6C --- Japanese Financial BERT contextual sentiment
 
-Stage 6C is now **complete, full-corpus scored, diagnostically validated, canonicalized, and frozen for downstream analysis**. Model development is deliberately separated from routine pipeline inference: chABSA preparation and fine-tuning produce frozen model artifacts, while the production pipeline consumes those frozen checkpoints to score the same **37,473-document** research universe used by Stage 4 and Stage 6B.
+Stage 6C is now **complete, full-corpus scored, diagnostically
+validated, canonicalized, and frozen for downstream analysis**. Model
+development is deliberately separated from routine pipeline inference:
+chABSA preparation and fine-tuning produce frozen model artifacts, while
+the production pipeline consumes those frozen checkpoints to score the
+same **37,473-document** research universe used by Stage 4 and Stage 6B.
 
-The contextual backbone is `izumi-lab/bert-base-japanese-fin-additional`. Following the dual-binary design aligned with Nakatsuka & Suimon (2024), two independent sentence classifiers are fine-tuned on chABSA:
+The contextual backbone is
+`izumi-lab/bert-base-japanese-fin-additional`. Following the dual-binary
+design aligned with Nakatsuka & Suimon (2024), two independent sentence
+classifiers are fine-tuned on chABSA:
 
-1. positive opinion present / absent;
-2. negative opinion present / absent.
+1.  positive opinion present / absent;
+2.  negative opinion present / absent.
 
-A sentence may therefore be positive, negative, both, or neither rather than being forced into a single mutually exclusive sentiment class.
+A sentence may therefore be positive, negative, both, or neither rather
+than being forced into a single mutually exclusive sentiment class.
 
-The chABSA preparation step uses **230 Annual Securities Report annotation files** containing **6,119 sentences**. The prepared labels contain **2,210 positive sentences** and **1,746 negative sentences**, with joint states of 1,397 positive-only, 933 negative-only, 813 both, and 2,976 neither. A duplicated outer/inner copy in the downloaded Kaggle package was verified byte-for-byte with SHA-256; only one 230-file copy is used.
+The chABSA preparation step uses **230 Annual Securities Report
+annotation files** containing **6,119 sentences**. The prepared labels
+contain **2,210 positive sentences** and **1,746 negative sentences**,
+with joint states of 1,397 positive-only, 933 negative-only, 813 both,
+and 2,976 neither. A duplicated outer/inner copy in the downloaded
+Kaggle package was verified byte-for-byte with SHA-256; only one
+230-file copy is used.
 
 The fixed split is joint-stratified across the four joint label states:
 
@@ -753,7 +774,13 @@ The fixed split is joint-stratified across the four joint label states:
   Validation           612
   Test                 612
 
-Fine-tuning uses maximum sequence length 512, learning rate `5e-5`, weight decay `0.01`, 100 warmup steps, training batch size 16, evaluation batch size 32, seed 42, and a maximum of 10 epochs. Only the classification head and final BERT encoder layer are trainable (**7,089,410 / 110,618,882 parameters**). The selected model for each binary task is the checkpoint with minimum validation loss rather than automatically the final epoch.
+Fine-tuning uses maximum sequence length 512, learning rate `5e-5`,
+weight decay `0.01`, 100 warmup steps, training batch size 16,
+evaluation batch size 32, seed 42, and a maximum of 10 epochs. Only the
+classification head and final BERT encoder layer are trainable
+(**7,089,410 / 110,618,882 parameters**). The selected model for each
+binary task is the checkpoint with minimum validation loss rather than
+automatically the final epoch.
 
 Held-out test performance is:
 
@@ -765,7 +792,13 @@ Held-out test performance is:
   Negative         0.9461      0.9277   0.8800   **0.9032**        0.9456
   -----------------------------------------------------------------------
 
-Production scoring re-reads the original Stage 2 MD&A text and applies the BERT model's own Japanese tokenizer; Stage 4 `sudachi_c_raw` is used only to define the exact frozen document universe. MD&A is segmented into source sentences. Source sentences exceeding the model limit are split into model pieces, scored, and reaggregated before thresholding so that an overlong source sentence still counts once in the document-level measure.
+Production scoring re-reads the original Stage 2 MD&A text and applies
+the BERT model's own Japanese tokenizer; Stage 4 `sudachi_c_raw` is used
+only to define the exact frozen document universe. MD&A is segmented
+into source sentences. Source sentences exceeding the model limit are
+split into model pieces, scored, and reaggregated before thresholding so
+that an overlong source sentence still counts once in the document-level
+measure.
 
 The primary document score is:
 
@@ -773,13 +806,32 @@ The primary document score is:
 bertNet = (positiveSentenceCount - negativeSentenceCount) / sentenceCount
 ```
 
-The output also preserves positive/negative sentence rates, positive-only/negative-only/both/neither counts, mean positive and negative probabilities, `bertProbabilityNet`, model-piece counts, overlong-sentence diagnostics, and unknown-token rates.
+The output also preserves positive/negative sentence rates,
+positive-only/negative-only/both/neither counts, mean positive and
+negative probabilities, `bertProbabilityNet`, model-piece counts,
+overlong-sentence diagnostics, and unknown-token rates.
 
-End-to-end smoke testing on 25 real MD&A documents showed sensible sentence-level aggregation, meaningful positive and negative document scores, and near-zero unknown-token rates. A subsequent **250-document validation sample** produced mean `bertNet = 0.0277`, median `0.0248`, standard deviation `0.0792`, and a range from approximately `-0.227` to `+0.367`.
+End-to-end smoke testing on 25 real MD&A documents showed sensible
+sentence-level aggregation, meaningful positive and negative document
+scores, and near-zero unknown-token rates. A subsequent **250-document
+validation sample** produced mean `bertNet = 0.0277`, median `0.0248`,
+standard deviation `0.0792`, and a range from approximately `-0.227` to
+`+0.367`.
 
-As a non-tuning diagnostic, the same 250 documents were compared with the frozen LMMD scores. The measures show moderate agreement rather than redundancy: **Pearson correlation 0.444**, **Spearman correlation 0.472**, and **72.8% sign agreement** among documents with nonzero scores under both methods. The largest standardized disagreements include documents for which BERT and LMMD assign opposite sentiment signs. These cases are reserved for later qualitative validation; the comparison was not used to alter or tune either sentiment measure.
+As a non-tuning diagnostic, the same 250 documents were compared with
+the frozen LMMD scores. The measures show moderate agreement rather than
+redundancy: **Pearson correlation 0.444**, **Spearman correlation
+0.472**, and **72.8% sign agreement** among documents with nonzero
+scores under both methods. The largest standardized disagreements
+include documents for which BERT and LMMD assign opposite sentiment
+signs. These cases are reserved for later qualitative validation; the
+comparison was not used to alter or tune either sentiment measure.
 
-Production inference is wired into `run_pipeline.py` as Stage 6C and uses the frozen positive and negative checkpoints, `threshold = 0.5`, `inference_batch_size = 32`, automatic hardware selection, and resumable block-level output. Full production inference completed successfully for the complete **37,473-document** research universe.
+Production inference is wired into `run_pipeline.py` as Stage 6C and
+uses the frozen positive and negative checkpoints, `threshold = 0.5`,
+`inference_batch_size = 32`, automatic hardware selection, and resumable
+block-level output. Full production inference completed successfully for
+the complete **37,473-document** research universe.
 
 The canonical frozen Stage 6C artifacts are:
 
@@ -789,28 +841,62 @@ data/interim/paper2/sentiment/financial_bert/
     financial_bert_sentiment.metadata.json
 ```
 
-Hardware-specific production directories are no longer part of the active pipeline. The canonical output is the validated CUDA production result, while an independent full-corpus Apple MPS run was used only as an implementation-reproducibility check.
+Hardware-specific production directories are no longer part of the
+active pipeline. The canonical output is the validated CUDA production
+result, while an independent full-corpus Apple MPS run was used only as
+an implementation-reproducibility check.
 
-The independent MPS and CUDA runs contained identical **37,473-document** universes and identical preprocessing, sentence counts, token diagnostics, and document construction. Continuous sentiment probabilities differed only at numerical floating-point precision (approximately `1e-8` to `1e-7`). Only one document exhibited a one-sentence threshold classification difference near the `0.5` decision boundary. Corpus-level sentiment distributions were unchanged. This check therefore provides strong evidence that Stage 6C results are not materially hardware-dependent; it is retained as implementation validation rather than as part of the paper's substantive empirical narrative.
+The independent MPS and CUDA runs contained identical
+**37,473-document** universes and identical preprocessing, sentence
+counts, token diagnostics, and document construction. Continuous
+sentiment probabilities differed only at numerical floating-point
+precision (approximately `1e-8` to `1e-7`). Only one document exhibited
+a one-sentence threshold classification difference near the `0.5`
+decision boundary. Corpus-level sentiment distributions were unchanged.
+This check therefore provides strong evidence that Stage 6C results are
+not materially hardware-dependent; it is retained as implementation
+validation rather than as part of the paper's substantive empirical
+narrative.
 
-Full-sample diagnostics show that BERT and LMMD are related but nonredundant: across all 37,473 documents, Pearson `corr(bertNet, lmmdNet) = 0.4031` and Spearman `= 0.4445`; using `bertProbabilityNet` gives Pearson `0.4118` and Spearman `0.4513`.
+Full-sample diagnostics show that BERT and LMMD are related but
+nonredundant: across all 37,473 documents, Pearson
+`corr(bertNet, lmmdNet) = 0.4031` and Spearman `= 0.4445`; using
+`bertProbabilityNet` gives Pearson `0.4118` and Spearman `0.4513`.
 
-The FY2017→FY2018 comparison differs sharply across methods. Mean LMMD rises from approximately **−0.00536** to **+0.00298**, while mean BERT falls from approximately **+0.08722** to **+0.05747**. Among **3,362 matched firms**, mean within-firm BERT change is **−0.03091**, median change is **−0.02350**, and **55.92%** become less positive.
+The FY2017→FY2018 comparison differs sharply across methods. Mean LMMD
+rises from approximately **−0.00536** to **+0.00298**, while mean BERT
+falls from approximately **+0.08722** to **+0.05747**. Among **3,362
+matched firms**, mean within-firm BERT change is **−0.03091**, median
+change is **−0.02350**, and **55.92%** become less positive.
 
-A pre-specified diagnostic on all **33,046 research-eligible pairs** examined whether BERT/LMMD measurement disagreement varies with frozen C-num textual novelty. With `absLogLengthChange` and fiscal-year fixed effects, the novelty coefficient is **0.912 (t = 6.65)**; excluding FY2018 it remains **0.879 (t = 5.25)**.
+A pre-specified diagnostic on all **33,046 research-eligible pairs**
+examined whether BERT/LMMD measurement disagreement varies with frozen
+C-num textual novelty. With `absLogLengthChange` and fiscal-year fixed
+effects, the novelty coefficient is **0.912 (t = 6.65)**; excluding
+FY2018 it remains **0.879 (t = 5.25)**.
 
-Directional disagreement behaves differently. Raw sign disagreement is **26.20%** and declines with novelty. A centered standardized-magnitude diagnostic shows that much of this is concentrated among relatively weak signals. Requiring both centered standardized magnitudes to exceed **0.50** reduces sign disagreement to **15.04%**, with rates broadly stable across novelty deciles (approximately **13.7%--16.3%**).
+Directional disagreement behaves differently. Raw sign disagreement is
+**26.20%** and declines with novelty. A centered standardized-magnitude
+diagnostic shows that much of this is concentrated among relatively weak
+signals. Requiring both centered standardized magnitudes to exceed
+**0.50** reduces sign disagreement to **15.04%**, with rates broadly
+stable across novelty deciles (approximately **13.7%--16.3%**).
 
-The frozen diagnostic conclusion is therefore narrow: **greater textual novelty is associated with somewhat greater divergence in measured sentiment intensity, while directional classification remains broadly consistent when both sentiment signals are sufficiently strong**. No BERT or LMMD parameters, thresholds, dictionary terms, or model-selection decisions were changed in response to these diagnostics.
+The frozen diagnostic conclusion is therefore narrow: **greater textual
+novelty is associated with somewhat greater divergence in measured
+sentiment intensity, while directional classification remains broadly
+consistent when both sentiment signals are sufficiently strong**. No
+BERT or LMMD parameters, thresholds, dictionary terms, or
+model-selection decisions were changed in response to these diagnostics.
 
-Stage 6C should now be treated as **complete, reproducible, canonicalized, and frozen**.
-
+Stage 6C should now be treated as **complete, reproducible,
+canonicalized, and frozen**.
 
 ### Stage 6D --- GPT / generative sentiment
 
-Stage 6D is now **complete, full-corpus scored, QC-visualized, and frozen** on
-the same **37,473-document** research universe used by Stage 4, LMMD, and
-Financial BERT.
+Stage 6D is now **complete, full-corpus scored, QC-visualized, and
+frozen** on the same **37,473-document** research universe used by Stage
+4, LMMD, and Financial BERT.
 
 The frozen production specification is:
 
@@ -827,28 +913,30 @@ resume                   = true
 overwrite                = false
 ```
 
-The model scores original Japanese MD&A text only. It receives no prior-year
-text, novelty measure, market return, or other outcome information. Positive
-and negative tone are scored independently on 0--4 ordinal scales. Structured
-unit output also records temporal focus (`realized`, `forward`, `mixed`, or
-`atemporal`) and a `risk_related` indicator.
+The model scores original Japanese MD&A text only. It receives no
+prior-year text, novelty measure, market return, or other outcome
+information. Positive and negative tone are scored independently on 0--4
+ordinal scales. Structured unit output also records temporal focus
+(`realized`, `forward`, `mixed`, or `atemporal`) and a `risk_related`
+indicator.
 
-Document-level outputs retain character-weighted and equal-weight positive,
-negative, and net sentiment, median unit net tone, unit count, retained
-narrative characters, forward-looking share, and risk-related share.
-Per-document JSON files preserve unit text, structured scores, source/prompt
-hashes, token usage, model metadata, and response IDs for auditability.
+Document-level outputs retain character-weighted and equal-weight
+positive, negative, and net sentiment, median unit net tone, unit count,
+retained narrative characters, forward-looking share, and risk-related
+share. Per-document JSON files preserve unit text, structured scores,
+source/prompt hashes, token usage, model metadata, and response IDs for
+auditability.
 
-The full production run completed for **37,473 / 37,473 documents**. Final
-document-level `llmNet` has:
+The full production run completed for **37,473 / 37,473 documents**.
+Final document-level `llmNet` has:
 
 ``` text
 mean   = 0.091485
 median = 0.110465
 ```
 
-The completed full run took approximately **2,540 seconds** of scoring time.
-The canonical output is:
+The completed full run took approximately **2,540 seconds** of scoring
+time. The canonical output is:
 
 ``` text
 data/interim/paper2/sentiment/llm/llm_sentiment.csv
@@ -860,24 +948,24 @@ with raw per-document checkpoints under:
 data/interim/paper2/sentiment/llm/units/
 ```
 
-A dedicated LLM visualization/QC stage now produces reproducible distribution
-and fiscal-year diagnostics under:
+A dedicated LLM visualization/QC stage now produces reproducible
+distribution and fiscal-year diagnostics under:
 
 ``` text
 outputs/paper2/figures/sentiment/llm/
 ```
 
 Prompt development was frozen before the production run. A four-document
-Toyota/MUFG smoke set showed that GPT-6 Sol, Luna, and Astra produced the same
-document-level sentiment signs and qualitative year-over-year movements under
-the initial prompt. Prompt v2 tightened temporal-focus and risk classification
-without materially redesigning the sentiment scale. Sol v1 versus Sol v2
-retained approximately **0.94 document-level net-sentiment correlation** and
-approximately **0.943 unit-net correlation**, with **87.3% unit sign
-agreement**.
+Toyota/MUFG smoke set showed that GPT-6 Sol, Luna, and Astra produced
+the same document-level sentiment signs and qualitative year-over-year
+movements under the initial prompt. Prompt v2 tightened temporal-focus
+and risk classification without materially redesigning the sentiment
+scale. Sol v1 versus Sol v2 retained approximately **0.94 document-level
+net-sentiment correlation** and approximately **0.943 unit-net
+correlation**, with **87.3% unit sign agreement**.
 
-The canonical generative benchmark is therefore **GPT-6 Sol + prompt v2**.
-Stage 6D should now be treated as **complete and frozen**.
+The canonical generative benchmark is therefore **GPT-6 Sol + prompt
+v2**. Stage 6D should now be treated as **complete and frozen**.
 
 ### Stage 7 --- Market-reaction construction
 
@@ -900,36 +988,47 @@ Raw J-Quants Stock Prices (OHLC) data are stored under:
 data/raw/paper2/prices/
 ```
 
-The archive contains **136** compressed daily-price files covering September 2016 through September 2026.
+The archive contains **136** compressed daily-price files covering
+September 2016 through September 2026.
 
 #### Stage 7A --- final event eligibility and historical venue
 
-Stage 7A begins from the frozen **33,046 research-eligible filing events**.
+Stage 7A begins from the frozen **33,046 research-eligible filing
+events**.
 
-A full-sample historical-venue audit identified eight events whose securities were on **TOKYO PRO Market**, rather than the ordinary TSE/TOPIX equity universe. A second-pass structured XBRL/iXBRL exchange-fact audit resolved the remaining venue-review cases and confirmed that ordinary TSE securities with secondary Nagoya/Fukuoka/Sapporo listings remain eligible.
+A full-sample historical-venue audit identified eight events whose
+securities were on **TOKYO PRO Market**, rather than the ordinary
+TSE/TOPIX equity universe. A second-pass structured XBRL/iXBRL
+exchange-fact audit resolved the remaining venue-review cases and
+confirmed that ordinary TSE securities with secondary
+Nagoya/Fukuoka/Sapporo listings remain eligible.
 
 The final Stage 7A classification is:
 
-| Classification | Events |
-|---|---:|
-| Eligible for market-reaction construction | **32,126** |
-| Non-TSE regional-exchange security | **814** |
-| Not yet in TSE price universe at event | **57** |
-| TSE delisted before event | **26** |
-| Insufficient post-listing estimation history | **15** |
-| TOKYO PRO Market | **8** |
-| **Total research-eligible events** | **33,046** |
+  Classification                                       Events
+  ---------------------------------------------- ------------
+  Eligible for market-reaction construction        **32,126**
+  Non-TSE regional-exchange security                  **814**
+  Not yet in TSE price universe at event               **57**
+  TSE delisted before event                            **26**
+  Insufficient post-listing estimation history         **15**
+  TOKYO PRO Market                                      **8**
+  **Total research-eligible events**               **33,046**
 
-Thus **32,126 / 33,046 = 97.22%** of the frozen research sample survives Stage 7A.
+Thus **32,126 / 33,046 = 97.22%** of the frozen research sample survives
+Stage 7A.
 
-The eight TOKYO PRO decisions are stored in the auditable event-level input:
+The eight TOKYO PRO decisions are stored in the auditable event-level
+input:
 
 ``` text
 data/interim/paper2/market_reaction/diagnostics/
     stage7_venue_overrides.csv
 ```
 
-Production code reads this file generically rather than embedding event IDs in source code. The full and targeted venue-audit outputs remain diagnostic provenance.
+Production code reads this file generically rather than embedding event
+IDs in source code. The full and targeted venue-audit outputs remain
+diagnostic provenance.
 
 Canonical Stage 7A outputs:
 
@@ -950,7 +1049,8 @@ src/pipeline/stages/market_reaction_eligibility.py
 
 #### Stage 7B --- timestamp-aware event trading dates
 
-Stage 7B assigns the canonical event session using the EDINET submission timestamp and the observed TSE trading calendar.
+Stage 7B assigns the canonical event session using the EDINET submission
+timestamp and the observed TSE trading calendar.
 
 ``` text
 trading-day filing at or before market close -> same trading day
@@ -967,14 +1067,15 @@ from 2024-11-05      15:30 JST
 
 Final Stage 7B results:
 
-| Event-date rule | Events |
-|---|---:|
-| Same trading day at or before close | **21,977** |
-| Next trading day after close | **10,149** |
-| Next trading day from non-trading submission date | **0** |
-| **Total** | **32,126** |
+  Event-date rule                                           Events
+  --------------------------------------------------- ------------
+  Same trading day at or before close                   **21,977**
+  Next trading day after close                          **10,149**
+  Next trading day from non-trading submission date          **0**
+  **Total**                                             **32,126**
 
-The global trading calendar contains **2,457 TSE sessions** from 2016-09-01 through 2026-09-25.
+The global trading calendar contains **2,457 TSE sessions** from
+2016-09-01 through 2026-09-25.
 
 Canonical outputs:
 
@@ -986,7 +1087,10 @@ data/interim/paper2/market_reaction/
 
 #### Stage 7C --- TOPIX market-return preparation
 
-Stage 7C remains **complete and frozen**. The official J-Quants TOPIX series contains **2,440 observations** from 2016-09-28 through 2026-09-25. No supplemental pre-subscription TOPIX history is required for the retained Stage 7 event sample.
+Stage 7C remains **complete and frozen**. The official J-Quants TOPIX
+series contains **2,440 observations** from 2016-09-28 through
+2026-09-25. No supplemental pre-subscription TOPIX history is required
+for the retained Stage 7 event sample.
 
 Canonical outputs:
 
@@ -1004,17 +1108,20 @@ Stock returns use the validated corporate-action adjustment:
 adjustedReturn_t = C_t / (C_(t-1) * AdjFactor_t) - 1
 ```
 
-Returns are computed only across consecutive global TSE sessions; suspensions and missing-price gaps are not bridged.
+Returns are computed only across consecutive global TSE sessions;
+suspensions and missing-price gaps are not bridged.
 
 Final Stage 7D results:
 
-| Status | Events |
-|---|---:|
-| Estimated | **31,698** |
-| Not estimated | **428** |
-| **Total Stage 7B events** | **32,126** |
+  Status                            Events
+  --------------------------- ------------
+  Estimated                     **31,698**
+  Not estimated                    **428**
+  **Total Stage 7B events**     **32,126**
 
-The eight TOKYO PRO events removed in Stage 7A were already among the previously observed Stage 7D failures, so the number of successfully estimated market models remains **31,698**.
+The eight TOKYO PRO events removed in Stage 7A were already among the
+previously observed Stage 7D failures, so the number of successfully
+estimated market models remains **31,698**.
 
 Canonical outputs:
 
@@ -1032,15 +1139,16 @@ For each valid event-day stock/market observation:
 AR_i,t = R_i,t - (alpha_i + beta_i * R_m,t)
 ```
 
-CARs require complete observations across the configured window; partial-window CARs are not constructed.
+CARs require complete observations across the configured window;
+partial-window CARs are not constructed.
 
 Final valid CAR samples:
 
-| Window | Valid CARs | Retention vs Stage 7A |
-|---|---:|---:|
-| `[0,0]` | **31,241** | **97.25%** |
-| `[0,1]` | **31,069** | **96.71%** |
-| `[-1,1]` | **30,926** | **96.26%** |
+  Window       Valid CARs   Retention vs Stage 7A
+  ---------- ------------ -----------------------
+  `[0,0]`      **31,241**              **97.25%**
+  `[0,1]`      **31,069**              **96.71%**
+  `[-1,1]`     **30,926**              **96.26%**
 
 Canonical outputs:
 
@@ -1052,7 +1160,8 @@ data/interim/paper2/market_reaction/
 
 #### Stage 7F --- final event-study table and QC
 
-Stage 7F left-joins the market-reaction outputs back to all **33,046** frozen research pairs, so no research observation is silently dropped.
+Stage 7F left-joins the market-reaction outputs back to all **33,046**
+frozen research pairs, so no research observation is silently dropped.
 
 Canonical output:
 
@@ -1064,38 +1173,43 @@ data/interim/paper2/market_reaction/
 
 Final research-sample retention:
 
-| Window | Final N | Retention vs 33,046 research pairs |
-|---|---:|---:|
-| `[0,0]` | **31,241** | **94.54%** |
-| `[0,1]` | **31,069** | **94.02%** |
-| `[-1,1]` | **30,926** | **93.58%** |
+  Window          Final N   Retention vs 33,046 research pairs
+  ---------- ------------ ------------------------------------
+  `[0,0]`      **31,241**                           **94.54%**
+  `[0,1]`      **31,069**                           **94.02%**
+  `[-1,1]`     **30,926**                           **93.58%**
 
-The historical-venue correction changed upstream attribution of eight invalid observations but did **not** change any valid CAR sample size. This is a useful consistency check on the final Stage 7 construction.
+The historical-venue correction changed upstream attribution of eight
+invalid observations but did **not** change any valid CAR sample size.
+This is a useful consistency check on the final Stage 7 construction.
 
-Stage 7 should therefore be treated as **complete and frozen** once the CSV-driven venue override implementation reproduces these same counts.
+Stage 7 should therefore be treated as **complete and frozen** once the
+CSV-driven venue override implementation reproduces these same counts.
 
 ## Stage 8 --- full-document benchmark integration and interpretation
 
-Stage 8A--8C are now implemented and validated. Together they form the frozen
-**whole-document sentiment × novelty benchmark**.
+Stage 8A--8C are now implemented and validated. Together they form the
+frozen **whole-document sentiment × novelty benchmark**.
 
 ### Stage 8A --- regression-ready empirical panel
 
-Stage 8A preserves all **33,046** frozen research pairs and joins current,
-prior, and year-over-year change measures for:
+Stage 8A preserves all **33,046** frozen research pairs and joins
+current, prior, and year-over-year change measures for:
 
-- LMMD lexical sentiment;
-- Japanese Financial BERT sentiment;
-- GPT-6 Sol LLM sentiment;
+-   LMMD lexical sentiment;
+-   Japanese Financial BERT sentiment;
+-   GPT-6 Sol LLM sentiment;
 
 together with Stage 7F market-reaction outcomes.
 
 Final Stage 8A validation:
 
-- **33,046 rows × 135 columns**;
-- **0 missing** current, prior, or change sentiment values for LMMD;
-- **0 missing** current, prior, or change sentiment values for Financial BERT;
-- **0 missing** current, prior, or change sentiment values for the LLM.
+-   **33,046 rows × 135 columns**;
+-   **0 missing** current, prior, or change sentiment values for LMMD;
+-   **0 missing** current, prior, or change sentiment values for
+    Financial BERT;
+-   **0 missing** current, prior, or change sentiment values for the
+    LLM.
 
 The canonical output remains:
 
@@ -1157,25 +1271,39 @@ data/interim/paper2/regressions/baseline/first look_20260929/
 
 The strongest final benchmark interaction results are:
 
-| Sentiment specification | CAR window | Interaction coefficient | t-statistic | raw p-value |
-|---|---:|---:|---:|---:|
-| GPT-6 Sol level × novelty | `[-1,1]` | **0.055811** | **3.031** | **0.002434** |
-| Financial BERT level × novelty | `[-1,1]` | **0.157363** | **2.754** | **0.005881** |
-| GPT-6 Sol level × novelty | `[0,1]` | **0.035542** | **2.280** | **0.02260** |
-| LMMD change × novelty | `[-1,1]` | **0.959298** | **2.025** | **0.04282** |
-| LMMD change × novelty | `[0,1]` | **0.766284** | **1.930** | **0.05363** |
-| Financial BERT level × novelty | `[0,1]` | **0.085776** | **1.818** | **0.06909** |
+  ---------------------------------------------------------------------------
+  Sentiment           CAR window    Interaction    t-statistic    raw p-value
+  specification                     coefficient                
+  --------------- -------------- -------------- -------------- --------------
+  GPT-6 Sol level       `[-1,1]`   **0.055811**      **3.031**   **0.002434**
+  × novelty                                                    
 
-The `[0,0]` interaction estimates are weak for all six model/specification
-combinations. The stronger conditional pattern appears in `[0,1]` and
-especially `[-1,1]`.
+  Financial BERT        `[-1,1]`   **0.157363**      **2.754**   **0.005881**
+  level × novelty                                              
+
+  GPT-6 Sol level        `[0,1]`   **0.035542**      **2.280**    **0.02260**
+  × novelty                                                    
+
+  LMMD change ×         `[-1,1]`   **0.959298**      **2.025**    **0.04282**
+  novelty                                                      
+
+  LMMD change ×          `[0,1]`   **0.766284**      **1.930**    **0.05363**
+  novelty                                                      
+
+  Financial BERT         `[0,1]`   **0.085776**      **1.818**    **0.06909**
+  level × novelty                                              
+  ---------------------------------------------------------------------------
+
+The `[0,0]` interaction estimates are weak for all six
+model/specification combinations. The stronger conditional pattern
+appears in `[0,1]` and especially `[-1,1]`.
 
 ### Stage 8C --- standardized marginal effects and multiple testing
 
-Stage 8C is now implemented as a separate interpretation layer over the frozen
-Stage 8B specifications. It refits the same equations only to recover the
-covariance matrices required for marginal effects and verifies exact
-reproduction of Stage 8B.
+Stage 8C is now implemented as a separate interpretation layer over the
+frozen Stage 8B specifications. It refits the same equations only to
+recover the covariance matrices required for marginal effects and
+verifies exact reproduction of Stage 8B.
 
 Final verification differences are effectively numerical zero:
 
@@ -1184,31 +1312,34 @@ max interaction coefficient difference = 1.11e-16
 max raw-p-value difference              = 8.76e-17
 ```
 
-Stage 8C computes the marginal effect of a **one-sample-standard-deviation
-increase in sentiment** at the 25th, 50th, 75th, 90th, and 95th percentiles of
-`noveltyCNum`, with 95% confidence intervals. It produces **90 marginal-effect
-rows** across all 18 regressions.
+Stage 8C computes the marginal effect of a
+**one-sample-standard-deviation increase in sentiment** at the 25th,
+50th, 75th, 90th, and 95th percentiles of `noveltyCNum`, with 95%
+confidence intervals. It produces **90 marginal-effect rows** across all
+18 regressions.
 
-The strongest economic-magnitude pattern is GPT-6 Sol level sentiment for
-CAR `[-1,1]`:
+The strongest economic-magnitude pattern is GPT-6 Sol level sentiment
+for CAR `[-1,1]`:
 
-| Novelty percentile | Marginal effect of +1 SD sentiment | 95% CI |
-|---:|---:|---:|
-| 25th | **+0.8 bp** | -5.5 to +7.1 bp |
-| 50th | **+3.2 bp** | -2.6 to +9.0 bp |
-| 75th | **+7.2 bp** | +1.4 to +13.0 bp |
-| 90th | **+14.3 bp** | +6.1 to +22.5 bp |
-| 95th | **+21.8 bp** | +9.6 to +34.0 bp |
+    Novelty percentile   Marginal effect of +1 SD sentiment             95% CI
+  -------------------- ------------------------------------ ------------------
+                  25th                          **+0.8 bp**    -5.5 to +7.1 bp
+                  50th                          **+3.2 bp**    -2.6 to +9.0 bp
+                  75th                          **+7.2 bp**   +1.4 to +13.0 bp
+                  90th                         **+14.3 bp**   +6.1 to +22.5 bp
+                  95th                         **+21.8 bp**   +9.6 to +34.0 bp
 
 Financial BERT level sentiment shows the same qualitative pattern for
 CAR `[-1,1]`, rising from approximately **+1.5 bp** at the 25th novelty
-percentile to **+18.1 bp** at the 95th percentile. LMMD sentiment change has a
-different profile: its point estimate rises with novelty but its conditional
-95% confidence interval crosses zero at all reported percentiles.
+percentile to **+18.1 bp** at the 95th percentile. LMMD sentiment change
+has a different profile: its point estimate rises with novelty but its
+conditional 95% confidence interval crosses zero at all reported
+percentiles.
 
 Stage 8C also treats all **18 interaction tests as one multiple-testing
-family** and reports raw, Bonferroni, and Holm-adjusted p-values. The GPT-6 Sol
-level × novelty interaction for CAR `[-1,1]` survives both adjustments:
+family** and reports raw, Bonferroni, and Holm-adjusted p-values. The
+GPT-6 Sol level × novelty interaction for CAR `[-1,1]` survives both
+adjustments:
 
 ``` text
 raw p          ≈ 0.002434
@@ -1216,30 +1347,31 @@ Bonferroni p   ≈ 0.043814
 Holm p         ≈ 0.043814
 ```
 
-The BERT and LMMD interaction results do not survive 5% family-wise correction
-across all 18 tests.
+The BERT and LMMD interaction results do not survive 5% family-wise
+correction across all 18 tests.
 
-Stage 8C produces both diagnostic plots and publication-oriented marginal-
-effect figures with semi-transparent 95% confidence ribbons. The benchmark
-interpretation is therefore:
+Stage 8C produces both diagnostic plots and publication-oriented
+marginal- effect figures with semi-transparent 95% confidence ribbons.
+The benchmark interpretation is therefore:
 
-> **Whole-document contextual/generative sentiment is more strongly associated
-> with filing-period market reactions when the disclosure is more textually
-> novel, with the clearest evidence for GPT-6 Sol level sentiment over the
-> `[-1,1]` event window.**
+> **Whole-document contextual/generative sentiment is more strongly
+> associated with filing-period market reactions when the disclosure is
+> more textually novel, with the clearest evidence for GPT-6 Sol level
+> sentiment over the `[-1,1]` event window.**
 
-This benchmark does **not** establish that sentiment specifically within newly
-introduced text drives the response. That identification question is the
-purpose of the next passage-level persistent/novel design.
+This benchmark does **not** establish that sentiment specifically within
+newly introduced text drives the response. That identification question
+is the purpose of the next passage-level persistent/novel design.
 
 Stage 8A--8C should now be treated as **complete and frozen as the
 whole-document benchmark**.
 
+## Passage-level persistent/novel benchmark and frozen Stage 6E
 
-## Passage-level persistent/novel benchmark and frozen Stage 6E design
-
-The passage-level methodology is now **frozen** after a manually reviewed
-Toyota/MUFG benchmark containing **150 current-year MD&A sentences**.
+The passage-level methodology is now **complete, validated, and frozen**
+after a manually reviewed Toyota/MUFG benchmark containing **150
+current-year MD&A sentences** and full-corpus production over all
+**33,046** research-eligible annual-report pairs.
 
 The final production taxonomy has two labels only:
 
@@ -1250,23 +1382,22 @@ novel      = 67
 
 The operational definition is:
 
-- **persistent** when the same economic/disclosure proposition recurs, even if
-  wording changes, sentences split/merge, or routine annual numerical values
-  update;
-- **novel** when the current sentence introduces or materially changes the
-  proposition, including direction/sign, entity, subsidiary, segment,
-  geography, product/business, accounting metric, driver/causal explanation,
-  strategic/operational content, or measurement/classification/disclosure
-  basis.
+-   **persistent** when the same economic/disclosure proposition recurs,
+    even if wording changes, sentences split/merge, or routine annual
+    numerical values update;
+-   **novel** when the current sentence introduces or materially changes
+    the proposition, including direction/sign, entity, subsidiary,
+    segment, geography, product/business, accounting metric,
+    driver/causal explanation, strategic/operational content, or
+    measurement/classification/disclosure basis.
 
-A changed number alone does **not** imply novelty. The same metric, entity,
-direction, and proposition with only an updated magnitude is generally
-persistent. Direction reversals, different accounting concepts, changed scope,
-changed drivers, and methodological/definition changes are novel.
+A changed number alone does **not** imply novelty. The same metric,
+entity, direction, and proposition with only an updated magnitude is
+generally persistent. Direction reversals, different accounting
+concepts, changed scope, changed drivers, and methodological/definition
+changes are novel.
 
 ### Frozen retrieval architecture
-
-Retrieval remains sentence based and is now complete over the full corpus:
 
 ``` text
 current sentence
@@ -1279,53 +1410,30 @@ score = cosine + 0.02 × weighted_jaccard
 retain top 3 prior-year indices
 ```
 
-The EDINET/IFRS concept dictionary contains normalized Japanese accounting
-aliases built from the EDINET and IFRS taxonomies. Corpus-IDF is computed from
-the Paper 2 MD&A corpus so generic accounting labels receive little weight
-while rarer concept matches matter more.
+On the **129** benchmark rows with a gold prior-sentence alignment, raw
+Ruri achieved Recall@3 = **0.9457** and MRR@10 = **0.8885**. The
+selected corpus-IDF reranker achieved Recall@3 = **0.9690** and MRR@10 =
+**0.9018**. All gold sentences present anywhere in the Ruri top-10 pool
+were moved into the top three under the selected reranker. Retrieval
+tuning is frozen.
 
-### Retrieval benchmark
-
-There are **129** rows with a gold prior-sentence alignment and **21**
-intentional no-match cases. On the 129 alignment rows:
-
-``` text
-Raw Ruri cosine:
-  Recall@1  = 0.8372
-  Recall@3  = 0.9457
-  Recall@10 = 0.9690
-  MRR@10    = 0.8885
-
-Ruri + corpus-IDF Jaccard reranking, lambda = 0.02:
-  Recall@1  = 0.8450
-  Recall@3  = 0.9690
-  Recall@10 = 0.9690
-  MRR@10    = 0.9018
-```
-
-Thus every gold sentence already present anywhere in the Ruri top-10 pool is
-moved into the top three under the selected reranker.
-
-### Sentence-level classifier benchmark
-
-The original v1 prompt produced:
+Full-corpus retrieval is complete for all **33,046** research pairs. The
+canonical artifact is:
 
 ``` text
-accuracy = 0.9400
-macro-F1 = 0.9394
+data/interim/paper2/alignment/persistent_novel/retrieval_pairs.jsonl
 ```
 
-The v1.1 prompt on raw Ruri top-3 produced:
+with a working SSD copy at:
 
 ``` text
-accuracy = 0.9533
-macro-F1 = 0.9529
-persistent F1 = 0.9576
-novel F1      = 0.9481
+~/paper2_stage4/stage6e_work/retrieval_pairs.jsonl
 ```
 
-The frozen sentence-level comparator using **IDF-reranked top-3 + Luna v1.1**
-produced:
+### Frozen classifier benchmarks
+
+The frozen sentence-level comparator using **IDF-reranked top-3 + GPT-6
+Luna v1.1** achieved:
 
 ``` text
 accuracy       = 0.9600
@@ -1335,185 +1443,179 @@ novel F1       = 0.9559
 errors         = 6 / 150
 ```
 
-This remains the high-accuracy benchmark comparator, but it would require one
-Luna request per current-year sentence at production scale.
+The selected production architecture uses one Luna request per
+prior/current annual-report pair. Each request contains the complete
+indexed prior MD&A, complete indexed current MD&A, and the frozen top-3
+prior-index retrieval map for every current sentence. Retrieval scores
+are not sent to Luna.
 
-### Full-corpus retrieval completion
+Two independent unchanged pair-level benchmark runs produced:
 
-The retrieval-only production pass is now **complete** across all **33,046**
-research-eligible annual-report pairs. It used Apple MPS for Ruri embedding and
-made no OpenAI calls.
+  ---------------------------------------------------------------------------------
+  Architecture /       Accuracy     Macro-F1   Persistent     Novel F1       Errors
+  run                                                  F1              
+  ---------------- ------------ ------------ ------------ ------------ ------------
+  Frozen                 0.9600       0.9596       0.9634       0.9559            6
+  sentence-level                                                       
+  comparator                                                           
 
-Final continuation-run diagnostics were:
+  Pair-level run 1       0.9467       0.9461       0.9518       0.9403            8
 
-``` text
-pairs_available       = 33,046
-pairs_written         = 33,044
-pairs_skipped_resume  = 2
-sentences_written     = 3,463,953
-retrieval_only        = true
-device                = mps
-completed             = 2026-10-06 19:14:23
-```
+  Pair-level run 2       0.9533       0.9529       0.9576       0.9481            7
+  ---------------------------------------------------------------------------------
 
-The two skipped pairs were the previously completed smoke-test pairs, so all
-33,046 research pairs have retrieval checkpoints. The canonical retrieval
-artifact is:
+The pair-level architecture reduces request count from approximately
+**3.46 million** sentence calls to **33,046** pair calls while retaining
+approximately 95% benchmark accuracy. It is frozen as the Stage 6E
+production design.
 
-``` text
-data/interim/paper2/alignment/persistent_novel/retrieval_pairs.jsonl
-```
-
-The file is approximately **8.15 GB** (8,150,429,023 bytes). A working SSD copy
-is maintained at:
+The production prompt is:
 
 ``` text
-~/paper2_stage4/stage6e_work/retrieval_pairs.jsonl
+configs/paper2/prompts/persistent_novel_pair_classifier_v1.md
+SHA-256: 0f1824dcc9477f684d3a9749880b094b2df3e83ba772204b4adcacd8605fb1b0
 ```
 
-### Pair-level Luna production architecture
+The test and production pair-level prompt files were verified
+byte-identical.
 
-A production-scale optimization was tested after retrieval completed. Instead
-of sending one Luna request per current sentence, one request is constructed
-for each prior/current annual-report pair. Each request contains:
+### Full-corpus production, recovery, and final QC
 
-1. the complete prior-year MD&A as indexed sentences (`P0`, `P1`, ...);
-2. the complete current-year MD&A as indexed sentences (`C0`, `C1`, ...);
-3. for every current sentence, the frozen retrieval map identifying its top-3
-   prior-year candidate indices; and
-4. one pair-level classification instruction.
+The full Luna production run generated one response for each of the
+**33,046** research-eligible pairs. Initial and recovery processing left
+**341** pair responses with incomplete sentence coverage. The model
+responses were valid JSON; the remaining issue was omitted
+`current_index` classifications.
 
-Retrieval scores are not sent to Luna. The top-3 mapping remains the primary
-evidence, while the full documents provide supplemental context for
-split/merge, recurring disclosure, and proposition-level interpretation.
+The collector's human-readable coverage error reports only the first ten
+missing indices per document. Summing those displayed IDs produced an
+initial diagnostic count of **429**, but a direct set-difference
+calculation against the authoritative retrieval pairs established the
+true count as **447** missing classifications across the same **341**
+documents.
 
-The benchmark harness is:
+A synchronous GPT-6 Luna completion repair then:
+
+-   preserved the production prompt and full pair-level information set;
+-   requested output only for genuinely missing `C` indices;
+-   never regenerated or overwrote an existing classification;
+-   required exact returned-index coverage with no duplicates or
+    unexpected IDs;
+-   checkpointed each successful repair with response ID, token usage,
+    prompt hash, timestamp, returned rows, and post-merge coverage
+    status.
+
+Final repair validation reported:
 
 ``` text
-scripts/paper2/test_persistent_novel_pair_level.py
-configs/paper2/prompts/persistent_novel_pair_classifier_test_v1.md
+Source responses          : 33,046
+Repaired pairs            : 341
+Repaired classifications  : 447
+Fully covered pairs       : 33,046
 ```
 
-The Toyota and MUFG pair inputs were approximately 36,040 and 25,373 input
-tokens respectively, comfortably below the model context limit.
-
-Two independent unchanged Luna runs were performed on the same 150 gold
-sentences:
-
-| Architecture / run | Accuracy | Macro-F1 | Persistent F1 | Novel F1 | Errors |
-|---|---:|---:|---:|---:|---:|
-| Frozen sentence-level comparator | 0.9600 | 0.9596 | 0.9634 | 0.9559 | 6 |
-| Pair-level run 1 | 0.9467 | 0.9461 | 0.9518 | 0.9403 | 8 |
-| Pair-level run 2 | 0.9533 | 0.9529 | 0.9576 | 0.9481 | 7 |
-
-The two pair-level replications are stable and balanced across classes. Their
-mean accuracy is approximately **95.0%**, only about one percentage point below
-the sentence-level comparator. Error analysis also showed that the pair-level
-and sentence-level mistakes were not nested: the first pair-level run corrected
-all six sentence-level errors but introduced eight different errors. This
-supports treating the two designs as slightly different contextual decision
-rules rather than interpreting the small aggregate difference as evidence of a
-major quality loss.
-
-### Production decision
-
-The **pair-level Luna architecture is selected and frozen for full-corpus Stage
-6E classification**. No further prompt tuning, reranker search, grouping-size
-experiments, or benchmark optimization is planned.
-
-The reason is the scale/quality tradeoff:
+The repaired consolidated response file is:
 
 ``` text
-sentence-level requests   ≈ 3.46 million
-pair-level requests       = 33,046
-request-count reduction   ≈ 99%
-
-sampled sentence-level input ≈ 837.5 tokens / sentence
-pair-level benchmark input   ≈ 101.7 tokens / sentence
-input-token reduction        ≈ 87.9%
+data/interim/paper2/alignment/persistent_novel/sync_repair/
+    stage6e_luna_final_repaired_output.jsonl
 ```
 
-Observed pair-level output was approximately 34 tokens per classified sentence
-because the benchmark retained a short reason for auditability. Production
-output format can be revisited only if necessary for cost/runtime, but the
-classification methodology itself is frozen.
-
-Expected final Stage 6E outputs remain:
+with audit/checkpoint provenance at:
 
 ``` text
-data/interim/paper2/alignment/persistent_novel/
-    retrieval_pairs.jsonl
-    classified_pairs.jsonl
-    persistent_novel_sentences.csv
-    persistent_novel_documents.csv
-    persistent_novel_split.metadata.json
+data/interim/paper2/alignment/persistent_novel/sync_repair/
+    stage6e_sync_repair_audit.jsonl
 ```
+
+As the final independent QC gate, the **original collector was rerun
+unchanged** against the repaired consolidated response file. It
+reported:
+
+``` text
+pairs_assembled                    = 33,046
+sentences_assembled                = 3,463,989
+failure_rows                       = 0
+successful_batch_responses_loaded = 33,046
+```
+
+and explicitly confirmed that all retrieved pairs assembled with no
+classification failures.
+
+### Stage 6E freeze decision
+
+Stage 6E is **COMPLETE / VALIDATED / FROZEN**.
+
+Do not reopen prompt tuning, retrieval/reranker tuning, pair grouping,
+benchmark optimization, or successful classifications absent a genuine
+data-integrity problem. The **447** targeted completion classifications
+are part of the canonical production result and are separately
+auditable.
+
+A dedicated Stage 6E methodology/provenance memo records the production,
+recovery, repair, and final-QC history in more detail.
 
 ## Open empirical decisions
 
-The main remaining decisions now occur **after** the frozen decomposition:
+The main remaining decisions now occur **after** the frozen
+decomposition:
 
-- how persistent and novel sentiment should be normalized when component
-  lengths differ materially;
-- minimum component size, if any, for reliable sentiment measurement;
-- whether the primary regression uses both persistent and novel sentiment in
-  levels, changes, or both;
-- the formal equality test between persistent- and novel-sentiment
-  coefficients;
-- which whole-document robustness analyses remain necessary once the
-  component-level design is estimated.
+-   how persistent and novel sentiment should be normalized when
+    component lengths differ materially;
+-   minimum component size, if any, for reliable sentiment measurement;
+-   whether the primary regression uses both persistent and novel
+    sentiment in levels, changes, or both;
+-   the formal equality test between persistent- and novel-sentiment
+    coefficients;
+-   which whole-document robustness analyses remain necessary once the
+    component-level design is estimated.
 
-The full-document Stage 8 benchmark specification remains frozen and should
-not be retuned in response to the passage-level results.
+The full-document Stage 8 benchmark specification remains frozen and
+should not be retuned in response to the passage-level results.
 
 ## Immediate next steps
 
-1. **Productionize the validated pair-level Luna classifier.**
-   - Adapt the benchmark pair-level request construction to the production
-     Stage 6E doer.
-   - Preserve pair-atomic checkpoint/resume behavior.
-   - Prefer Batch API execution if operationally convenient.
-2. **Run full-corpus Stage 6E classification.**
-   - Classify all 33,046 prior/current document pairs using the frozen retrieval
-     checkpoints and pair-level Luna design.
-   - Export sentence-level labels and document-level `persistentText` /
-     `novelText` components.
-3. **QC and freeze Stage 6E.**
-   - Check failures, missing/duplicate sentence indices, class/confidence
-     distributions, component shares, and extreme 0%/100% cases.
-   - Perform a small production audit without reopening benchmark tuning.
-4. **Implement Stage 6F component-level sentiment.**
-   - Score persistent and novel text separately.
-   - Construct persistent/novel sentiment levels and year-over-year changes.
-5. **Build the component-level empirical panel and regressions.**
-   - Estimate persistent and novel sentiment coefficients jointly.
-   - Test formally whether their market associations differ.
-   - Retain the frozen whole-document Stage 8 benchmark as context.
-6. **Complete robustness, tables, figures, and writing.**
+1.  **Implement Stage 6F component-level sentiment.**
+    -   Build `persistentText` and `novelText` components from the
+        frozen Stage 6E sentence classifications.
+    -   Decide and document component-length handling and normalization
+        before scoring.
+    -   Score persistent and novel text separately using the selected
+        sentiment design.
+2.  **Build the component-level empirical panel.**
+    -   Construct persistent/novel sentiment levels and year-over-year
+        changes.
+    -   Preserve the frozen whole-document Stage 8 benchmark alongside
+        the new component measures.
+3.  **Estimate the primary persistent-versus-novel regressions.**
+    -   Include persistent and novel sentiment jointly.
+    -   Test formally whether their market associations differ.
+4.  **Complete robustness, tables, figures, and writing.**
+    -   Keep Stage 6E frozen while downstream empirical specifications
+        are evaluated.
 
 ## Current bottleneck
 
-The methodological definition, retrieval design, and classifier architecture
-are **no longer bottlenecks**. Full-corpus retrieval is also complete.
+Stage 6E is no longer a bottleneck. The methodological definition,
+retrieval, classifier architecture, full-corpus classification, targeted
+completion repair, and final QC are complete.
 
-The immediate bottleneck is now **production execution of the frozen pair-level
-Luna classifier across 33,046 document pairs**. Once Stage 6E classification
-and QC complete, the substantive research bottleneck shifts to Stage 6F and the
-component-level regressions: whether sentiment in novel text has a different
-market association from sentiment in persistent text.
+The substantive bottleneck has shifted to **Stage 6F and the
+component-level empirical design**: constructing sentiment measures
+separately for persistent and novel disclosure and testing whether their
+market associations differ.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately **82--87%**.
+**Overall paper:** approximately **85--90%**.
 
-The full corpus, extraction, longitudinal matching, novelty construction,
-three whole-document sentiment measures, market-reaction infrastructure,
-regression-ready panel, 18-regression whole-document benchmark,
-multiple-testing treatment, marginal-effect interpretation, persistent/novel
-methodology, and full-corpus retrieval are complete.
+The full corpus, extraction, longitudinal matching, novelty
+construction, three whole-document sentiment measures, market-reaction
+infrastructure, regression-ready panel, 18-regression whole-document
+benchmark, multiple-testing treatment, marginal-effect interpretation,
+and the complete persistent/novel decomposition are now finished.
 
-The remaining work is concentrated in **full-corpus pair-level Luna
-classification**, Stage 6F component-level sentiment, the resulting
-persistent-versus-novel regressions, final robustness choices, results writing,
-and full-paper integration. Stage 6E model/retrieval development should not be
-reopened absent a genuine production failure.
+The remaining work is concentrated in Stage 6F component-level
+sentiment, the persistent-versus-novel empirical panel and regressions,
+final robustness choices, results writing, and full-paper integration.
+Stage 6E should not be reopened absent a genuine data-integrity problem.
