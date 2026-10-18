@@ -1,0 +1,19 @@
+# Stage 6F-B isolated configuration. This file is NEW and does not change pipeline.toml.
+# The existing Stage 6D v2 prompt is deliberately reused unchanged.
+[persistent_novel_component_sentiment]
+documents_csv = "data/interim/paper2/alignment/persistent_novel/results_final_repaired/persistent_novel_documents.csv"
+qc_summary_json = "data/interim/paper2/alignment/persistent_novel/component_qc/component_qc_summary.json"
+prompt_file = "configs/paper2/prompts/llm_sentiment_v2.md"
+output_dir = "data/interim/paper2/sentiment/persistent_novel/llm_luna_stage6fb"
+model = "gpt-6-luna"
+reasoning_effort = "none"
+# 6D-compatible scoring units and char-weighted aggregation.
+target_unit_chars = 1050
+max_unit_chars = 1400
+max_concurrent_requests = 1
+max_retries = 3
+retry_base_seconds = 2.0
+resume = true
+# Safe default: no paid API calls until --live is explicitly passed.
+dry_run = true
+# Prototype limits set on command line. Do not enable full run without QC.

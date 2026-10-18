@@ -17,7 +17,7 @@ retrieval architecture, pair-level GPT-6 Luna classifier, full-corpus
 production classification, targeted completion repair, and final QC are
 now complete and frozen. All **33,046** research-eligible pairs and
 **3,463,989** current-year sentences assemble successfully with **zero
-classification failures**. Stage 6F component-level sentiment is next.
+classification failures**. Stage 6F-A component QC and Stage 6F-B component sentiment are now complete. A separate five-way disclosure-change classification experiment has also completed full-corpus processing and targeted recovery. Component-level empirical estimation is the next primary research task.
 
 ## Current Pipeline Status
 
@@ -47,6 +47,15 @@ classification failures**. Stage 6F component-level sentiment is next.
     synchronous repair completed 447 omitted classifications across 341
     pair responses; the original collector then assembled all 33,046
     pairs with zero failures.
+-   **Stage 6F-A --- Persistent/novel component QC:** complete
+    and validated.
+-   **Stage 6F-B --- Persistent/novel component sentiment:** complete.
+    GPT-6 Luna scored 33,046 persistent and 33,037 novel components;
+    nine novel components were empty and zero scoring failures remain.
+-   **Separate five-way disclosure-change experiment:** complete
+    for 33,046 pairs and 3,463,989 sentences, including targeted
+    recovery and exploratory composition regressions. This experiment
+    does not replace frozen Stage 6E.
 -   **Stage 7A--7F --- Market-reaction construction:** complete,
     validated, and frozen. Stage 7A retains 32,126 eligible events;
     valid CAR samples are 31,241 `[0,0]`, 31,069 `[0,1]`, and 30,926
@@ -2543,19 +2552,174 @@ genuine data-integrity problem. The 447 targeted completion
 classifications are part of the canonical result and remain separately
 auditable.
 
-## Next Step
+## Stage 6E Handoff and Subsequent Progress
 
-Proceed to **Stage 6F component-level sentiment**:
+The original Stage 6E handoff called for construction and sentiment
+scoring of persistent and novel components. Those tasks are now
+complete as Stage 6F-A and Stage 6F-B, documented below.
 
-1.  construct document-level `persistentText` and `novelText` from the
-    frozen sentence classifications;
-2.  decide and document component-length/normalization handling;
-3.  score persistent and novel components separately;
-4.  construct component-level sentiment levels and year-over-year
-    changes;
-5.  estimate the primary persistent-versus-novel market-reaction
-    regressions, including a formal equality test between their
-    coefficients.
+The frozen Stage 6E result remains unchanged.
 
-The frozen whole-document Stage 8 benchmark remains the comparison
-checkpoint.
+---
+
+# October 2026 Technical Update --- Stage 6F and Five-Way Experiment
+
+## Stage 6F-A --- Persistent/Novel Component QC
+
+Stage 6F-A constructs and validates the persistent and novel
+components derived from the frozen Stage 6E classifications.
+
+Implementation:
+
+- `src/mdna_analysis/persistent_novel_component_qc.py`
+- `src/pipeline/stages/persistent_novel_component_qc.py`
+
+Canonical outputs:
+
+`data/interim/paper2/alignment/persistent_novel/component_qc/`
+
+The pipeline dispatcher includes the
+`persistent_novel_component_qc` stage. In the canonical
+`configs/paper2/pipeline.toml`, both
+`persistent_novel_component_qc` and `persistent_novel_split`
+are disabled by default to prevent unintended reruns.
+
+## Stage 6F-B --- Persistent/Novel Component Sentiment
+
+Stage 6F-B scores the persistent and novel disclosure components
+separately using GPT-6 Luna.
+
+Implementation:
+
+- `src/mdna_analysis/persistent_novel_component_sentiment.py`
+- `src/pipeline/stages/persistent_novel_component_sentiment.py`
+- `scripts/paper2/run_component_sentiment.py`
+- `configs/paper2/persistent_novel_component_sentiment.toml`
+
+Canonical output root:
+
+`data/interim/paper2/sentiment/persistent_novel/llm_luna_stage6fb/`
+
+Final run:
+
+`runs/20261013T001629930864Z_d32c9e5e/`
+
+Within that run, the principal output is
+`component_sentiment.csv`, accompanied by `metadata.json`.
+
+Production facts:
+
+- Model: `gpt-6-luna`
+- Persistent components scored: 33,046
+- Novel components scored: 33,037
+- Genuinely empty novel components: 9
+- Scoring failures: 0
+- Prompt SHA-256:
+  `326e4698aed9575f16e26ed33e097fc0c3d4f68be1e6c774672fcd013e4801ff`
+
+Individual JSON response records are retained for auditing.
+The local travel validation completed with zero failures and
+zero warnings before the NAS back-port.
+
+Stage 6F-B completion does not imply that component-level
+market-reaction regressions have been completed.
+
+## Separate Five-Way Disclosure-Change Experiment
+
+This experiment is distinct from the frozen Stage 6E
+persistent/novel decomposition.
+
+Sentence labels:
+
+- `unchanged`
+- `revised`
+- `new_candidate`
+- `non_substantive`
+- `uncertain`
+
+Frozen production prompt:
+
+`configs/paper2/prompts/disclosure_change_pair_classifier_5way_v2.md`
+
+Prompt SHA-256:
+
+`dda8bc260b7c2054ccf4e5822e78e7509d43379dd3d7d964edaa8ff08adc319f`
+
+Implementation and evaluation scripts include:
+
+- `scripts/paper2/build_disclosure_change_5way_batches_v2.py`
+- `scripts/paper2/collect_disclosure_change_5way.py`
+- `scripts/paper2/recover_disclosure_change_5way.py`
+- `scripts/paper2/run_disclosure_change_5way_smoke.py`
+- `scripts/paper2/run_5way_composition_regressions.py`
+- `tests/test_disclosure_change_5way.py`
+
+Canonical experiment root:
+
+`data/interim/paper2/alignment/disclosure_change_5way_v1/`
+
+Final collected output:
+
+`collected_repaired_prompt_v2/`
+
+Exploratory regression outputs:
+
+`exploratory_composition_v1/`
+
+Production and recovery:
+
+- Model: `gpt-6-luna`
+- Filing pairs: 33,046
+- Current-year sentences: 3,463,989
+- Original production batches: 8
+- Failed pairs repaired: 145
+- Recovery tasks: 280
+- Final pair failures: 0
+
+Final sentence-label counts:
+
+| Label | Count |
+|---|---:|
+| `unchanged` | 523,131 |
+| `revised` | 1,451,245 |
+| `new_candidate` | 227,437 |
+| `non_substantive` | 1,261,976 |
+| `uncertain` | 200 |
+| **Total** | **3,463,989** |
+
+Exploratory controlled regressions found positive associations
+between new-disclosure share and short-window CARs, but these
+are not causal estimates or component-sentiment results.
+See `STATUS.md` for interpretation and research priorities.
+
+The test suite `tests/test_disclosure_change_5way.py`
+passed all five tests in the NAS `paper2` environment.
+
+## Reproducibility and Back-Port Status
+
+The Stage 6F and five-way outputs were copied from the
+local travel workspace to an independent NAS staging area.
+The staging copies passed full-content rsync verification
+against their local originals.
+
+The three dataset directories have subsequently been copied
+into the canonical NAS repository. Full checksum verification
+of these canonical copies is pending at the time of this
+documentation update.
+
+Staging copies and local originals must be retained until
+canonical verification is confirmed. No frozen Stage 6E,
+Stage 7, or Stage 8 outputs were intentionally replaced.
+
+## Current Technical Next Steps
+
+1. Verify the canonical NAS dataset copies against staging.
+2. Construct and validate the persistent/novel
+   component-sentiment empirical panel.
+3. Estimate joint persistent/novel sentiment specifications,
+   including formal coefficient-equality tests.
+4. Evaluate component normalization and robustness choices.
+5. Decide whether to pilot sentiment scoring separately for
+   unchanged, revised, and new five-way disclosure categories.
+
+The existing whole-document Stage 8 benchmark remains frozen.

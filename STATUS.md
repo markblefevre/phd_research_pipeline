@@ -1,6 +1,6 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-10-09
+**Last updated:** 2026-10-18
 
 ## Current thesis
 
@@ -27,14 +27,63 @@ completion repair added **447** classifications across **341**
 incomplete pair responses without overwriting existing classifications.
 The original collector was then rerun unchanged and assembled all
 **33,046** pairs with **zero classification failures**. Stage 6E is
-therefore complete, validated, and frozen. The next substantive step is
-Stage 6F component-level sentiment scoring.
+therefore complete, validated, and frozen. Stage 6F-A component QC and Stage 6F-B persistent/novel sentiment scoring are now complete. The next substantive step is the component-level empirical analysis.
 
 The completed full-document benchmark remains important because it
 establishes the baseline result that contextual/generative sentiment
 becomes more economically informative as whole-document textual novelty
 rises. It does not, however, identify whether the market response is
 specifically attributable to sentiment in the changed text.
+
+## Research update --- 2026-10-18
+
+### Stage 6F-A/B --- Component QC and sentiment
+
+Stage 6F-A component QC and Stage 6F-B sentiment scoring are complete.
+GPT-6 Luna scored 33,046 persistent components and 33,037 novel
+components. Nine novel components were genuinely empty; no scoring
+failures remain. The final run is:
+
+`data/interim/paper2/sentiment/persistent_novel/llm_luna_stage6fb/runs/20261013T001629930864Z_d32c9e5e/`
+
+Individual model-response audit files and run metadata are retained.
+The Stage 6E classifications remain frozen and unchanged.
+
+### Five-way disclosure-change experiment
+
+A separate five-way experiment classifies disclosure sentences as
+`unchanged`, `revised`, `new_candidate`, `non_substantive`, or
+`uncertain`. GPT-6 Luna processed all 33,046 eligible filing pairs,
+covering 3,463,989 current-year sentences. The final collection
+incorporates targeted recovery of 145 failed pairs through 280
+recovery tasks, with zero remaining pair failures.
+
+The frozen production prompt is
+`configs/paper2/prompts/disclosure_change_pair_classifier_5way_v2.md`.
+
+The experiment and its recovery/audit records are stored under
+`data/interim/paper2/alignment/disclosure_change_5way_v1/`.
+
+Exploratory controlled composition regressions found a positive
+association between the share of new disclosure and short-window
+CARs: approximately +0.0731 CAR percentage points per 10-percentage-
+point increase in new share for [0,+1] (p = 0.039), and +0.0999
+for [-1,+1] (p = 0.021). Revised-share coefficients were not
+statistically significant in these specifications.
+
+These results are exploratory associations, not causal estimates
+or sentiment effects. The five-way experiment does not supersede
+the frozen Stage 6E persistent/novel classification.
+
+### Remaining research work
+
+The immediate priority is to construct and estimate the
+persistent-versus-novel component-sentiment empirical models,
+including joint specifications and formal coefficient comparisons.
+A separate methodological decision is whether to pilot sentiment
+scoring for the unchanged, revised, and new five-way categories.
+
+The existing whole-document Stage 8 benchmark remains frozen.
 
 ## What is complete
 
@@ -1575,47 +1624,30 @@ should not be retuned in response to the passage-level results.
 
 ## Immediate next steps
 
-1.  **Implement Stage 6F component-level sentiment.**
-    -   Build `persistentText` and `novelText` components from the
-        frozen Stage 6E sentence classifications.
-    -   Decide and document component-length handling and normalization
-        before scoring.
-    -   Score persistent and novel text separately using the selected
-        sentiment design.
-2.  **Build the component-level empirical panel.**
-    -   Construct persistent/novel sentiment levels and year-over-year
-        changes.
-    -   Preserve the frozen whole-document Stage 8 benchmark alongside
-        the new component measures.
-3.  **Estimate the primary persistent-versus-novel regressions.**
-    -   Include persistent and novel sentiment jointly.
-    -   Test formally whether their market associations differ.
-4.  **Complete robustness, tables, figures, and writing.**
-    -   Keep Stage 6E frozen while downstream empirical specifications
-        are evaluated.
+1. Construct and validate the component-level empirical panel using
+   completed Stage 6F sentiment outputs and the frozen market-reaction
+   infrastructure.
+2. Estimate persistent and novel sentiment jointly, test coefficient
+   equality, and evaluate component-length and normalization choices.
+3. Decide whether to run a targeted five-way sentiment pilot,
+   separately from the frozen persistent/novel primary design.
+4. Complete robustness analysis, tables, interpretation, and writing.
 
 ## Current bottleneck
 
-Stage 6E is no longer a bottleneck. The methodological definition,
-retrieval, classifier architecture, full-corpus classification, targeted
-completion repair, and final QC are complete.
-
-The substantive bottleneck has shifted to **Stage 6F and the
-component-level empirical design**: constructing sentiment measures
-separately for persistent and novel disclosure and testing whether their
-market associations differ.
+Stage 6E classification and Stage 6F-A/B component sentiment are
+complete. The main bottleneck is now empirical identification and
+interpretation: constructing the component-level panel, estimating
+persistent-versus-novel sentiment effects, and determining whether
+the five-way decomposition merits further sentiment analysis.
 
 ## Rough completion estimate
 
-**Overall paper:** approximately **85--90%**.
+The earlier 85--90% estimate was recorded before completion of
+Stage 6F and the additional five-way experiment. It is not carried
+forward as a current quantitative estimate because the remaining
+empirical specifications and paper scope are still being resolved.
 
-The full corpus, extraction, longitudinal matching, novelty
-construction, three whole-document sentiment measures, market-reaction
-infrastructure, regression-ready panel, 18-regression whole-document
-benchmark, multiple-testing treatment, marginal-effect interpretation,
-and the complete persistent/novel decomposition are now finished.
-
-The remaining work is concentrated in Stage 6F component-level
-sentiment, the persistent-versus-novel empirical panel and regressions,
-final robustness choices, results writing, and full-paper integration.
-Stage 6E should not be reopened absent a genuine data-integrity problem.
+The core data and classification infrastructure is complete.
+Outstanding work is concentrated in component-level regressions,
+robustness, interpretation, and manuscript integration.

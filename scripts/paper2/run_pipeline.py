@@ -39,6 +39,7 @@ from src.pipeline.stages.market_reaction_final_table import (run_stage_market_re
 from src.pipeline.stages.empirical_panel import (run_stage_empirical_panel)
 from src.pipeline.stages.baseline_regressions import (run_stage_baseline_regressions)
 from src.pipeline.stages.marginal_effects import run_stage_marginal_effects
+from src.pipeline.stages.persistent_novel_component_qc import run_stage_persistent_novel_component_qc
 
 # ----------------------------
 # Helpers
@@ -252,6 +253,14 @@ def main() -> int:
     else:
         logger.info("Stage persistent_novel_split disabled")
         
+    # Stage 6F-A: persistent/novel component QC
+    if bool(stages.get("persistent_novel_component_qc", False)):
+        run_stage_persistent_novel_component_qc(
+            paper=paper, cfg=cfg, logger=logger
+        )
+    else:
+        logger.info("Stage persistent_novel_component_qc disabled")
+
     # Stage 7A: market-reaction event eligibility
     if bool(stages.get("market_reaction_eligibility", False)):
         run_stage_market_reaction_eligibility(paper=paper, cfg=cfg, logger=logger)
