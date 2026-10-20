@@ -17,7 +17,7 @@ retrieval architecture, pair-level GPT-6 Luna classifier, full-corpus
 production classification, targeted completion repair, and final QC are
 now complete and frozen. All **33,046** research-eligible pairs and
 **3,463,989** current-year sentences assemble successfully with **zero
-classification failures**. Stage 6F-A component QC and Stage 6F-B component sentiment are now complete. A separate five-way disclosure-change classification experiment has also completed full-corpus processing and targeted recovery. Component-level empirical estimation is the next primary research task.
+classification failures**. Stage 6F-A component QC and Stage 6F-B component sentiment are now complete. A separate five-way disclosure-change classification experiment has also completed full-corpus processing and targeted recovery. **Stage 8D controls and exploratory regressions, and Stage 8E three-component (`unchanged`/`revised`/`new`) sentiment scoring, validation, and first-look regressions, are now complete.** Stage 8E findings require event-day decomposition and further robustness before causal or relative-response claims.
 
 ## Current Pipeline Status
 
@@ -70,6 +70,16 @@ classification failures**. Stage 6F-A component QC and Stage 6F-B component sent
     complete and validated; 90 marginal-effect rows, Holm and Bonferroni
     adjustment across all 18 interaction tests, and publication-oriented
     confidence-band figures.
+-   **Stage 8D --- Pre-filing controls and preliminary regressions:**
+    complete; historical industry, valuation, and pre-filing market controls
+    merged for 32,126 events. Exploratory component-sentiment and five-way
+    disclosure-*share* models plus firm/year FE robustness are recorded.
+-   **Stage 8E --- Three-way component sentiment and regressions:**
+    scoring and independent validation passed for 33,046 filings and
+    89,946 nonempty components (zero failures). Twelve first-look models
+    and 36 formal pairwise comparisons completed. New-sentiment slope
+    positive for CAR [-1,+1], but no pairwise difference significant at
+    5%; event-time attribution and robustness remain pending.
 
 The current corpus contains **37,807 Annual Securities Reports** and
 **37,757 successfully extracted MD&A sections**.
@@ -129,6 +139,11 @@ flowchart TD
     AF --> AG[Stage 8C<br/>Marginal effects + multiple testing]
     AG --> AH[Frozen whole-document benchmark]
     P --> AI[Stage 6E<br/>Persistent / novel decomposition]
+    AI --> AJ[Five-way disclosure-change experiment]
+    AJ --> AK[Stage 8E<br/>Three-component Luna sentiment]
+    AK --> AL[Stage 8E<br/>Validation and first-look regressions]
+    AM[Stage 8D<br/>Pre-filing controls] --> AL
+    AE --> AL
 ```
 
 ------------------------------------------------------------------------
@@ -2621,8 +2636,9 @@ Individual JSON response records are retained for auditing.
 The local travel validation completed with zero failures and
 zero warnings before the NAS back-port.
 
-Stage 6F-B completion does not imply that component-level
-market-reaction regressions have been completed.
+Stage 6F-B completion alone did not imply component-level
+market-reaction regressions had been completed. Subsequent Stage 8D
+and 8E analyses are documented in the dated checkpoint below.
 
 ## Separate Five-Way Disclosure-Change Experiment
 
@@ -2711,15 +2727,146 @@ Staging copies and local originals must be retained until
 canonical verification is confirmed. No frozen Stage 6E,
 Stage 7, or Stage 8 outputs were intentionally replaced.
 
+## Stage 8D–8E --- Controls, Three-Component Sentiment, and First-Look Inference (2026-10-19)
+
+### Stage 8D --- pre-filing controls and prior first looks
+
+The Stage 8D combined event controls are at:
+
+`data/interim/paper2/controls/stage8d_market_industry_event_controls.csv`
+
+They cover 32,126 eligible event rows. Valuation/industry matching uses
+the latest available market session **strictly before** the EDINET filing
+calendar date. Variables used in the current Stage 8E regressions:
+`ln_mktcap`, `book_to_market`, `roe_ttm`, `volatility_60d`,
+`momentum_20d`, `log_avg_trading_value_60d`, along with Stage 8
+`noveltyCNum` and `logLengthChange`. The market controls are based
+on *raw* daily closing prices with problematic corporate-action sessions
+excluded; they remain provisional pending adjusted-return robustness.
+Industry S33 was available for earlier industry-FE models but is not a
+separate regressor in the Stage 8E firm-and-year FE specification.
+
+Existing first-look scripts:
+- `scripts/paper2/build_stage8d_market_industry_controls.py`
+- `scripts/paper2/run_stage8d_controlled_regressions.py`
+- `scripts/paper2/run_stage8d_5way_controlled_regressions.py`
+- `scripts/paper2/run_stage8d_twfe_robustness.py`
+
+Earlier five-way **content-share** effects must not be confused with
+component-specific sentiment effects; model significance attenuates in
+firm/year FE specifications. Preserve these exploratory outputs unchanged.
+
+### Stage 8E --- scoring and validation
+
+The five-way disclosure-change classification provides current-year text
+for `unchanged`, `revised`, and `new` (source fields `unchangedText`,
+`revisedText`, `newCandidateText`). The five-way `new_candidate` label is
+*textual novelty*, not proof of new market information. Non-substantive
+and uncertain classifications are not separately scored as the three
+substantive categories.
+
+Script: `scripts/paper2/run_stage8e_three_component_sentiment.py`
+
+Model `gpt-6-luna`, prompt v2 SHA-256
+`326e4698aed9575f16e26ed33e097fc0c3d4f68be1e6c774672fcd013e4801ff`,
+reasoning `none`, target/max narrative unit sizes 1,050/1,400
+characters. Each nonempty component is scored independently, then
+aggregated using narrative-character weighting. Empty components are
+recorded with **missing** sentiment, never artificial neutral scores.
+Threaded live execution and per-document-component audit JSONs support
+resumption. The authoritative Stage 8E full-run ID is:
+
+`20261019T021943726283Z_4f2fbd28`
+
+Result CSV:
+
+`data/interim/paper2/sentiment/three_component_stage8e/runs/20261019T021943726283Z_4f2fbd28/three_component_sentiment.csv`
+
+Validation: **PASSED**, 33,046 filings, 89,946 nonempty scored or resumed
+components, 9,192 empty components, zero scoring failures, 24,105
+filings with all three components and two with none. There were
+89,892 newly scored and 54 resumed pilot components. Incremental full-run
+usage was 326,817,417 input and 6,157,540 output tokens.
+
+| Component | Present | Empty | Mean tone | SD | Observed range |
+|---|---:|---:|---:|---:|---|
+| Unchanged | 31,926 | 1,120 | +0.03691 | 0.24587 | [-1, +0.750] |
+| Revised | 33,029 | 17 | +0.03756 | 0.27691 | [-1, +1] |
+| New | 24,991 | 8,055 | +0.04765 | 0.32787 | [-1, +1] |
+
+### Stage 8E --- regression specification and first-look results
+
+`python -u scripts/paper2/run_stage8e_validate_regressions.py`
+
+Output: `data/interim/paper2/regressions/stage8e_three_component_firstlook/`
+
+The script validates the Luna CSV/manifest, joins on unique
+`curr_docID` to the 33,046-row Stage 8 panel and 32,126 matched
+control rows, and estimates the three sentiment slopes jointly with
+novelty/length, valuation, and pre-filing market controls. Three CAR
+windows `[0,0]`, `[0,+1]`, and `[-1,+1]`; year FE and firm+year FE;
+firm-clustered standard errors with absorbed-FE CR1 correction. Two
+missingness designs: (i) all-three-present complete cases; and (ii)
+zero-filled score covariates *with component-presence indicators*, not
+zero-as-neutral imputation. Twelve specifications; the three pairwise
+coefficient-equality contrasts for each specification yield 36 tests.
+All outputs are **exploratory first looks**, not frozen final estimates.
+
+Primary complete-case firm+year FE, CAR `[-1,+1]`: N=22,166,
+4,099 firms; coefficients in CAR percentage points per 1.0 unit of
+sentiment:
+
+| Slope | Estimate | p |
+|---|---:|---:|
+| Unchanged | -0.0146 | .926 |
+| Revised | +0.1545 | .400 |
+| **New** | **+0.2506** | **.0251** |
+
+The larger-sample presence-indicator firm+year FE version yields
+N=30,188, 4,192 firms, new slope +0.2418 (p=.0192). No corresponding
+new-sentiment slope reaches 5% for filing day `[0,0]` or `[0,+1]` in
+the firm+year FE specifications.
+
+**Formal slope contrasts (primary complete-case firm+year FE, `[-1,+1]`):**
+
+| Contrast | Difference | p | 95% CI |
+|---|---:|---:|---|
+| New minus unchanged | +0.2652 | .1583 | [-0.1033, +0.6337] |
+| New minus revised | +0.0962 | .6485 | [-0.3175, +0.5098] |
+| Revised minus unchanged | +0.1690 | .4666 | [-0.2861, +0.6241] |
+
+No pairwise contrast among 36 reported tests is significant at the
+conventional 5% threshold. Presence-indicator firm+year FE
+new-minus-unchanged for `[-1,+1]` is +0.2625 (p=.0998), suggestive
+but not conventionally significant. A significant **new** slope plus
+an insignificant **unchanged** slope is *not* evidence of a significant
+between-slope difference. The main advisor-driven comparative claim
+therefore remains **unestablished**.
+
+### Research caution and next empirical tests
+
+The only consistently significant new-sentiment slope occurs in
+`[-1,+1]`, which includes the **day before** EDINET filing. This
+raises pre-disclosure/timing confounding rather than proving market
+reaction to newly released filing information. First next test: day
+`-1`, day `0`, day `+1` abnormal-return regressions on an **identical
+complete-case sample** with matching controls/FE and firm clustering.
+Also assess cross-window and multiple-testing sensitivity and prior
+earnings/other disclosures. The market-control raw-price construction
+requires adjusted-price robustness. Do not revise frozen historical
+stages based on these exploratory results.
+
 ## Current Technical Next Steps
 
-1. Verify the canonical NAS dataset copies against staging.
-2. Construct and validate the persistent/novel
-   component-sentiment empirical panel.
-3. Estimate joint persistent/novel sentiment specifications,
-   including formal coefficient-equality tests.
-4. Evaluate component normalization and robustness choices.
-5. Decide whether to pilot sentiment scoring separately for
-   unchanged, revised, and new five-way disclosure categories.
+1. Preserve Stage 8E validated CSV, manifest, individual audit JSONs,
+   and first-look `model_comparison.csv`, `coefficients.csv`,
+   `pairwise_tests.csv`, and regression metadata.
+2. Run identical-sample single-day `-1`, `0`, and `+1` regressions and
+   investigate filing-time and pre-filing information confounding.
+3. Evaluate formal multiplicity corrections, statistical power and
+   sample selection, plus appropriate adjusted-price market controls.
+4. Reconcile the frozen Stage 6F-B persistent/novel design and the
+   separate five-way `unchanged`/`revised`/`new` experiment in the
+   paper's hypotheses; do not conflate them or refit to stars.
+5. Preserve the frozen Stage 8A–8C and Stage 6E benchmarks.
 
-The existing whole-document Stage 8 benchmark remains frozen.

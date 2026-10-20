@@ -1,6 +1,6 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-10-18
+**Last updated:** 2026-10-19
 
 ## Current thesis
 
@@ -27,7 +27,7 @@ completion repair added **447** classifications across **341**
 incomplete pair responses without overwriting existing classifications.
 The original collector was then rerun unchanged and assembled all
 **33,046** pairs with **zero classification failures**. Stage 6E is
-therefore complete, validated, and frozen. Stage 6F-A component QC and Stage 6F-B persistent/novel sentiment scoring are now complete. The next substantive step is the component-level empirical analysis.
+therefore complete, validated, and frozen. Stage 6F-A component QC and Stage 6F-B persistent/novel sentiment scoring are complete. Stage 8D market/industry controls and Stage 8E five-way-derived three-component sentiment scoring, validation, and first-look regressions have now also completed. The immediate question is whether the three-day new-sentiment association survives event-day decomposition and whether new, revised, and unchanged slopes truly differ.
 
 The completed full-document benchmark remains important because it
 establishes the baseline result that contextual/generative sentiment
@@ -75,15 +75,78 @@ These results are exploratory associations, not causal estimates
 or sentiment effects. The five-way experiment does not supersede
 the frozen Stage 6E persistent/novel classification.
 
+### Stage 8D–8E checkpoint --- 2026-10-19
+
+**Stage 8D:** combined historical industry, valuation and strictly
+pre-filing market controls for 32,126 eligible events. Stage 8D
+controlled sentiment and five-way content-share models, including
+firm/year FE robustness, are exploratory; raw-close market controls
+remain provisional. Do not mistake five-way **share** effects for
+category-specific **tone** effects.
+
+**Stage 8E:** GPT-6 Luna v2 sentiment scoring is now **complete and
+independently validated** for all 33,046 filing pairs and 89,946
+nonempty category components. The components are `unchanged`,
+`revised`, and `new`, derived from the separate five-way text
+classification—not the frozen Stage 6E binary decomposition. There
+were zero scoring failures; 54 pilot scores were resumed rather than
+regenerated. The 8,055 empty new categories remain missing, not
+neutral. Prompt SHA-256 is
+`326e4698aed9575f16e26ed33e097fc0c3d4f68be1e6c774672fcd013e4801ff`.
+
+Authoritative score artifact:
+
+`data/interim/paper2/sentiment/three_component_stage8e/runs/20261019T021943726283Z_4f2fbd28/three_component_sentiment.csv`
+
+Validation distributions (valid N / mean / SD): unchanged
+31,926 / +.03691 / .24587; revised 33,029 / +.03756 / .27691;
+new 24,991 / +.04765 / .32787. All scores fall inside [-1,1].
+
+**First-look Stage 8E regressions:** 12 models across three CAR
+windows, two FE designs (year or firm+year), and two missing-component
+designs (complete case or zero-filled scores *with presence indicators*).
+All models use jointly entered three-component sentiments and Stage 8D
+controls with firm-clustered standard errors. Control join coverage is
+32,126 of 33,046 panel rows.
+
+Primary complete-case firm+year FE for CAR `[-1,+1]`:
+N=22,166 / 4,099 firms. Unchanged slope -0.0146 (p=.926), revised
++0.1545 (p=.400), **new +0.2506 (p=.0251)**. Presence-indicator
+firm+year FE (N=30,188) gives new +0.2418 (p=.0192). The new slope
+is not significant at 5% in analogous `[0,+1]` or `[0,0]` models.
+
+**The main contrast is not established.** Complete-case firm+year
+FE CAR `[-1,+1]`: new-minus-unchanged +0.2652 (p=.1583, 95% CI
+[-.1033,+.6337]); new-minus-revised +0.0962 (p=.6485); revised-minus-
+unchanged +0.1690 (p=.4666). Across the reported 36 pairwise tests
+none has p<.05. The larger-sample new-minus-unchanged contrast is
++0.2625 (p=.0998), suggestive but not significant at 5%.
+
+**Interpretation:** new-text sentiment has an exploratory positive
+association with the three-day market window, **not** proven stronger
+market informativeness than unchanged or revised tone. The significant
+window includes day **−1**, before EDINET filing, raising the
+possibility of other or earlier public announcements. Textually new
+language need not represent information new to investors. Multiple
+testing and selection effects remain considerations.
+
+Regression artifacts:
+
+`data/interim/paper2/regressions/stage8e_three_component_firstlook/`
+
+Key files: `model_comparison.csv`, `coefficients.csv`,
+`pairwise_tests.csv`; implementation
+`scripts/paper2/run_stage8e_validate_regressions.py`.
+
 ### Remaining research work
 
-The immediate priority is to construct and estimate the
-persistent-versus-novel component-sentiment empirical models,
-including joint specifications and formal coefficient comparisons.
-A separate methodological decision is whether to pilot sentiment
-scoring for the unchanged, revised, and new five-way categories.
-
-The existing whole-document Stage 8 benchmark remains frozen.
+Next prioritize **same-sample single-day** event regressions
+(day −1, 0, +1) and formal coefficient contrasts, then evaluate
+pre-filing timing, multiple-testing corrections, component-presence
+selection, and adjusted-price robustness. Preserve separate
+persistent/novel and five-way approaches without claiming they
+answer identical questions. The full-document Stage 8 benchmark
+remains frozen.
 
 ## What is complete
 
@@ -1624,22 +1687,29 @@ should not be retuned in response to the passage-level results.
 
 ## Immediate next steps
 
-1. Construct and validate the component-level empirical panel using
-   completed Stage 6F sentiment outputs and the frozen market-reaction
-   infrastructure.
-2. Estimate persistent and novel sentiment jointly, test coefficient
-   equality, and evaluate component-length and normalization choices.
-3. Decide whether to run a targeted five-way sentiment pilot,
-   separately from the frozen persistent/novel primary design.
-4. Complete robustness analysis, tables, interpretation, and writing.
+1. Archive and checksum Stage 8E full-run CSV, manifest, audit JSONs,
+   validation record and initial regression outputs before any further
+   analysis.
+2. Regress **day −1, day 0 and day +1 abnormal returns on the same
+   eligible complete-case sample**, with the same covariates, FE and
+   firm-clustered inference. Determine whether the `[-1,+1]` finding
+   precedes EDINET publication.
+3. Evaluate event timing, earnings-release and other earlier
+   disclosures, multiple-testing sensitivity and sample selection.
+4. Confirm robustness to adjusted-price controls and chosen event
+   windows before considering a paper-level inference.
+5. Keep Stage 6E/6F binary persistent/novel and the five-way
+   three-component analysis methodologically distinct; preserve frozen
+   historical benchmarks.
 
 ## Current bottleneck
 
-Stage 6E classification and Stage 6F-A/B component sentiment are
-complete. The main bottleneck is now empirical identification and
-interpretation: constructing the component-level panel, estimating
-persistent-versus-novel sentiment effects, and determining whether
-the five-way decomposition merits further sentiment analysis.
+Data acquisition, full-document scoring, Stage 6E/6F and Stage 8E
+component scoring are complete. The primary bottleneck is now
+**identifying the timing and relative informativeness of component
+sentiment**. The three-day new-tone association does not establish
+that EDINET filings caused the return change or that new-tone slopes
+are statistically larger than other components.
 
 ## Rough completion estimate
 
