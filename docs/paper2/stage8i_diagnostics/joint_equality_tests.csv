@@ -1,0 +1,9 @@
+family,analysis,outcome,N,firms,null,restrictions,wald_chi2_approx,F_cluster_approx,df_num,df_den,p,inference_note
+three_intensity,complete_case,car_pp_m1_1,21540,4044,newSentiment = unchangedSentiment = revisedSentiment,2,1.6352421432014153,0.8176210716007076,2,4043,0.44155364167765204,"approx F(q,G-1), CR1 firm-cluster covariance"
+three_intensity,complete_case,ar_pp_p1,21540,4044,newSentiment = unchangedSentiment = revisedSentiment,2,1.4068317780770268,0.7034158890385134,2,4043,0.49495247329980163,"approx F(q,G-1), CR1 firm-cluster covariance"
+three_intensity,presence_indicators,car_pp_m1_1,29227,4148,newSentiment = unchangedSentiment = revisedSentiment,2,2.3934441333811423,1.1967220666905711,2,4147,0.30228746152161134,"approx F(q,G-1), CR1 firm-cluster covariance"
+three_intensity,presence_indicators,ar_pp_p1,29227,4148,newSentiment = unchangedSentiment = revisedSentiment,2,2.1552001399808907,1.0776000699904453,2,4147,0.3405068105287929,"approx F(q,G-1), CR1 firm-cluster covariance"
+share_weighted_exposure,complete_case,car_pp_m1_1,21540,4044,newExposure = unchangedExposure = revisedExposure,2,0.7499824039531165,0.3749912019765583,2,4043,0.6873192276824328,"approx F(q,G-1), CR1 firm-cluster covariance"
+share_weighted_exposure,complete_case,ar_pp_p1,21540,4044,newExposure = unchangedExposure = revisedExposure,2,0.3012336132536415,0.15061680662682075,2,4043,0.8601820759962928,"approx F(q,G-1), CR1 firm-cluster covariance"
+share_weighted_exposure,presence_indicators,car_pp_m1_1,29227,4148,newExposure = unchangedExposure = revisedExposure,2,1.7894386761913201,0.8947193380956601,2,4147,0.40880117859814324,"approx F(q,G-1), CR1 firm-cluster covariance"
+share_weighted_exposure,presence_indicators,ar_pp_p1,29227,4148,newExposure = unchangedExposure = revisedExposure,2,0.48651980605837597,0.24325990302918798,2,4147,0.7840788931300596,"approx F(q,G-1), CR1 firm-cluster covariance"

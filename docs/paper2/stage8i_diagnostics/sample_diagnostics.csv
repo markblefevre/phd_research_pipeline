@@ -1,0 +1,8 @@
+family,analysis,all_window_eligible_before_covariates,shared_sample_n,firms,years,dropped_missing_covariates,single_observation_firms,eligible_before_covariate_selection
+three_intensity,complete_case,30926.0,21540,4044,10.0,9386.0,308.0,
+three_intensity,presence_indicators,30926.0,29227,4148,10.0,1699.0,202.0,
+share_weighted_exposure,complete_case,,21540,4044,,,,21540.0
+share_weighted_exposure,presence_indicators,,29227,4148,,,,30926.0
+binary_persistent_novel,binary_full,,29218,4148,,,,
+binary_persistent_novel,binary_on_three_complete_case,,21540,4044,,,,
+binary_persistent_novel,binary_on_three_presence_indicators,,29218,4148,,,,
