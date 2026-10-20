@@ -17,7 +17,7 @@ retrieval architecture, pair-level GPT-6 Luna classifier, full-corpus
 production classification, targeted completion repair, and final QC are
 now complete and frozen. All **33,046** research-eligible pairs and
 **3,463,989** current-year sentences assemble successfully with **zero
-classification failures**. Stage 6F-A component QC and Stage 6F-B component sentiment are now complete. A separate five-way disclosure-change classification experiment has also completed full-corpus processing and targeted recovery. **Stage 8D controls and exploratory regressions, and Stage 8E three-component (`unchanged`/`revised`/`new`) sentiment scoring, validation, and first-look regressions, are now complete.** Stage 8E findings require event-day decomposition and further robustness before causal or relative-response claims.
+classification failures**. Stage 6F-A component QC and Stage 6F-B component sentiment are now complete. A separate five-way disclosure-change classification experiment has also completed full-corpus processing and targeted recovery. **Stages 8D–8G are completed through exploratory inference:** controls, three-component (`unchanged`/`revised`/`new`) Luna sentiment, first-look regressions, same-sample event-day decomposition, and filing-time interaction tests. The significant day +1 new-tone association does not establish relative component superiority or causality; formal robustness and synthesis are next.
 
 ## Current Pipeline Status
 
@@ -79,7 +79,17 @@ classification failures**. Stage 6F-A component QC and Stage 6F-B component sent
     89,946 nonempty components (zero failures). Twelve first-look models
     and 36 formal pairwise comparisons completed. New-sentiment slope
     positive for CAR [-1,+1], but no pairwise difference significant at
-    5%; event-time attribution and robustness remain pending.
+    5%; event-time attribution was examined in Stage 8F–8G, with
+    inferential robustness and interpretation still pending.
+-   **Stage 8F --- Same-sample event-day decomposition:** complete;
+    22,166 complete-case and 30,188 presence-indicator observations.
+    Day +1 new-tone coefficient is +0.1489 (p=.0192) with firm/year FE
+    in complete cases and +0.1625 (p=.00511) in the larger sample.
+    Day +1 versus day −1 slope differences are not significant.
+-   **Stage 8G --- Filing-time interactions:** complete and rerun;
+    historical at/before-close versus after-close timestamps reconciled
+    to 21,977 and 10,149 events. Pooled after-close interaction tests
+    show no statistically significant new-tone slope differences.
 
 The current corpus contains **37,807 Annual Securities Reports** and
 **37,757 successfully extracted MD&A sections**.
@@ -144,6 +154,9 @@ flowchart TD
     AK --> AL[Stage 8E<br/>Validation and first-look regressions]
     AM[Stage 8D<br/>Pre-filing controls] --> AL
     AE --> AL
+    AL --> AN[Stage 8F<br/>Same-sample event-day regressions]
+    AN --> AO[Stage 8G<br/>Filing-time interactions]
+    AO --> AP[Inference synthesis + robustness pending]
 ```
 
 ------------------------------------------------------------------------
@@ -2843,30 +2856,97 @@ an insignificant **unchanged** slope is *not* evidence of a significant
 between-slope difference. The main advisor-driven comparative claim
 therefore remains **unestablished**.
 
-### Research caution and next empirical tests
+## Stage 8F–8G --- Event-Day and Filing-Time Analyses (2026-10-19)
 
-The only consistently significant new-sentiment slope occurs in
-`[-1,+1]`, which includes the **day before** EDINET filing. This
-raises pre-disclosure/timing confounding rather than proving market
-reaction to newly released filing information. First next test: day
-`-1`, day `0`, day `+1` abnormal-return regressions on an **identical
-complete-case sample** with matching controls/FE and firm clustering.
-Also assess cross-window and multiple-testing sensitivity and prior
-earnings/other disclosures. The market-control raw-price construction
-requires adjusted-price robustness. Do not revise frozen historical
-stages based on these exploratory results.
+### Stage 8F --- daily-return decomposition, identical estimation samples
+
+Script: `scripts/paper2/run_stage8f_event_day_decomposition.py`
+
+Output: `data/interim/paper2/regressions/stage8f_event_day_decomposition/`
+
+Stage 8F derives **AR[−1] = CAR[−1,+1] − CAR[0,+1]**,
+**AR[0] = CAR[0,0]**, and **AR[+1] = CAR[0,+1] − CAR[0,0]** in
+percentage points. It requires eligibility and nonmissing outcomes
+for all windows before establishing a **single common sample per
+missing-component analysis**. All daily regressions and their CAR /
+day-difference companion fits use the same row set, same three
+sentiments, eight Stage 8D disclosure/financial/market controls,
+year-only or firm+year fixed effects, and firm-clustered CR1 inference.
+Exact coefficient-sum identities passed.
+
+Common samples: 22,166 complete cases (4,099 firms); 30,188
+presence-indicator observations (4,192 firms).
+
+**New sentiment: firm+year FE, coefficients in CAR percentage points:**
+
+| Outcome | Complete-case beta (p) | Presence beta (p) |
+|---|---:|---:|
+| AR day −1 | +0.1219 (.0777) | +0.1119 (.0812) |
+| AR day 0 | −0.0201 (.760) | −0.0326 (.588) |
+| AR day +1 | **+0.1489 (.0192)** | **+0.1625 (.00511)** |
+| CAR [0,+1] | +0.1288 (.172) | +0.1299 (.132) |
+| CAR [−1,+1] | +0.2506 (.0251) | +0.2418 (.0192) |
+
+The day +1 positive slope survives firm and year FE. However, the
+**direct new-tone coefficient difference AR[+1] − AR[−1] is not
+significant** (p=.776 complete case; p=.567 presence indicators).
+Filing day 0 estimates are near zero. It is incorrect to infer from
+significance levels alone that day +1 is larger than day −1.
+
+### Stage 8G --- filing-time split and pooled slope interactions
+
+Script: `scripts/paper2/run_stage8g_filing_time.py`
+
+Rerun output: `data/interim/paper2/regressions/stage8g_filing_time_rerun/`
+
+Stage 8G uses Stage 8D timestamp information and the Stage 7
+historical TSE-close/event-date convention. The eligible 32,126
+controls/timestamp events partition into **21,977 at-or-before-close**
+and **10,149 after-close**. The Stage 8F-aligned samples are split:
+
+| Missing-component treatment | At/before close | After close | Total |
+|---|---:|---:|---:|
+| Complete case | 14,925 | 7,241 | 22,166 |
+| Presence indicators | 20,515 | 9,673 | 30,188 |
+
+In **presence-indicator, firm+year FE subgroup fits**, the day +1
+new-tone slope is +0.1801 (p=.0111) at/before close versus +0.1067
+(p=.441) after close. These separate fits do not by themselves show
+a difference in slopes: the **pooled after-close interaction** for
+new tone on day +1 is +0.0332 (p=.789), and on CAR [−1,+1] is
+−0.0199 (p=.930). All reported interaction comparisons are
+statistically insignificant at 5%; after-close subgroup confidence
+is weaker. Day 0 new-tone slopes are essentially zero in both groups.
+
+**Interpretation:** Stage 8F shows a post-event-day association, but
+Stage 8G does not resolve whether day +1 represents delayed market
+assimilation, timing conventions, or previously public information.
+New text is not necessarily information new to investors. Inference
+remains observational, exploratory, and subject to multiplicity and
+selection. Do not claim causal EDINET release effects or that new tone
+has statistically larger slope than unchanged/revised tone.
+
+### Research caution and remaining empirical tests
+
+Stage 8F/8G answer the immediate event-day and filing-time diagnostic.
+No further unplanned subgroup mining is needed now. Instead identify
+a primary outcome/test family and assess multiple-testing sensitivity;
+consider statistical power, missing-component selection, fiscal-year
+2018 transition, pre-filing earnings disclosures, and adjusted-price
+market-control robustness. The Stage 6F-B persistent/novel design
+and five-way three-component design remain distinct and both require
+careful manuscript positioning. Keep frozen stages unchanged.
 
 ## Current Technical Next Steps
 
-1. Preserve Stage 8E validated CSV, manifest, individual audit JSONs,
-   and first-look `model_comparison.csv`, `coefficients.csv`,
-   `pairwise_tests.csv`, and regression metadata.
-2. Run identical-sample single-day `-1`, `0`, and `+1` regressions and
-   investigate filing-time and pre-filing information confounding.
-3. Evaluate formal multiplicity corrections, statistical power and
-   sample selection, plus appropriate adjusted-price market controls.
-4. Reconcile the frozen Stage 6F-B persistent/novel design and the
-   separate five-way `unchanged`/`revised`/`new` experiment in the
-   paper's hypotheses; do not conflate them or refit to stars.
-5. Preserve the frozen Stage 8A–8C and Stage 6E benchmarks.
+1. Preserve/checksum Stage 8E full-run scores/audits and Stage 8E–8G
+   inference artifacts; verify script commits independently in Git.
+2. Consolidate first-look and event-day/timing models into a
+   publication-readable main/appendix table and pre-specify a compact
+   primary statistical family for multiplicity assessment.
+3. Examine adjusted-price controls, selection, and prior public
+   disclosures before interpreting market timing or causality.
+4. Integrate Stage 6E/6F versus five-way hypotheses into the manuscript
+   without conflating their classification labels or fitting to stars.
+5. Preserve Stage 8A–8C and Stage 6E frozen benchmarks.
 

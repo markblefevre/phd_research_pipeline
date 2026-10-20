@@ -27,7 +27,7 @@ completion repair added **447** classifications across **341**
 incomplete pair responses without overwriting existing classifications.
 The original collector was then rerun unchanged and assembled all
 **33,046** pairs with **zero classification failures**. Stage 6E is
-therefore complete, validated, and frozen. Stage 6F-A component QC and Stage 6F-B persistent/novel sentiment scoring are complete. Stage 8D market/industry controls and Stage 8E five-way-derived three-component sentiment scoring, validation, and first-look regressions have now also completed. The immediate question is whether the three-day new-sentiment association survives event-day decomposition and whether new, revised, and unchanged slopes truly differ.
+therefore complete, validated, and frozen. Stage 6F-A component QC and Stage 6F-B persistent/novel sentiment scoring are complete. Stages 8D–8G have now completed: pre-filing controls, five-way-derived three-component sentiment and controlled regressions, same-sample event-day decomposition, and filing-time stratification. New-text sentiment is positively associated with next-event-day abnormal returns; the new-versus-revised/unchanged slope differences and filing-time interactions remain statistically inconclusive. The next task is consolidated inference and disciplined robustness, not further exploratory subgroup searches.
 
 The completed full-document benchmark remains important because it
 establishes the baseline result that contextual/generative sentiment
@@ -138,15 +138,59 @@ Key files: `model_comparison.csv`, `coefficients.csv`,
 `pairwise_tests.csv`; implementation
 `scripts/paper2/run_stage8e_validate_regressions.py`.
 
+### Stage 8F–8G checkpoint --- 2026-10-19
+
+**Stage 8F (event-day decomposition):** completed on identical samples for
+all event-day regressions within each design (22,166 complete cases / 4,099
+firms; 30,188 presence-indicator cases / 4,192 firms). Day −1, 0 and +1
+abnormal returns were obtained by exact CAR subtraction; coefficient-sum
+identities passed. All models retain Stage 8D controls, joint three-component
+tone, firm clustering, and year or firm+year fixed effects.
+
+In complete-case firm+year FE, the **new-tone** coefficients (CAR percentage
+points per unit of sentiment) were **+0.1219** on day −1 (p=.0777),
+**−0.0201** on day 0 (p=.760), and **+0.1489** on day +1 (p=.0192),
+summing to the three-day **+0.2506** (p=.0251) up to rounding.
+The larger presence-indicator firm+year FE model gave day +1 **+0.1625**
+(p=.00511). However, direct day +1 minus day −1 new-tone coefficient
+tests were not significant (p=.776 complete case; p=.567 presence-indicator).
+Do not claim that the market responds more *on* day +1 than on day −1.
+
+**Stage 8G (filing-time stratification):** completed and rerun successfully.
+Stage 8D timestamp classes: **21,977 at/before market close** and **10,149
+after close**, respecting the historical TSE close and Stage 7 event-date
+assignment. For the common presence-indicator sample (N=30,188), 20,515
+observations were at/before close and 9,673 after close. With firm+year FE,
+day +1 new-tone coefficients were **+0.1801** (p=.0111) and **+0.1067**
+(p=.441), respectively. In the pooled timing-interaction model, the
+after-close differential was **+0.0332** (p=.789) for day +1 and
+**−0.0199** (p=.930) for CAR [−1,+1]. No reported timing interaction
+established heterogeneity. Across these groups the day 0 new-tone slopes
+were essentially zero. Subgroup p-values alone are *not* tests of group
+differences; the pooled interaction tests are authoritative for that purpose.
+
+Stage 8F and Stage 8G are **completed exploratory analyses**, not evidence
+of a causal EDINET-information shock. Multiple-testing sensitivity,
+prior earnings/other disclosures, event-date semantics, sample selection,
+and provisional raw-price-based market-control robustness remain unresolved.
+The Stage 6E binary persistent/novel project and five-way-derived three-way
+results are separate designs, not interchangeable classifications.
+
+Key paths:
+
+- `scripts/paper2/run_stage8f_event_day_decomposition.py`
+- `data/interim/paper2/regressions/stage8f_event_day_decomposition/`
+- `scripts/paper2/run_stage8g_filing_time.py`
+- `data/interim/paper2/regressions/stage8g_filing_time_rerun/`
+
 ### Remaining research work
 
-Next prioritize **same-sample single-day** event regressions
-(day −1, 0, +1) and formal coefficient contrasts, then evaluate
-pre-filing timing, multiple-testing corrections, component-presence
-selection, and adjusted-price robustness. Preserve separate
-persistent/novel and five-way approaches without claiming they
-answer identical questions. The full-document Stage 8 benchmark
-remains frozen.
+Consolidate Stage 8E–8G into a coherent results table, predefine a limited
+primary hypothesis/test family and evaluate multiplicity, perform focused
+sample-selection and adjusted-price-control robustness, and investigate
+whether new language corresponds to information already released through
+earnings or other announcements. Do not tune exploratory specifications
+to significance. Preserve the frozen Stage 8A–8C and Stage 6E benchmarks.
 
 ## What is complete
 
@@ -1687,29 +1731,27 @@ should not be retuned in response to the passage-level results.
 
 ## Immediate next steps
 
-1. Archive and checksum Stage 8E full-run CSV, manifest, audit JSONs,
-   validation record and initial regression outputs before any further
-   analysis.
-2. Regress **day −1, day 0 and day +1 abnormal returns on the same
-   eligible complete-case sample**, with the same covariates, FE and
-   firm-clustered inference. Determine whether the `[-1,+1]` finding
-   precedes EDINET publication.
-3. Evaluate event timing, earnings-release and other earlier
-   disclosures, multiple-testing sensitivity and sample selection.
-4. Confirm robustness to adjusted-price controls and chosen event
-   windows before considering a paper-level inference.
-5. Keep Stage 6E/6F binary persistent/novel and the five-way
-   three-component analysis methodologically distinct; preserve frozen
-   historical benchmarks.
+1. Preserve and checksum validated Stage 8E score/audit artifacts and
+   Stage 8E–8G regression outputs/metadata; confirm the research scripts
+   are version-controlled (the Git commit itself is not verified here).
+2. Consolidate Stage 8E–8G output into a publication-readable results
+   table and a transparent primary-versus-exploratory test inventory.
+3. Assess multiple-testing sensitivity, statistical power, component
+   absence/selection, and adjusted-price market-control robustness.
+4. Examine prior earnings/other disclosures and the interpretation of
+   event-day timing before attributing returns to the EDINET filing.
+5. Keep Stage 6E/6F binary persistent/novel and five-way three-component
+   analyses distinct; do not retune frozen historical stages.
 
 ## Current bottleneck
 
-Data acquisition, full-document scoring, Stage 6E/6F and Stage 8E
-component scoring are complete. The primary bottleneck is now
-**identifying the timing and relative informativeness of component
-sentiment**. The three-day new-tone association does not establish
-that EDINET filings caused the return change or that new-tone slopes
-are statistically larger than other components.
+Data acquisition, full-document scoring, Stage 6E/6F, and Stage 8D–8G
+are complete through exploratory regressions. The primary bottleneck is
+now **interpretation and disciplined inferential robustness**: the
+next-event-day new-tone association survives controls, but neither
+relative component superiority nor filing-time heterogeneity is
+statistically established. The analyses do not identify a causal effect
+of the EDINET filing.
 
 ## Rough completion estimate
 
