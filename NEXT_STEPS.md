@@ -220,3 +220,40 @@ Planned work:
 - `DAILY_LOG.md`: optional dated research journal; historical entries are not the current work plan.
 
 **Immediate next action:** Finish the Git freeze commit for the full-document benchmark. Then design and manually test the persistent/revised/new passage decomposition on a small set of consecutive filings before writing any full-corpus Stage 9 code.
+
+## Archival Status — November 1, 2026
+
+**Status: SUPERSEDED — Historical Research Planning Document**
+
+This document records the October 3 research plan following completion of the whole-document sentiment–novelty benchmark. Its principal objectives have since been implemented, modified, or incorporated into the current research roadmap.
+
+### Completed
+
+- Stages 8A–8C: Whole-document benchmark regressions, marginal effects, and multiple-testing analysis.
+- Stage 6E: Full-corpus binary persistent/novel classification.
+- Stage 6F: Persistent/novel component sentiment scoring.
+- Five-way disclosure classification: Unchanged, revised, new, non-substantive, and uncertain.
+- Stage 8E: Three-component sentiment scoring and exploratory joint regressions, including formal coefficient-equality tests.
+- Stages 8F–8G: Event-day decomposition and filing-time interaction analyses.
+
+### Superseded Decisions
+
+- The original proposal to evaluate LMMD, BERT, and Sol for component sentiment was replaced by independent GPT-6 Luna component scoring.
+- The three-component unchanged/revised/new design was selected as the primary empirical framework; the separate binary persistent/novel classification is retained as a secondary approach.
+- The original proposal for additional forward-looking decomposition is no longer part of the required research plan.
+
+### Outstanding or Not Yet Verified
+
+- Certification of Stage 8D controls and Stage 8E regression inputs and outputs.
+- Verification of canonical Git checkpoints and artifact integrity.
+- Focused robustness and sample-selection analysis.
+- Reproducible publication tables and final empirical results presentation.
+
+### Successor Documents
+
+- `PAPER2_ROADMAP.md` — Active research and delivery priorities.
+- `PAPER2_RESEARCH_DESIGN_FREEZE_2026-11-01.md` — Research-design decisions.
+- `STATUS.md` — Detailed execution history and results.
+- `PIPELINE.md` — Implementation and artifact reference.
+
+**Archival decision:** This document is retained for research provenance. The original October 3 checklist is preserved without retroactively changing its completion markers. All future work should be tracked in `PAPER2_ROADMAP.md`.
