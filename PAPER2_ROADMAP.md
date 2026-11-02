@@ -1,8 +1,8 @@
 # Paper 2 — Research and Manuscript Roadmap
 
-**Working document | Updated: 2026-10-26**  
+**Working document | Updated: 2026-11-02**  
 **Project:** EDHEC Executive PhD in Finance — Paper 2  
-**Status:** Major data/NLP pipeline complete; exploratory empirical inference complete through Stages 8E–8G; primary specification, robustness, and manuscript integration remain.
+**Status:** Domestic corpus and NLP scoring frozen; corrected J-Quants market rebuild and Stage 8H–8I analyses documented; manuscript Methods substantially drafted. Primary controls, final inference, Results, and Introduction remain.
 
 > **Purpose:** This is the *decision and delivery tracker* for finishing Paper 2. `STATUS.md` remains the detailed research log and evidence record; `PIPELINE.md` remains the implementation and artifact map. Do not overwrite or re-label frozen results as new primary findings.
 
@@ -38,55 +38,48 @@ Paper 2 asks **where potentially return-relevant tone is located in a longitudin
 
 **Different samples and sentiment implementation:** Paper 1 has 1,087 Nikkei 225 filings; Paper 2 has 33,046 consecutive-report pairs from a much broader issuer universe. Paper 2's GPT-6 Sol unit-level, character-weighted document sentiment and GPT-6 Luna component scores should not be described as the same GPT score used in Paper 1.
 
-## 2. Verified research checkpoint (as documented through 2026-10-19)
+## 2. Research checkpoint (updated 2026-11-02)
 
-| Workstream | Status | Grounded checkpoint |
+This section supersedes the **2026-10-19** checkpoint for current planning. Earlier analyses and their exact output provenance remain in `STATUS.md`. The claims below are documented from the research sessions and latest manuscript; the uploaded files alone do **not** independently verify repository commits, hashes, or canonical artifact locations.
+
+| Workstream | Status | Current checkpoint |
 |---|---|---|
-| EDINET corpus / MD&A extraction | COMPLETE | 37,807 filings; 37,757 extracted MD&As. |
-| Longitudinal pairs | COMPLETE | 33,046 research-eligible standard annual pairs; 37,473 distinct MD&A documents in pair universe. |
-| Whole-document novelty | FROZEN | TF-IDF cosine novelty, primary `sudachi_c_num`; raw-token variant retained. |
-| Whole-document sentiment | FROZEN | LMMD, Japanese Financial BERT, GPT-6 Sol; 37,473 documents each. |
-| Stages 8A–8C whole-document benchmark | FROZEN | 18 interaction regressions; GPT-6 Sol sentiment × novelty on CAR [-1,+1] raw p≈0.00243, Bonferroni/Holm p≈0.0438. Benchmark only. |
-| Stage 6E binary persistent/novel labels | FROZEN | 33,046 pairs / 3,463,989 sentences; zero unresolved classification failures. |
-| Stage 6F binary-component sentiment | COMPLETE | 33,046 persistent, 33,037 novel scored; 9 genuinely empty novel components. |
-| Separate five-way disclosure-change taxonomy | COMPLETE | `unchanged`, `revised`, `new_candidate`, `non_substantive`, `uncertain`; 33,046 pairs. **Distinct from Stage 6E.** |
-| Stage 8E three-component sentiment | COMPLETE | 89,946 nonempty `unchanged`/`revised`/`new` components scored, zero failures. |
-| Market reaction / event eligibility | COMPLETE | 32,126 eligible events; CAR [0,0] 31,241, [0,+1] 31,069, [-1,+1] 30,926. |
-| Stage 8D pre-filing controls | IMPLEMENTED, PROVISIONAL | Controls available for 32,126 events; raw-close market-control robustness still required. |
-| Stage 8E exploratory regressions | COMPLETE, NOT FINAL INFERENCE | Complete-case firm+year FE CAR [-1,+1] N=22,166, 4,099 firms. Unchanged −0.0146 (p=.926); revised +0.1545 (p=.400); new +0.2506 (p=.0251), in CAR percentage points per sentiment unit. |
-| Direct three-component contrasts | INCONCLUSIVE | New minus unchanged p=.1583, new minus revised p=.6485; no reported pairwise test significant at 5%. |
-| Stage 8F day-by-day regressions | COMPLETE, EXPLORATORY | New-tone day +1 slope +0.1489 (p=.0192), day 0 −0.0201 (p=.760), day −1 +0.1219 (p=.0777) on complete-case common sample; day +1 versus day −1 difference not significant. |
-| Stage 8G filing-time interactions | COMPLETE, EXPLORATORY | At/before-close vs after-close interactions not significant. |
+| EDINET and domestic eligibility | COMPLETE | 37,807 initial reports; 37,757 domestic MD&As extracted; 33,046 eligible consecutive standard annual pairs; 37,473 distinct MD&A documents in pair universe. |
+| Whole-document novelty and LMMD/BERT/Sol | FROZEN | Baseline `sudachi_c_num` novelty, raw-number alternative, and whole-document sentiment benchmarks retained. |
+| Stage 6E binary classification and Stage 6F sentiment | FROZEN | Separate persistent/novel design; no classification/scoring failures remain. |
+| Five-way classification / Stage 8E sentiment | FROZEN | 33,046 pairs, 89,946 scored nonempty unchanged/revised/new components; 8,055 genuinely empty new components. |
+| J-Quants source data and Stage 7 | REBUILT / RECONCILED (session record) | 121 monthly archives checked; corrected adjustment factors; exactly one filing's market-model/event outcomes affected, E01300 / S100YNKO. Event samples unchanged: 32,126 initially market-eligible and 30,926 CAR [-1,+1] complete. |
+| Stage 8H adjusted market controls | REBUILT (session record) | Uses adjusted returns and strictly pre-filing data; final choice of control set, particularly momentum, remains OPEN. |
+| Stage 8F–8I corrected regressions | REBUILT / PROVISIONAL INFERENCE | Primary complete-case firm+year FE, CAR [-1,+1]: N=21,540 / 4,044 firms; presence-indicator N=29,227 / 4,148 firms. |
+| Manuscript | SUBSTANTIALLY DRAFTED | Latest 35-page PDF (Nov 2): abstract revised; Related Work, Data and Methods substantially drafted; Introduction empty; Results placeholders; Conclusion provisional. |
 
-**Important:** These are *documented* results, not independently rerun or post-October-19 repository verification. Confirm file hashes, canonical NAS copies, Git commits, and later runs before changing any status label.
+### Current three-component evidence (corrected-session checkpoint, not final freeze)
 
-### What is established vs not established
+In the complete-case firm+year FE CAR [-1,+1] specification (CAR in percentage points per raw sentiment unit), unchanged coefficient ≈ +0.0029 (p≈.986), revised ≈ +0.1588 (p≈.412), and new ≈ +0.2493 (p≈.0312). Direct tests do **not** establish different slopes: new minus unchanged p≈.202, new minus revised p≈.679; joint equality p≈.4434. Nominal significance of the new coefficient is **not** proof that newly introduced tone is more informative. Effect sizes, multiple-testing sensitivity, confidence intervals, and the control-set definition remain to be frozen.
 
-**Supported:** Whole-document contextual/generative sentiment tends to be more associated with CAR when documents are textually novel (strongest corrected benchmark evidence for GPT-6 Sol). In three-component exploratory models, `new` sentiment shows a positive association with certain CAR/day +1 outcomes.
-
-**Not established:** New sentiment is statistically *more* return-relevant than persistent/revised sentiment; effects are causally attributable to the EDINET filing; firms' newly written information was not previously available; filing-time groups show significantly different slopes.
+**Preserved interpretation:** text new to the MD&A is not necessarily first public information; CAR associations are not causal filing effects. Retain the 2018 regulatory transition as a potential confound.
 
 ## 3. Decision gates — resolve before new modeling
 
-- [ ] **D1 — Primary taxonomy:** choose either (A) frozen Stage 6E `persistent` versus `novel`, or (B) distinct five-way-derived `unchanged`/`revised`/`new`, as the *primary* design. Specify why. Keep the other as a transparent secondary validation/robustness design; do not silently mix labels.
-- [ ] **D2 — Primary market window:** select an event window on economic grounds, accounting for the timestamp-aligned event date and risk of pre-filing releases. Document `[−1,+1]`, `[0,+1]`, and `[0,0]` roles before reviewing more estimates.
-- [ ] **D3 — Primary coefficient contrast:** designate the equality/difference test that answers “old vs new” (e.g., `β_novel − β_persistent = 0`, or `β_new − β_unchanged = 0`). **Do not infer difference from one coefficient being significant and another not.**
-- [ ] **D4 — Component measurement:** declare sentiment normalization, component-length treatment, minimum-size sensitivity, and approach to legitimately empty categories. Missing is not automatically neutral.
-- [ ] **D5 — Controls and fixed effects:** freeze a defensible primary control set (pre-filing only), firm/year or year/industry FE, cluster at firm, and a short prespecified sensitivity set.
+- [x] **D1 — Primary taxonomy (manuscript choice):** five-way-derived `unchanged`/`revised`/`new` is primary; independent Stage 6E persistent/novel is secondary. Preserve separate provenance and labels.
+- [x] **D2 — Primary market window (manuscript choice):** `[-1,+1]` is primary, `[0,+1]` and `[0,0]` are narrower comparisons; day −1 may contain earlier announcements.
+- [x] **D3 — Primary coefficient contrast (manuscript choice):** `β_new − β_unchanged = 0`, two-sided. Report both other pairwise contrasts and a joint three-way equality Wald test; an individually significant slope does not imply unequal slopes.
+- [ ] **D4 — Component measurement:** common raw sentiment scoring scale `[-1,1]`, character-weighted narrative-unit aggregation and missing-for-empty established; finalize minimum-size sensitivity and estimation-sample SD effect sizes.
+- [ ] **D5 — Controls and fixed effects:** firm+year FE and firm-clustered SE specified; freeze exact pre-filing control list (including momentum decision) and common-sample robustness.
 - [ ] **D6 — Multiple-testing family:** name a limited primary hypothesis set and correction/reporting policy; label everything else as exploratory/robustness.
-- [ ] **D7 — Frozen-data rule:** retain Stage 6E/6F and Stage 8A–8C checkpoints; no post hoc prompt tuning or selective rescore to improve significance.
+- [x] **D7 — Frozen-data rule:** retain frozen Stage 6E/6F, Stage 8A–8C, and Stage 8E sentiment; no post hoc prompt tuning or selective rescore to improve significance.
 
-**Deliverable for this gate:** a 1–2 page *Research Design Decision Memo*, dated and version-controlled, including exact estimands, sample, windows, FE, controls, and planned reporting tables.
+**Remaining gate deliverable:** short dated research-design memo freezing D4–D6, exact estimation sample, effect units, inference/multiplicity, and planned tables. D1–D3 and D7 are manuscript-level decisions, not evidence that final inferential results are frozen.
 
 ## 4. Remaining research work — prioritized
 
 ### P0: Needed for credible central claim
 
-- [ ] Run/document the main component-level specification for the **chosen primary taxonomy**, if not yet complete. In particular, determine whether Stage 6F binary persistent/novel regression and direct equality test are available; `STATUS.md` documents scores but not a definitive frozen binary-component primary regression.
+- [x] Run and reconcile corrected three-component main specification and direct contrasts (Stage 8I); [ ] confirm whether independent Stage 6F binary persistent/novel regressions and equality test exist or must be run.
 - [ ] Report all component coefficients **with direct Wald tests / confidence intervals for differences**, not just standalone p-values; compare in economically interpretable units (e.g. per SD, with scale defined).
 - [ ] Consolidate Stages 8E–8G in **one same-sample results inventory**, distinguishing baseline, hypothesis tests, robustness, and explorations.
 - [ ] Analyze **component absence and sample selection**: complete case vs presence indicators vs other justifiable estimands; give N/firms at each filter; explain 8,055 empty `new` components.
-- [ ] Audit adjusted-return consistency of pre-filing market controls (Stage 8D), and rerun focused specifications if needed.
+- [x] Rebuild Stage 8H pre-filing market controls using adjusted returns; [ ] freeze controls and reconcile final specification/attrition.
 - [ ] Investigate **prior earnings announcements / other public disclosures** and filing-day timing; establish what can be said about *public-information novelty* versus year-over-year *textual novelty*.
 - [ ] Apply declared multiple-testing sensitivity and discuss power/precision of primary contrasts. An insignificant difference is not evidence of equality.
 
@@ -102,27 +95,20 @@ Paper 2 asks **where potentially return-relevant tone is located in a longitudin
 
 - [ ] Other novelty definitions, cross-firm common-language measures, new models, extended horizon studies. **Do not initiate by default:** they create scope creep and are not needed to finish the present paper.
 
-## 5. Manuscript checklist (current Paper 2 PDF: 23 pages)
+## 5. Manuscript checklist (latest Paper 2 PDF: 35 pages, 2026-11-02)
 
 | Section | Current state | Required action |
 |---|---|---|
-| Title/abstract | Working title `PAPER 2`; abstract still emphasizes model comparison | Rewrite around persistent/novel information-location question; report only warranted results. |
-| 1 Introduction | Empty | Write economic motivation, efficient-market intuition *with qualifications*, question, contribution, sample, findings, limitations, roadmap. |
-| 2 Related Work | Substantially written (seven subsections) | **Reorder/reframe:** information location, persistent disclosure, change, boilerplate as center; sentiment model literature as methods support. Minimize redundant Paper 1 language. |
-| 2.7 Research gap | Still asks whether contextual NLP is more useful on novel documents | Rewrite to ask if *sentiment in changed portions* differs from *persistent portions*. Whole-document interactions are a supporting benchmark. |
-| 3.1–3.4 Data | Largely written and grounded | Preserve; update market retention and timing semantics; remove implementation overdetail where it distracts. |
-| 3.5 Descriptive Statistics | Placeholder/future tense | Add sample construction, category sizes, sentiment and CAR distributions, firm/industry/year breakdown. |
-| 4.1 Sentiment Measurement | Placeholder | Give LMMD/BERT/Sol benchmark **briefly** and Luna component scoring and aggregation **fully**. |
-| 4.2 Textual Novelty | Placeholder | Separate document-level TF-IDF cosine novelty from sentence-level semantic classification; define `persistent`, `novel`, five-way categories, and numeric-change rules. |
-| 4.3 Event Study | Placeholder | Define TOPIX market model, [−120,−20], 60-obs minimum, J-Quants return adjustment, actual 15:00/15:30 JST market-close alignment. |
-| 4.4 Empirical Specifications | Well-developed *whole-document model* equations | Keep as benchmark; **add component-tone joint equations, formal coefficient contrasts, FE/controls, missingness policy**. Do not present model ranking as main question. |
-| 4.5 Robustness | Placeholder bullets | Replace with actual implemented robustness and explicitly state unimplemented tests. |
-| 5 Empirical Results | Empty | Whole-document benchmark (secondary); primary component results; formal contrasts; timing and robustness; limitations. |
-| 6 Conclusion | Empty | Directly answer research question at warranted confidence; distinct contribution from Paper 1. |
-| References | Substantial | Cross-check metadata, non-English citations, and empirical claims; ensure consistency with added sections. |
-| Figures and Tables | Empty | Add core sample flow, descriptive table, main regression/contrast table, timing robustness table, optional marginal-effect plot and Japanese examples. |
+| Abstract | Revised to unchanged/revised/new framing | Refresh only after final inference; retain cautious language. |
+| 1 Introduction | Empty | Draft motivation, design, findings, contribution and limits. |
+| 2 Related Work | Five coherent subsections, substantially drafted | Check references, copyediting and overlap with Paper 1. |
+| 3 Data | Substantial: domestic criterion, attrition and components documented | Add sample-flow and descriptive tables; reconcile primary estimation sample. |
+| 4 Methodology | Substantial: adjusted return equation, 3-component models, equality tests, alternatives and robustness | Freeze controls, hypothesis family, effect-size reporting and specific implementation claims. |
+| 5 Empirical Results | Subsection headings and opening paragraph, no tables | Produce sample-consistent descriptive, main coefficient/contrast, day/timing and robustness tables, then draft prose. |
+| 6 Conclusion | Preliminary placeholder | Finish only after result freeze. |
+| References | Substantial | Metadata and capitalization checks. |
 
-**Draft artifacts to remove:** stray `“‘latex` near the end of Section 2.7; unrendered placeholder bullets in Sections 4.1–4.5; inaccurate future-tense claims that data/regressions are yet to be constructed.
+**Minor manuscript QC:** remove stray `“‘latex` near end of Section 4.2; replace unresolved `Section X` cross-reference in Results; correct “The controlled specifications includes” to “include”. Avoid treating discussed but unexecuted robustness as completed.
 
 ### Recommended main-text display set
 
@@ -135,45 +121,37 @@ Paper 2 asks **where potentially return-relevant tone is located in a longitudin
 
 Adjust the display set after D1–D6 are resolved; do not invent unestimated results.
 
-## 6. Eight-week target schedule
+## 6. Completion sequence (priority, not promised dates)
 
-| Period | Priority | Completion definition |
-|---|---|---|
-| Oct 27–Nov 2 | Research design freeze + new title/Introduction outline | D1–D7 documented; primary equation/contrast fixed; roles of two taxonomies explicit. |
-| Nov 3–9 | Primary component inference | Main regressions, common samples, direct difference tests, effect scaling frozen. |
-| Nov 10–16 | Sample selection / controls / multiple testing | Controls audited; missingness handled; multiplicity/power documented. |
-| Nov 17–23 | Earnings/news timing assessment | Disclosure availability caveat supported by specific checks, or identified clearly as unresolved limitation. |
-| Nov 24–30 | Data and methods manuscript | Sections 3–4 complete; QA counts reconciled. |
-| Dec 1–7 | Results manuscript | Section 5, publication-oriented primary tables and confidence intervals complete. |
-| Dec 8–14 | Narrative integration | Abstract, Introduction, Related Work and Conclusion all aligned with advisor question. |
-| Dec 15–21 | Consistency audit and advisor draft | Complete cross-reference, sample, coefficient, citation, table-note and Paper 1 overlap audit. |
+1. Freeze D4–D6, exact adjusted-return controls and main regression sample; record provenance, commit and hashes when accessible.
+2. Build publication-ready sample flow, descriptive moments/correlations, raw and SD-scale effects, joint regression coefficients and direct contrasts with CIs.
+3. Complete only focused missing robustness: binary taxonomy, FY2018 exclusion, component-presence selection, common-sample window and controls sensitivity; document multiplicity.
+4. Write Section 5; draft Introduction; align abstract and Conclusion with the verified results.
+5. Conduct full methodology/results/code consistency and reference audit before advisor submission.
 
-This is a planning target, **not** a claim that unverified tasks will complete on schedule. Empirical results determine how the final paper is framed.
+## 7. Next work session — starting order
 
-## 7. Next work session — exact starting order
-
-- [ ] Confirm the latest repo state and canonical artifact integrity; record relevant Git commit and output hashes.
-- [ ] Decide D1 primary taxonomy (binary Stage 6E vs five-way-derived three-component model).
-- [ ] Decide D2 event window and D3 formal primary contrast.
-- [ ] Create/freeze the dated Research Design Decision Memo.
-- [ ] Run only the missing primary tests and build a one-page **results audit** (estimates, SE, CI, direct contrasts, N, firms, controls, FE, event windows, multiple-test family).
-- [ ] Update this file and `STATUS.md` after each decision or new verified result; update `PIPELINE.md` only if implementation/artifact locations change.
+- [ ] Confirm canonical repository head, corrected Stage 7/8H/8I artifacts, output hashes and version-controlled documentation.
+- [ ] Freeze exact primary controls, especially momentum and pre-filing return controls; document attrition and units.
+- [ ] Record one-page inference decision memo with D4–D6, primary `β_N−β_U`, joint Wald, and multiplicity policy.
+- [ ] Generate regression-sample descriptive table and main firm+year FE table with coefficients, firm-clustered SEs, CIs, pairwise/joint tests, N/firms, and per-SD effect sizes.
+- [ ] Update this roadmap and `STATUS.md` after verification. Update `PIPELINE.md` only for changed stage contracts, canonical paths or implementation architecture.
 
 ## 8. Decision log
 
 | Date | Decision | Evidence / rationale | Artifact / commit |
 |---|---|---|---|
 | 2026-10-26 | Establish `PAPER2_ROADMAP.md` as completion driver; preserve `STATUS.md` and `PIPELINE.md` as technical sources. | Paper 2 draft is behind implemented pipeline; conceptual boundary with Paper 1 requires sharpening. | This document |
-| TBD | Primary taxonomy (D1) | **OPEN** | TBD |
-| TBD | Primary event window (D2) | **OPEN** | TBD |
-| TBD | Primary difference test (D3) | **OPEN** | TBD |
+| 2026-11-02 | Primary taxonomy (D1) | Three-component primary; independent binary secondary, documented in manuscript | Paper 2 §4.6 |
+| 2026-11-02 | Primary event window (D2) | CAR [-1,+1] primary, narrower windows and day decomposition as sensitivity | Paper 2 §§4.5–4.7 |
+| 2026-11-02 | Primary difference test (D3) | β_new − β_unchanged; secondary pairwise and joint equality test | Paper 2 §4.6 |
 | TBD | Manuscript results freeze | **OPEN** | TBD |
 
 ## 9. Evidence sources and update convention
 
 - Paper 1 manuscript: `EDHEC_LEFEVRE_PhD_Paper1_MDandA_Sentiment-3.pdf` (provided 2026-10-26).
-- Paper 2 draft: `EDHEC_LEFEVRE_PhD_Paper2_MDA_Novelty-2.pdf` (provided 2026-10-26).
-- Research history: `STATUS.md` (last updated **2026-10-19**).
-- Pipeline and artifact map: `PIPELINE(1).md` (October 2026 update).
+- Paper 2 draft: 35-page November 2, 2026 version (`EDHEC_LEFEVRE_PhD_Paper2_MDA_Novelty (2).pdf` in conversation).
+- Research history: `STATUS.md` (2026-11-02 checkpoint prepended; historical Oct 19 material retained).
+- Pipeline and artifact map: `PIPELINE.md` (not modified by this documentation-only checkpoint).
 
 **Update rule:** distinguish **COMPLETE/FROZEN**, **EXPLORATORY**, **OPEN**, and **VERIFIED IN REPO**. Do not turn an observed p-value into a conclusion about unequal coefficients without a formal contrast, or characterize year-over-year textual novelty as necessarily new public information.

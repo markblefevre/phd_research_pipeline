@@ -1,6 +1,42 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-10-19
+**Last updated:** 2026-11-02
+
+> **Reading note (2026-11-02):** The new checkpoint below supersedes older "current" estimates and next-step statements retained in this file as historical research logs. Values recorded from prior completed sessions are not independently revalidated against the repository by this documentation edit. The latest corrected-sample estimates are **provisional pending primary control-set freeze**.
+
+## Research and manuscript checkpoint — 2026-11-02
+
+### Corrected J-Quants price-data reconstruction (session record)
+
+Historical monthly J-Quants archives (121) were checked following corrected historical adjustment factors for 14 securities. The corrected source archives were installed, Stage 7 market data, market-model estimates and event-study outputs were rebuilt, and downstream Stage 8 market-control/regression analyses rerun without reclassifying or rescoring MD&A. Comparison of old and corrected event data identified **one** affected filing in the 32,126 initially market-eligible events: EDINET **E01300**, docID **S100YNKO**, security **57210**, filing event **2026-06-30**. An adjustment-factor correction on **2026-01-14**, day **−112** of the estimation window, changed the event-specific market-model estimates (alpha −0.012208 → −0.006556; beta 0.742426 → 1.040893) and CAR [-1,+1] (−9.1003 → −11.1569 percentage points). One row changed in each relevant market-model, abnormal-return and final event-study comparison; eligibility and sample counts did not change. This is a source-data correction, not a new return-methodology variant.
+
+**Baseline daily equity return:** `R_t = C_t / (C_(t-1) * AdjFactor_t) - 1` using J-Quants unadjusted closes and the trading-day adjustment factor. Returns across missing exchange sessions are not stitched together. The Stage 8H pre-filing return-based controls use the adjusted-return convention; controls were rebuilt with corrected prices. Stage 8H momentum alternatives remain subject to sample-attrition and primary-specification decisions. Preserve existing event-study sample counts: initially market eligible **32,126**, CAR [−1,+1] available **30,926**.
+
+### Updated three-component regression checkpoint (corrected-session results, NOT a final specification freeze)
+
+The complete-case firm+year FE CAR [−1,+1] regression has **21,540 filings / 4,044 firms**; the component-presence specification has **29,227 filings / 4,148 firms**. CAR is in percentage points and sentiment on raw `[-1,1]` scale. Complete-case unchanged coefficient ≈ **+0.0029 (p≈0.986)**, revised ≈ **+0.1588 (p≈0.412)**, and new ≈ **+0.2493 (p≈0.0312)**. Formal new-minus-unchanged difference p≈**0.202**, new-minus-revised p≈**0.679**, revised-minus-unchanged p≈**0.518**, and joint coefficient equality p≈**0.4434**. **Do not infer statistically stronger pricing of new text from the new coefficient's standalone significance.** Multiple testing, exact final controls and sample-standardized effect sizes remain unresolved. Earlier Stage 8E–8G estimates below are historical, superseded checkpoints.
+
+The corrected-session event-day new sentiment coefficients were approximately day −1 **+0.1269 (p≈.0751)**, day 0 **−0.0167 (p≈.804)**, day +1 **+0.1391 (p≈.0329)**; timing-interaction evidence remains inconclusive. Check the canonical regression outputs before quoting these as final.
+
+### Manuscript checkpoint — latest 35-page Paper 2 draft, 2026-11-02
+
+- Research identity: unchanged/revised/new **location of sentiment** is primary; whole-document LMMD/BERT/GPT × novelty and independent binary persistent/novel classification are supporting analyses.
+- Abstract now summarizes the correct component-level question and appropriately cautions that direct coefficient-equality tests are inconclusive.
+- Related Work (Section 2) and Data (Section 3), including explicit domestic-company historical form-code restriction, substantially drafted.
+- Methods (Section 4) substantially drafted: semantic alignment/classification, component score aggregation, event-specific TOPIX market model, baseline J-Quants adjustment-factor return equation in §4.5, firm/year FE, firm clustering, pairwise and joint Wald tests in §4.6, and targeted robustness in §4.7.
+- Manuscript primary comparison: `β_new − β_unchanged = 0`, two-sided; `[−1,+1]` CAR primary; `[0,+1]` and `[0,0]` secondary. Component scores share raw `[-1,1]` scale; economic per-SD effect sizes to be computed from the **final estimation sample**.
+- Empirical Results (Section 5) contain headings but not final tables or narrative; Introduction empty; Conclusion provisional.
+- Minor manuscript QC: fix grammar "controlled specifications includes"; remove stray `“‘latex` at end §4.2; replace placeholder "Section X" in §5.1. Verify any claims of analyses not yet actually performed.
+
+### Next actions (documentation and empirical work)
+
+1. Freeze primary control set and attrition, notably momentum; verify corrected Stage 7/8H/8I outputs, Git revision and artifact checksums in the canonical repository.
+2. Produce sample-flow table, same-sample descriptive statistics/correlations, component regression coefficients with firm-clustered SE/CIs, direct equality contrasts and per-SD effects.
+3. Complete focused binary persistent/novel, FY2018-exclusion and sample-selection/common-window robustness where missing; specify familywise/multiple-testing policy and limitations on first public information.
+4. Draft Results and Introduction, then harmonize the abstract, Conclusion and appendix.
+5. Keep detailed older checkpoints below as research history; avoid rerunning frozen LLM scoring. `PAPER2_ROADMAP.md` is the decision tracker and `PIPELINE.md` changes only if implementation or artifact contracts change.
+
+---
 
 ## Current thesis
 
