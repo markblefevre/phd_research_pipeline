@@ -1,0 +1,34 @@
+# Paper 2 — Stage 9, standalone reproducible econometrics (Stages 1–8 read-only)
+[run]
+paper = "paper2"
+run_id = "auto"
+
+[stages]
+stage9_dataset = true
+stage9_regressions = true
+stage9_robustness = true
+stage9_reporting = true
+
+[stage9_dataset]
+panel_csv = "data/interim/paper2/analysis/stage8_panel_20261102/stage8_filing_panel.csv"
+controls_csv = "data/interim/paper2/controls/stage8h_20261102/stage8h_adjusted_market_industry_event_controls.csv"
+sentiment_csv = "data/interim/paper2/sentiment/three_component_stage8e/runs/20261019T021943726283Z_4f2fbd28/three_component_sentiment.csv"
+expected_panel_rows = 33046
+expected_controls_rows = 32126
+
+[stage9_regressions]
+outcome = "car_pp_m1_1"
+sentiment_columns = ["unchangedSentiment", "revisedSentiment", "newSentiment"]
+controls = ["noveltyCNum", "logLengthChange", "ln_mktcap", "book_to_market", "roe_ttm", "volatility_60d", "log_avg_trading_value_60d"]
+fixed_effects = ["firm", "year"]
+cluster_by = "edinetCode"
+
+[stage9_robustness]
+momentum_columns = ["momentum_20d", "momentum_60_to_5d"]
+common_sample_comparison = true
+
+[stage9_reporting]
+output_dir = "data/interim/paper2/regressions/stage9"
+confidence_level = 0.95
+include_contrasts = true
+include_sd_effects = true

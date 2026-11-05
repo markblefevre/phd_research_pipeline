@@ -6,12 +6,14 @@ Consolidated reporting entry point for:
   * Primary Model A coefficients and direct contrasts (Table 3)
   * Event-day decomposition (Table 4)
   * Filing-time heterogeneity (Table 5)
+  * Stage 9 robustness, binary taxonomy, and momentum sensitivity (Table 6 and Appendix)
 
 From the Paper 2 repository root:
     python scripts/paper2/build_stage9_tables.py
     python scripts/paper2/build_stage9_tables.py --skip-event-day
     python scripts/paper2/build_stage9_tables.py --skip-filing-time
     python scripts/paper2/build_stage9_tables.py --only filing-time
+    python scripts/paper2/build_stage9_tables.py --only robustness
 
 All outputs are written to stage9/tables/. Source Stage 9 files are read-only;
 no LLM calls, market-data downloads, or upstream pipeline stages are run.
@@ -879,6 +881,15 @@ def _run_filing_time_table(arglist: list[str]) -> None:
 
     main()
 
+def _run_robustness_tables(stage9: Path, tables: Path) -> None:
+    # One reporting entry point. Estimation implementation is a reusable src module.
+    import sys
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    from src.pipeline.stages.stage9_robustness import run
+    run(stage9, tables)
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--stage9-dir", type=Path,
@@ -887,7 +898,9 @@ def main() -> None:
                    help="Skip secondary event-day regressions (Table 4)")
     p.add_argument("--skip-filing-time", action="store_true",
                    help="Skip filing-time heterogeneity regressions (Table 5)")
-    p.add_argument("--only", choices=["descriptive", "primary", "event-day", "filing-time"],
+    p.add_argument("--skip-robustness", action="store_true",
+                   help="Skip robustness regressions and appendix sensitivity tables (Table 6)")
+    p.add_argument("--only", choices=["descriptive", "primary", "event-day", "filing-time", "robustness"],
                    help="Generate only the selected table family; keeps other outputs untouched")
     args = p.parse_args()
     stage9 = args.stage9_dir
@@ -898,7 +911,7 @@ def main() -> None:
     missing = [str(stage9 / f) for f in required if not (stage9 / f).is_file()]
     if missing:
         p.error("Missing Stage 9 source files: " + ", ".join(missing))
-    if args.only and (args.skip_event_day or args.skip_filing_time):
+    if args.only and (args.skip_event_day or args.skip_filing_time or args.skip_robustness):
         p.error("--only cannot be combined with --skip-event-day or --skip-filing-time")
     steps = [
         ("descriptive", "Descriptive statistics, sample flow, correlations",
@@ -909,11 +922,14 @@ def main() -> None:
          lambda: _run_event_day_table(["--stage9-dir", str(stage9)])),
         ("filing-time", "Filing-time heterogeneity and independent Model A check",
          lambda: _run_filing_time_table(["--stage9-dir", str(stage9)])),
+        ("robustness", "Stage 9 robustness and independent binary taxonomy",
+         lambda: _run_robustness_tables(stage9, tables)),
     ]
     selected = [item for item in steps if
                 (args.only is None or item[0] == args.only) and
                 (item[0] != "event-day" or not args.skip_event_day) and
-                (item[0] != "filing-time" or not args.skip_filing_time)]
+                (item[0] != "filing-time" or not args.skip_filing_time) and
+                (item[0] != "robustness" or not args.skip_robustness)]
     for index, (_name, description, runner) in enumerate(selected, start=1):
         print(f"[{index}/{len(selected)}] {description}", flush=True)
         runner()
