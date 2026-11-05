@@ -10,8 +10,8 @@
 | --- | --- | --- | --- |
 | Five-category year-over-year MD&A sentence classification | `disclosure_change_pair_classifier_5way_v2.md` | `gpt-6-luna` | **Verified:** hash matches final collection summary and original batch request instructions. |
 | Sentiment of unchanged, revised, and new MD&A components | `llm_sentiment_v2.md` | `gpt-6-luna` | **Verified:** script enforces normalized prompt hash; live-run manifest confirms model, hash, and 33,046 pairs. |
-| Independent binary persistent/novel classification | `persistent_novel_pair_classifier_v1.md` | `gpt-6-luna` | **Documented production assignment;** final run's saved prompt identity should be cross-checked independently. |
-| Whole-document GPT sentiment benchmark | `llm_sentiment_v2.md` | `gpt-6-sol` | **Documented production assignment;** verify the independent whole-document run manifest before claiming run-level authentication. |
+| Independent binary persistent/novel classification | `persistent_novel_pair_classifier_v1.md` | `gpt-6-luna` | **Verified:** production batch manifest records model and prompt hash; final repaired classification summary reports complete coverage. |
+| Whole-document GPT sentiment benchmark | `llm_sentiment_v2.md` | `gpt-6-sol` | **Verified:** live-run metadata records model, normalized prompt hash, and 37,473 documents. |
 
 The binary classifier is **not** a collapse of the five-category labels. The literal production label `new_candidate` is described as **new** in the manuscript. The five-category results are the source of the unchanged/revised/new text components used in the three-component sentiment analysis.
 
@@ -60,9 +60,25 @@ reports 33,046 valid filing pairs, 3,463,989 classified current-year sentences, 
 `data/interim/paper2/sentiment/three_component_stage8e/runs/20261019T021943726283Z_4f2fbd28/manifest.json`.
 It records `gpt-6-luna`, `reasoning_effort=none`, `dry_run=false`, 33,046 documents, target unit length 1,050 characters, and maximum unit length 1,400 characters. The component inputs are `unchangedText`, `revisedText`, and `newCandidateText`; the historical source filename `disclosure_change_2group_documents.csv` **does not mean** the independent binary classifier was used.
 
-**Independent binary classifier.** The raw hashes of `persistent_novel_pair_classifier_v1.md` and `persistent_novel_pair_classifier_test_v1.md` are identical (`0f1824...`). They are byte-identical files, not evidence of two different prompt specifications. The production linkage is documented in the research notes; confirm against its saved request/manifest when convenient.
+**Independent binary classifier.** The raw hashes of `persistent_novel_pair_classifier_v1.md` and `persistent_novel_pair_classifier_test_v1.md` are identical (`0f1824...`). They are byte-identical files, not evidence of two different prompt specifications. The production batch manifest at
+`data/interim/paper2/alignment/persistent_novel/batch_requests/batch_build_manifest.json`
+records `model=gpt-6-luna`, `prompt=configs/paper2/prompts/persistent_novel_pair_classifier_v1.md`,
+`prompt_sha256=0f1824dcc9477f684d3a9749880b094b2df3e83ba772204b4adcacd8605fb1b0`,
+and `total_requests=33046` across eight parts. The repaired final collection summary at
+`data/interim/paper2/alignment/persistent_novel/results_final_repaired/pair_level_classification_summary.json`
+records 33,046 assembled pairs, 3,463,989 assembled sentences, and zero failures. The final
+summary does not itself contain a prompt hash; the model/prompt identification comes from the
+original production batch manifest, while the final summary establishes collection completeness.
 
-**Whole-document sentiment.** Research records identify `llm_sentiment_v2.md` and `gpt-6-sol` as the whole-document GPT benchmark. The independent whole-document execution metadata have not been inspected in this checkpoint; confirmation remains open even though the prompt's normalized hash is reconciled.
+**Whole-document sentiment.** Research records identify `llm_sentiment_v2.md` and `gpt-6-sol` as the whole-document GPT benchmark. The actual production metadata at
+`data/interim/paper2/sentiment/llm/llm_sentiment.metadata.json`
+record `model=gpt-6-sol`, `reasoning_effort=none`, `dry_run=false`,
+`prompt_sha256=326e4698aed9575f16e26ed33e097fc0c3d4f68be1e6c774672fcd013e4801ff`,
+`document_count=37473`, `target_unit_chars=1050`, `max_unit_chars=1400`,
+`min_narrative_line_chars=20`, and non-whitespace narrative-character-weighted aggregation.
+The metadata record repository commit `b7fdb615f211e611db4cfede4edf9375b612d6e2`.
+The recorded prompt hash matches the normalized `llm_sentiment_v2.md` text. These are
+production-run metadata, not a separately executed recheck of all per-document raw response files.
 
 ## Other prompt files in this directory
 
@@ -84,8 +100,16 @@ Keep these files for pilot history and provenance unless a separate repository c
 - The manuscript should summarize the **classification rules, model tasks, and sentiment construction**. Keep hashes, paths, normalization details, batch recovery, and run IDs in this repository record rather than the reader-facing appendix.
 - If a prompt file changes in the future, archive a distinct version and record both the file checksum and the exact run-produced prompt hash; do not overwrite this historical mapping.
 
-## Outstanding provenance checks
+## Provenance check status and remaining publication preparation
 
-1. Find the binary classifier's saved production manifest/request and verify its prompt hash and model.
-2. Find the whole-document GPT-6 Sol run metadata and verify the effective prompt hash and model.
-3. If publishing reproducibility material, archive the exact production `.md` files plus the version of the source code that constructed the complete API requests.
+All four research applications have now been checked against the available production
+summary or manifest records: five-category classification, three-component sentiment,
+independent binary classification, and whole-document sentiment. The binary manifest and
+whole-document metadata were directly inspected on 2026-11-05. Production output completeness
+was verified separately where summary counts were available; these checks are not
+independent accuracy validation.
+
+If publishing reproducibility material, archive the exact production `.md` files and the
+versions of the source code that constructed the complete API requests. Consider storing a
+portable snapshot of the four production metadata/summary records, which currently contain
+machine-specific absolute file paths. Human validation of five-category labels remains open.
