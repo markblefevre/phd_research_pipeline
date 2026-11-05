@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+import argparse
 import json
 import logging
 import subprocess
@@ -14,6 +15,11 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib  # Python <=3.10
 
+# Ensure the repository root is importable when executed directly.
+ROOT = Path(__file__).resolve().parents[2]
+
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 # ---- Import your stage(s) ----
 from src.pipeline.stages.edinet_download import run_stage_edinet_download
@@ -40,6 +46,7 @@ from src.pipeline.stages.empirical_panel import (run_stage_empirical_panel)
 from src.pipeline.stages.baseline_regressions import (run_stage_baseline_regressions)
 from src.pipeline.stages.marginal_effects import run_stage_marginal_effects
 from src.pipeline.stages.persistent_novel_component_qc import run_stage_persistent_novel_component_qc
+from src.pipeline.stages.stage9 import run_stage9_pipeline
 
 # ----------------------------
 # Helpers
@@ -136,7 +143,11 @@ def write_run_metadata(
 
 def main() -> int:
     root = repo_root()
-    config_path = root / "configs" / "paper2" / "pipeline.toml"
+    parser = argparse.ArgumentParser(description="Paper 2 TOML-driven pipeline")
+    parser.add_argument("--config", default="configs/paper2/pipeline.toml",
+                        help="TOML config path, relative to repo root unless absolute")
+    args = parser.parse_args()
+    config_path = (root / args.config).expanduser().resolve()
     if not config_path.exists():
         print(f"[ERROR] Missing config: {config_path}")
         return 2
@@ -171,6 +182,25 @@ def main() -> int:
     if not isinstance(stages, dict):
         logger.error("Config error: [stages] must be a table/dict")
         return 2
+
+    stage9_names = {"stage9_dataset", "stage9_regressions", "stage9_robustness", "stage9_reporting"}
+    enabled_stage9 = {name for name in stage9_names if stages.get(name, False)}
+    if enabled_stage9:
+        # Stage 9 v1 is an atomic end-to-end run. Avoid claiming independently
+        # executable substages until intermediate artifact handoffs exist.
+        if enabled_stage9 != stage9_names:
+            logger.error("Stage 9 v1 requires all four Stage 9 flags enabled")
+            return 2
+        other_enabled = {name for name, value in stages.items()
+                         if name not in stage9_names and bool(value)}
+        if other_enabled:
+            logger.error("Stage 9 must run independently; other enabled stages: %s",
+                         sorted(other_enabled))
+            return 2
+        run_stage9_pipeline(paper=paper, cfg=cfg, logger=logger,
+                            root=root, config_path=config_path)
+        logger.info("Pipeline done: paper=%s run_id=%s", paper, run_id)
+        return 0
 
     # Stage execution order (expand as you add stages)
     # Stage1: EDINET download
