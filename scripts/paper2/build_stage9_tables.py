@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Build all final Stage 9 tables for EDHEC Paper 2 from existing Stage 9 artifacts.
+"""Build Stage 9 manuscript tables and secondary event-time regressions.
 
-One self-contained script replaces three earlier table builders:
-  * sample-flow, descriptive statistics, correlations
-  * Model A primary regression and pairwise contrasts
-  * event-day decomposition (secondary regression, validates Model A replication)
+Consolidated reporting entry point for:
+  * Sample flow, descriptive statistics, correlations
+  * Primary Model A coefficients and direct contrasts (Table 3)
+  * Event-day decomposition (Table 4)
+  * Filing-time heterogeneity (Table 5)
 
-Run from the repository root:
+From the Paper 2 repository root:
     python scripts/paper2/build_stage9_tables.py
-
-Optional:
-    python scripts/paper2/build_stage9_tables.py --stage9-dir data/interim/paper2/regressions/stage9
     python scripts/paper2/build_stage9_tables.py --skip-event-day
+    python scripts/paper2/build_stage9_tables.py --skip-filing-time
+    python scripts/paper2/build_stage9_tables.py --only filing-time
 
-Reads existing Stage 9 artifacts; writes only stage9/tables/. It does not
-modify source inputs, recompute market data, or call an LLM. The event-day
-component refits secondary regressions using exactly the frozen Model A sample.
+All outputs are written to stage9/tables/. Source Stage 9 files are read-only;
+no LLM calls, market-data downloads, or upstream pipeline stages are run.
+The event-day and filing-time portions refit secondary FE regressions using
+exactly the frozen Stage 9 Model A sample, controls, and clustering.
 Requires numpy, pandas, scipy.
 """
 from __future__ import annotations
@@ -684,12 +685,210 @@ def _run_event_day_table(arglist: list[str]) -> None:
             print(f'  {outcome:25s} beta={r.coef:+.6f}, SE={r.se:.6f}, p={r.p:.6f}')
     main()
 
+def _run_filing_time_table(arglist: list[str]) -> None:
+    #!/usr/bin/env python3
+    """Stage 9 filing-time heterogeneity: same-sample firm/year FE interaction analysis.
+
+    Run from repository root:
+        python scripts/paper2/build_stage9_filing_time.py --stage9-dir data/interim/paper2/regressions/stage9
+
+    Uses frozen Stage 9 Model A sample and inputs, estimates only OLS robustness
+    regressions; no LLM calls or market data rebuild. Outputs go under tables/.
+    Requires numpy, pandas and scipy.
+    """
+    import argparse, hashlib, json
+    from pathlib import Path
+    from datetime import datetime, timezone
+    import numpy as np
+    import pandas as pd
+    from scipy.stats import t as tdist, f as fdist
+
+    TERMS=['unchangedSentiment','revisedSentiment','newSentiment','noveltyCNum','logLengthChange',
+           'ln_mktcap','book_to_market','roe_ttm','volatility_60d','log_avg_trading_value_60d']
+    TONE=TERMS[:3]
+    INTERACTIONS=[s+'_x_afterClose' for s in TONE]
+    SPEC=TERMS+['afterCloseInt']+INTERACTIONS
+    OUTCOMES=['Day -1','Day 0','Day +1','CAR [-1,+1]']
+
+    def sha256(path):
+        h=hashlib.sha256()
+        with open(path,'rb') as f:
+            for block in iter(lambda:f.read(1<<20),b''):h.update(block)
+        return h.hexdigest()
+
+    def within(z,fi,yi,g,ny,tol=1e-12,max_iter=350):
+        z=z.copy()
+        counts=[np.bincount(fi,minlength=g),np.bincount(yi,minlength=ny)]
+        for iteration in range(max_iter):
+            z0=z.copy()
+            for ix,ct,sz in [(fi,counts[0],g),(yi,counts[1],ny)]:
+                for c in range(z.shape[1]):
+                    z[:,c]-=np.bincount(ix,weights=z[:,c],minlength=sz)[ix]/ct[ix]
+            if np.max(np.abs(z-z0))<tol:return z,iteration+1
+        raise RuntimeError('Fixed effect absorption did not converge')
+
+    def fit(x,y,fi,yi,g,ny):
+        n,k=x.shape
+        z,iterations=within(np.column_stack([x,y]),fi,yi,g,ny)
+        xw=z[:,:k];yw=z[:,k:]
+        if np.linalg.matrix_rank(xw)!=k:raise RuntimeError('Regressors not full rank after FE absorption')
+        invxx=np.linalg.inv(xw.T@xw)
+        beta=invxx@(xw.T@yw)
+        resid=yw-xw@beta
+        rankfe=g+ny-1
+        cr1=(g/(g-1))*((n-1)/(n-rankfe-k))
+        covs=[]
+        for j in range(y.shape[1]):
+            score=np.zeros((g,k))
+            np.add.at(score,fi,xw*resid[:,[j]])
+            covs.append(cr1*invxx@(score.T@score)@invxx)
+        return beta,covs,cr1,iterations
+
+    def summary(coef,se,df):
+        p=2*tdist.sf(abs(coef/se),df)
+        critical=tdist.ppf(.975,df)
+        return dict(coef=float(coef),se=float(se),p=float(p),ci95_low=float(coef-critical*se),ci95_high=float(coef+critical*se))
+
+    def latex(rows,n,g,groups,joint_tests):
+        lookup={(r['outcome'],r['term'],r['contrast']):r for r in rows}
+        def fmt(r):
+            if r is None:return '---',''
+            stars='^{**}' if r['p']<.05 else ('^{*}' if r['p']<.10 else '')
+            return f"${r['coef']:+.4f}{stars}$",f"({r['se']:.4f})"
+        lines=[]
+        labels=[('unchangedSentiment','Unchanged sentiment'),('revisedSentiment','Revised sentiment'),('newSentiment','New sentiment')]
+        for term,name in labels:
+            for contrast,label in [('at_or_before','At/before close'),('after_close','After close'),('difference','After minus at/before')]:
+                c=[fmt(lookup.get((oc,term,contrast))) for oc in OUTCOMES]
+                lines.append(('\\quad ' if contrast!='at_or_before' else '')+ (name+' --- '+label if contrast=='at_or_before' else label)+' & '+' & '.join(x[0] for x in c)+r' \\')
+                lines.append(' & '+' & '.join(x[1] for x in c)+r' \\')
+            lines.append(r'\addlinespace[2pt]')
+        return '\n'.join([
+            r'\begin{table}[htbp]',r'\centering',
+            r'\caption{Filing-time heterogeneity in disclosure-component sentiment associations}',
+            r'\label{tab:stage9_filing_time}',r'\scriptsize',r'\setlength{\tabcolsep}{3pt}',
+            r'\begin{tabular}{lrrrr}',r'\hline\hline',
+            r' & Day $-1$ & Day $0$ & Day $+1$ & CAR $[-1,+1]$ \\',r'\hline',
+            *[ln for ln in lines if ln != r'\addlinespace[2pt]'],
+            r'\hline',
+            'Joint interactions, $p$ & '+' & '.join(f"{joint_tests[o]['p']:.3f}" for o in OUTCOMES)+r' \\',
+            f'Observations & {n:,} & {n:,} & {n:,} & {n:,} '+r'\\',
+            f'Firms & {g:,} & {g:,} & {g:,} & {g:,} '+r'\\',
+            r'Firm and year fixed effects & Yes & Yes & Yes & Yes \\',
+            r'Primary controls & Yes & Yes & Yes & Yes \\',
+            r'\hline\hline',r'\end{tabular}',r'\par\vspace{3pt}',
+            r'\begin{minipage}{0.99\linewidth}',
+            (r'\footnotesize\textit{Notes:} All columns use the same Stage 9 Model A complete-case sample. '
+             f'Of {n:,} filings, {groups["at_or_before"]:,} were submitted at/before the TSE market close and '
+             f'{groups["after_close"]:,} afterward. '
+             r'Coefficients are abnormal-return percentage points per unit of sentiment. '
+             r'The pooled specification includes all three sentiment scores, the seven primary controls, '
+             r'an after-close indicator, interactions of after-close with each sentiment score, firm and '
+             r'year fixed effects, and firm-clustered CR1 standard errors (parentheses). '
+             r'At/before close is the reference group; after-close slopes equal reference slopes plus '
+             r'interaction coefficients; differences are directly estimated interaction terms. '
+             r'$^{**}p<0.05$, $^{*}p<0.10$ (two-sided, unadjusted). '
+             r'Event trading day is shifted to the next TSE session after an after-close filing: '
+             r'day $-1$ can therefore include the submission date. '
+             r'All tests exploratory; do not infer group differences from subgroup significance alone.'),
+            r'\end{minipage}',r'\end{table}',''])
+
+    def main():
+        ap=argparse.ArgumentParser(description=__doc__)
+        ap.add_argument('--stage9-dir',type=Path,default=Path('data/interim/paper2/regressions/stage9'))
+        args=ap.parse_args(arglist);p=args.stage9_dir
+        sources={n:p/n for n in ['regression_dataset.csv','model_summary.csv','coefficients.csv']}
+        for path in sources.values():
+            if not path.is_file():raise FileNotFoundError(path)
+        md=pd.read_csv(sources['model_summary.csv']).set_index('model').loc['A_baseline']
+        canon=pd.read_csv(sources['coefficients.csv']);canon=canon[canon.model=='A_baseline'].set_index('term')
+        req=['baseline_eligible','edinetCode','fiscalYear','afterClose','eventDateRule','submissionOnTradingDay','car_pp_m1_1','car_pp_0_1','car_pp_0_0']+TERMS
+        d=pd.read_csv(sources['regression_dataset.csv'],usecols=req,low_memory=False)
+        d=d[d.baseline_eligible.eq(True)].reset_index(drop=True)
+        n=len(d);firms,fi=np.unique(d.edinetCode.astype(str),return_inverse=True)
+        years,yi=np.unique(d.fiscalYear,return_inverse=True);g=len(firms);ny=len(years)
+        if (n,g,ny)!=(int(md.N),int(md.firms),int(md.years)):
+            raise ValueError('Model A sample mismatch')
+        if len(d.afterClose.dropna())!=n:raise ValueError('Missing afterClose classification')
+        d['afterClose']=d['afterClose'].map({True:True,False:False,'True':True,'False':False})
+        if d['afterClose'].isna().any():raise ValueError('Unrecognized afterClose values')
+        d['afterClose']=d['afterClose'].astype(bool)
+        if not d.submissionOnTradingDay.eq(True).all():raise ValueError('Unexpected nontrading-day filing')
+        if not (d.loc[d.afterClose,'eventDateRule']=='next_trading_day_after_close').all():raise ValueError('afterClose rule mismatch')
+        if not (d.loc[~d.afterClose,'eventDateRule']=='same_day_at_or_before_close').all():raise ValueError('reference event-date rule mismatch')
+        after=d.afterClose.astype(int).to_numpy()
+        group_counts={'at_or_before':int((after==0).sum()),'after_close':int((after==1).sum())}
+        x0=d[TERMS].to_numpy(float)
+        d0=d.car_pp_0_0.to_numpy(float);d01=d.car_pp_0_1.to_numpy(float);car=d.car_pp_m1_1.to_numpy(float)
+        y=np.column_stack([car-d01,d0,d01-d0,car])
+        if not np.allclose(y[:,:3].sum(axis=1),y[:,3],atol=1e-9):raise ValueError('AR/CAR identity fails')
+        if not np.isfinite(np.column_stack([x0,y])).all():raise ValueError('Nonfinite inputs')
+        b0,c0,fac0,it0=fit(x0,y,fi,yi,g,ny)
+        maxb=max(abs(b0[i,3]-float(canon.loc[t,'coef'])) for i,t in enumerate(TERMS))
+        maxse=max(abs(np.sqrt(c0[3][i,i])-float(canon.loc[t,'se'])) for i,t in enumerate(TERMS))
+        if maxb>1e-7 or maxse>1e-7 or abs(fac0-float(md.cr1_factor))>1e-7:
+            raise ValueError(f'Baseline reproduction fails: beta={maxb}, se={maxse}, factor={fac0}')
+        x=np.column_stack([x0,after]+[x0[:,i]*after for i in range(3)])
+        b,covs,fac,it=fit(x,y,fi,yi,g,ny)
+        joint_tests={}
+        for j,outcome in enumerate(OUTCOMES):
+            inds=[len(TERMS)+1+i for i in range(3)]
+            delta=b[inds,j]
+            cov=covs[j][np.ix_(inds,inds)]
+            fstat=float((delta @ np.linalg.solve(cov,delta))/3)
+            joint_tests[outcome]={'F':fstat,'df_num':3,'df_denom':g-1,
+                                  'p':float(fdist.sf(fstat,3,g-1))}
+        rows=[]
+        for j,outcome in enumerate(OUTCOMES):
+            for i,term in enumerate(TONE):
+                for label,weights in [('at_or_before',[(i,1.)]),('after_close',[(i,1.),(len(TERMS)+1+i,1.)]),('difference',[(len(TERMS)+1+i,1.)])]:
+                    a=np.zeros(len(SPEC))
+                    for k,val in weights:a[k]=val
+                    coef=float(a@b[:,j]);se=float(np.sqrt(a@covs[j]@a))
+                    rows.append(dict(outcome=outcome,term=term,contrast=label,**summary(coef,se,g-1),N=n,firms=g,
+                                     n_at_or_before=group_counts['at_or_before'],n_after_close=group_counts['after_close']))
+        # Every CAR slope must be the sum of daily slopes for the same contrast.
+        res=pd.DataFrame(rows)
+        for term in TONE:
+            for contrast in ('at_or_before','after_close','difference'):
+                v=res[(res.term==term)&(res.contrast==contrast)].set_index('outcome').coef
+                if abs(sum(v[k] for k in OUTCOMES[:3])-v[OUTCOMES[3]])>1e-8:raise ValueError('CAR slopes do not add')
+        out=p/'tables';out.mkdir(parents=True,exist_ok=True)
+        csv=out/'table5_filing_time_heterogeneity.csv'
+        tex=out/'table5_filing_time_heterogeneity.tex'
+        provenance=out/'table5_filing_time_heterogeneity_provenance.json'
+        res.to_csv(csv,index=False)
+        tex.write_text(latex(rows,n,g,group_counts,joint_tests),encoding='utf-8')
+        metadata={'generated_utc':datetime.now(timezone.utc).isoformat(),'method':'Pooled 3-component after-close interactions; firm/year FE; CR1 firm clustered',
+                  'source_sha256':{key:sha256(value) for key,value in sources.items()},'n':n,'firms':g,
+                  'years':ny,'groups':group_counts,'joint_interactions_wald':joint_tests,'terms':SPEC,'outcomes':OUTCOMES,'cr1_factor':fac,
+                  'primary_replication_max_beta_diff':float(maxb),'primary_replication_max_se_diff':float(maxse),
+                  'primary_cr1_factor':fac0,'iterations_baseline':it0,'iterations_heterogeneity':it,
+                  'note':'Day -1 for after-close filings can be the original filing session; p-values exploratory and unadjusted.'}
+        provenance.write_text(json.dumps(metadata,indent=2)+'\n')
+        print(f'Stage 9 filing-time pooled interactions: N={n:,}, firms={g:,}, groups={group_counts}')
+        print(f'Primary replication max beta diff={maxb:.2e}, SE diff={maxse:.2e}')
+        for term in TONE:
+            print('\n'+term)
+            for outcome in OUTCOMES:
+                entries=res[(res.term==term)&(res.outcome==outcome)].set_index('contrast')
+                print(f' {outcome:12s} ref {entries.loc["at_or_before","coef"]:+.4f} (p={entries.loc["at_or_before","p"]:.3f}); after {entries.loc["after_close","coef"]:+.4f} (p={entries.loc["after_close","p"]:.3f}); diff {entries.loc["difference","coef"]:+.4f} (p={entries.loc["difference","p"]:.3f})')
+        print('Joint three-interaction Wald tests:')
+        for oc,stats in joint_tests.items(): print(f"  {oc}: F(3,{g-1})={stats['F']:.4f}, p={stats['p']:.5f}")
+        print('Generated:',csv,tex,provenance,sep='\n  ')
+
+    main()
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--stage9-dir", type=Path,
                    default=Path("data/interim/paper2/regressions/stage9"))
     p.add_argument("--skip-event-day", action="store_true",
-                   help="Only generate reporting tables, without fitting secondary event-day regressions")
+                   help="Skip secondary event-day regressions (Table 4)")
+    p.add_argument("--skip-filing-time", action="store_true",
+                   help="Skip filing-time heterogeneity regressions (Table 5)")
+    p.add_argument("--only", choices=["descriptive", "primary", "event-day", "filing-time"],
+                   help="Generate only the selected table family; keeps other outputs untouched")
     args = p.parse_args()
     stage9 = args.stage9_dir
     tables = stage9 / "tables"
@@ -699,15 +898,25 @@ def main() -> None:
     missing = [str(stage9 / f) for f in required if not (stage9 / f).is_file()]
     if missing:
         p.error("Missing Stage 9 source files: " + ", ".join(missing))
-    print("[1/3] Descriptive statistics, sample flow, correlations", flush=True)
-    _run_descriptive_tables(["--input-dir", str(stage9), "--output-dir", str(tables)])
-    print("[2/3] Model A primary regression table", flush=True)
-    _run_primary_regression_table(["--stage9-dir", str(stage9), "--output-dir", str(tables)])
-    if args.skip_event_day:
-        print("[3/3] Event-day decomposition skipped", flush=True)
-    else:
-        print("[3/3] Event-day decomposition and independent Model A check", flush=True)
-        _run_event_day_table(["--stage9-dir", str(stage9)])
+    if args.only and (args.skip_event_day or args.skip_filing_time):
+        p.error("--only cannot be combined with --skip-event-day or --skip-filing-time")
+    steps = [
+        ("descriptive", "Descriptive statistics, sample flow, correlations",
+         lambda: _run_descriptive_tables(["--input-dir", str(stage9), "--output-dir", str(tables)])),
+        ("primary", "Model A primary regression table",
+         lambda: _run_primary_regression_table(["--stage9-dir", str(stage9), "--output-dir", str(tables)])),
+        ("event-day", "Event-day decomposition and independent Model A check",
+         lambda: _run_event_day_table(["--stage9-dir", str(stage9)])),
+        ("filing-time", "Filing-time heterogeneity and independent Model A check",
+         lambda: _run_filing_time_table(["--stage9-dir", str(stage9)])),
+    ]
+    selected = [item for item in steps if
+                (args.only is None or item[0] == args.only) and
+                (item[0] != "event-day" or not args.skip_event_day) and
+                (item[0] != "filing-time" or not args.skip_filing_time)]
+    for index, (_name, description, runner) in enumerate(selected, start=1):
+        print(f"[{index}/{len(selected)}] {description}", flush=True)
+        runner()
     print("All requested tables generated in:", tables, flush=True)
 
 
