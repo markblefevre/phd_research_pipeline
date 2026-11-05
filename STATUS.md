@@ -1,8 +1,103 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-11-02
+**Last updated:** 2026-11-05
 
-> **Reading note (2026-11-02):** The new checkpoint below supersedes older "current" estimates and next-step statements retained in this file as historical research logs. Values recorded from prior completed sessions are not independently revalidated against the repository by this documentation edit. The latest corrected-sample estimates are **provisional pending primary control-set freeze**.
+> **Reading note (2026-11-05):** This November 5 checkpoint is the authoritative **current research/manuscript summary**. All November 2 and October/earlier entries below are preserved unchanged as historical research logs, including their then-current results, planned controls and next steps. Do not substitute older 21,540- or 22,166-observation estimates for the Stage 9 primary Model A. This file verifies uploaded result artifacts and manuscript contents, **not** the state of the canonical Git repository or every upstream pipeline operation.
+
+## Research and manuscript checkpoint — 2026-11-05
+
+### What is current: Stage 9 Model A (primary three-component specification)
+
+Stage 9 produces the no-historical-momentum **`A_baseline`** complete-case, firm+year fixed-effects regression with firm-clustered CR1 standard errors, the seven controls described in Paper 2 §4.6, and three-day `CAR [-1,+1]` expressed in percentage points. The audited uploaded `model_summary.csv`, `coefficients.csv`, `coefficient_contrasts.csv` and `provenance.json` support:
+
+| Item | Current Stage 9 result |
+|---|---|
+| Observations / firms / fiscal-year coverage | **22,266** / **4,103** / 10 fiscal years (2017–2026) |
+| Unchanged sentiment | **−0.0223**, p=0.8869 |
+| Revised sentiment | **+0.0955**, p=0.6010 |
+| New sentiment | **+0.2453**, p=0.0304; 95% CI [0.0232, 0.4674] |
+| **Principal contrast: new − unchanged** | **+0.2676**, SE=0.1890, **p=0.1570**; 95% CI [−0.1030, 0.6381] |
+| New − revised | +0.1497, p=0.4720 |
+| Revised − unchanged | +0.1178, p=0.6117 |
+| Joint component coefficient equality | F(2,4102)=1.0415, p=0.3530 |
+| Within-R² | ≈0.0085 |
+| One-SD new-sentiment association | SD=0.3308; +0.0811 CAR percentage points (≈8.1 bp) |
+| Model A sample SHA-256 | `df11c2d813d1e8390c2e7a7f9742241c5a750706a56325d38d1a2e508485332c` |
+
+**Scientific inference:** positive standalone new-sentiment slope, but **no statistically established difference** between new and unchanged/revised sentiment slopes. The insignificant primary contrast is neither evidence of equivalence nor proof of lower economic relevance. Component sentiment is defined relative to the preceding annual MD&A and is not a measure of first public information. Market returns are observational associations, not causal filing effects.
+
+The uploaded primary-table generator reports the existing Stage 9 estimates **without rerunning their regression estimator**. Its provenance references the same model-sample checksum and Stage 9 source-file hashes. The primary inputs include the corrected Stage 8H controls and frozen Stage 8E sentiment scores; no production LLM stages were rerun. These are documented artifact and session checks, not a fresh end-to-end rerun of the Mac/NAS repository.
+
+### Sequential sample flow and the primary selection issue
+
+| Step | Retained | Excluded at step |
+|---|---:|---:|
+| Eligible annual-report pairs | 33,046 | — |
+| Market/listing eligible | 32,126 | 920 |
+| Fitted market models | 31,698 | 428 |
+| Three-day CAR observed | 30,926 | 772 |
+| All three substantive sentiment components nonempty | 22,709 | 8,217 |
+| Complete primary Model A controls | **22,266** | 443 |
+
+The biggest post-CAR sample reduction reflects **component absence**, not failed LLM scoring. In the full pair universe 8,055 filings have no new component; attrition among CAR-eligible filings differs due to the eligible-event restriction and overlap with missing other components. The final 22,266 / 30,926 = approximately **72.0%** complete-case retention deserves a corrected-input presence-indicator robustness test. Historical Stage 8E/8I presence-indicator estimates are **not** current Stage 9 Model A results.
+
+### Stage 9 momentum comparisons (completed; robustness reporting pending)
+
+The uploaded Stage 9 results also include matched-sample no-momentum B and with-momentum C comparisons:
+
+| Design | N / firms | New-sentiment slope | Primary contrast p |
+|---|---|---:|---:|
+| A full no-momentum primary | 22,266 / 4,103 | +0.2453 (p=0.0304) | 0.1570 |
+| B 20-day-eligible, no momentum | 21,540 / 4,044 | +0.2582 (p=0.0271) | 0.1484 |
+| C same sample, 20-day momentum | 21,540 / 4,044 | +0.2493 (p=0.0312) | 0.2022 |
+| B 60-to-5-day-eligible, no momentum | 20,834 / 3,978 | +0.2338 (p=0.0503) | 0.1094 |
+| C same sample, 60-to-5-day momentum | 20,834 / 3,978 | +0.2415 (p=0.0418) | 0.0478 |
+
+The last contrast is **exploratory/secondary and multiplicity-sensitive**, not grounds for changing the original primary A specification or declaring the hypothesis proven. The older 21,540 / 4,044 sample in the November 2 checkpoint corresponds to momentum-eligible restricted models, not the final primary model.
+
+### Same-sample event-day decomposition — newly completed secondary analysis
+
+On **2026-11-05**, the separate `build_stage9_event_day_table.py` reporting/estimation script fitted abnormal-return regressions for days −1, 0 and +1 on the **same 22,266 Model A observations and regressors**. Day-level regressions use the same firm/year FE and firm-clustered CR1 estimator; an independent numerical comparison reproduced the Model A three-day coefficients and SEs to floating-point precision, and daily coefficients sum exactly to their three-day counterparts.
+
+| Event-day outcome | New-sentiment slope | p-value |
+|---|---:|---:|
+| Day −1 AR | +0.1297 | ≈0.0725 |
+| Assigned event day 0 AR | −0.0261 | ≈0.6917 |
+| Day +1 AR | +0.1417 | ≈0.0256 |
+| Day +1 − day −1 slope difference | +0.0119 | ≈0.9016 |
+
+Daily tests are **exploratory** and reported without multiplicity adjustment. The day +1 standalone significance is **not** evidence that day +1 is stronger than day −1. Crucially, for an after-close filing assigned to the next session, day −1 can fall on the **calendar day of actual filing**; therefore day −1 must not always be called “before EDINET submission.” Timing and prior earnings/other public releases remain interpretive limitations.
+
+The script fits **new secondary regressions**, but it does not modify the frozen NLP scores, re-download prices, re-estimate the primary Stage 9 regression, or re-run Stage 7. Generated Table 4 and its JSON provenance document the result.
+
+### Manuscript checkpoint — November 5 compiled 40-page draft
+
+File reviewed: `EDHEC_LEFEVRE_PhD_Paper2_MDA_Novelty (3).pdf`.
+
+- **Substantially drafted:** Related Work (§2), Data (§3), Methodology (§4), Results §5.1 descriptive statistics, §5.2 primary coefficients, §5.3 formal contrasts, and §5.4 same-sample event-day decomposition.
+- **Main-text exhibits in compiled PDF:** Table 1 sample construction; Table 2 Model A descriptives; Table 3 joint model + tests; Table 4 day-specific regressions. Correlation appendix currently appears as *Table 5* rather than *Table A1*.
+- **Unwritten or provisional:** Introduction (§1) empty; Filing-Time Heterogeneity (§5.5) empty; Robustness Tests (§5.6) empty; Conclusion (§6) placeholder. Abstract is a reasonable provisional summary but cannot be finalized until robustness and related secondary results are reconciled.
+- **Formatting/editorial:** Table 2 floats into §5.2's opening paragraph; control with `\FloatBarrier` at §5.1 boundary if appropriate. Check references for MacKinlay (1997) and Financial Services Agency (2018), manuscript title (currently `PAPER 2`), bibliography capitalization and appendix numbering.
+- **Methodology-to-results alignment:** §4.6 now correctly excludes historical momentum from primary controls. Presence-indicator robustness is described in Methods but has not been integrated as a final corrected-input Stage 9 result. The independently constructed binary persistent/novel and whole-document LMMD/BERT/Sol × novelty analyses are described in Methods but not yet adequately presented in Results.
+
+### Unresolved scientific/technical priorities
+
+1. **Stage 9-compatible filing-time analysis:** reconcile historical Stage 8G timing with final corrected returns/controls and model sample; report pooled interaction contrasts instead of comparing subgroup p-values. Clarify calendar submission time vs assigned trading event day.
+2. **Presence indicators and selection:** re-estimate a final-input component-absence alternative, with explicit N/firms, assumptions and coefficient contrasts; no treating empty as neutral without a corresponding presence flag.
+3. **Outcome-tail/influence diagnostics:** 96 Model A filings have |CAR|>20 percentage points, with the largest approximately 123.21 pp. Preserve the untrimmed primary; conduct predeclared trimming/winsorization or leave-out sensitivity rather than tuning to significance.
+4. **Five-category construct validity:** independently labeled and stratified evaluation of the unchanged/revised/new/non-substantive/uncertain classifier, including numerical-update vs substantive-change cases. The frozen 150-sentence **binary** persistent/novel benchmark is not direct validation of the five-category outcome; do not alter frozen classification outputs.
+5. **FY2018 regulatory reform / novelty measurement:** examine whether unusual disclosure-structure changes drive the coefficient estimates; document a cohort-exclusion sensitivity. Consider component size and alternative TF–IDF number normalization.
+6. **Secondary analysis reconciliation:** independent binary and older Stage 8A–8C whole-document benchmark outputs have historical results but require corrected-price / sample lineage checks before presenting as contemporary main findings.
+7. **Inference design:** distinguish primary two-sided new−unchanged contrast, other pairwise tests, joint Wald, and exploratory event-day/timing and multiplicity families. Wide confidence intervals imply inconclusive ranking, not equivalence.
+8. **Reproducibility sign-off:** verify the exact canonical NAS repository revision, config hashes, scripts, source-file/checkpoint hashes and generated-table placement before declaring the implementation completely frozen.
+
+**Next manuscript writing:** do **not** rewrite §§2–5.4 broadly. Finish §5.5 after updated timing checks, then §5.6 after targeted robustness; draft Introduction and Conclusion once the inferential account is stable. `PAPER2_ROADMAP.md` is the live completion tracker; `STATUS.md` is the dated research record. Do not re-run the expensive LLM stages.
+
+---
+
+## Historical checkpoints (2026-11-02 and earlier; preserved below)
+
+> **Historical reading note (2026-11-02):** The new checkpoint below supersedes older "current" estimates and next-step statements retained in this file as historical research logs. Values recorded from prior completed sessions are not independently revalidated against the repository by this documentation edit. The latest corrected-sample estimates are **provisional pending primary control-set freeze**.
 
 ## Research and manuscript checkpoint — 2026-11-02
 
