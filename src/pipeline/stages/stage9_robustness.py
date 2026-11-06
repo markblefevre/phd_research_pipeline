@@ -243,7 +243,7 @@ def tex_binary(results: pd.DataFrame) -> str:
         r'\begin{minipage}{0.99\linewidth}',
         (r'\footnotesize\textit{Notes:} This binary persistent/novel classification '
          r'and sentiment scoring are independently constructed from the five-category '
-         r'unchanged/revised/new design. The first column holds the Stage 9 three-category '
+         r'unchanged/revised/new design. The first column holds the primary three-category '
          r'complete-case sample fixed; the second expands to all CAR-valid filings with '
          r'both binary sentiment scores and complete seven-control information. '
          r'CAR is $[-1,+1]$ in percentage points. Both models include seven primary controls, '

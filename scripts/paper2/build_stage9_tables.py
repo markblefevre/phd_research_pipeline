@@ -36,7 +36,7 @@ def _run_descriptive_tables(arglist: list[str]) -> None:
 
     Outputs:
       data/interim/paper2/regressions/stage9/tables/table1_descriptives.{csv,tex}
-      data/interim/paper2/regressions/stage9/tables/component_correlations.{csv,tex}
+      data/interim/paper2/regressions/stage9/tables/tableA1_component_correlations.{csv,tex}
       data/interim/paper2/regressions/stage9/tables/sample_flow.{csv,tex}
       data/interim/paper2/regressions/stage9/tables/table_provenance.json
 
@@ -246,7 +246,7 @@ def _run_descriptive_tables(arglist: list[str]) -> None:
                   "tab:stage9_descriptives", "lrrrrrr",
                   ["Variable", "$N$", "Mean", "SD", "P25", "Median", "P75"],
                   [tuple(row[:1]) + (f"{row[1]:,}",) + tuple(row[2:]) for row in summary_rows],
-                  "All variables are measured on the identical Stage~9 model A sample "
+                  "All variables are measured on the primary regression sample "
                   f"($N={counts['baseline']:,}$ filings, {len(firms):,} firms). "
                   "CARs are in percentage points; component sentiment is in [-1,1].")
 
@@ -254,9 +254,9 @@ def _run_descriptive_tables(arglist: list[str]) -> None:
         cc = np.corrcoef(matrix, rowvar=False)
         corr_rows = [(LABELS[k],) + tuple(f"{v:.3f}" for v in cc[i])
                      for i, k in enumerate(CORR_KEYS)]
-        write_csv(outdir / "component_correlations.csv",
+        write_csv(outdir / "tableA1_component_correlations.csv",
                   ["Variable"] + [LABELS[k] for k in CORR_KEYS], corr_rows)
-        write_tex(outdir / "component_correlations.tex",
+        write_tex(outdir / "tableA1_component_correlations.tex",
                   "Pearson correlations: disclosure sentiment and market variables",
                   "tab:stage9_correlations", "lrrrrr",
                   ["Variable"] + [str(i) for i in range(1, 6)], corr_rows,
@@ -450,7 +450,7 @@ def _run_primary_regression_table(arglist: list[str]) -> None:
             r'\footnotesize\textit{Notes:} Dependent variable: CAR $[-1,+1]$ in percentage points. ',
             r'Sentiment measures range from $-1$ to $+1$. Coefficients and confidence intervals ',
             r'are reported in CAR percentage points per unit change in each regressor. ',
-            r'All measures are evaluated on the same Stage~9 primary complete-case sample. ',
+            r'All measures are evaluated on the primary complete-case sample. ',
             r'The reported tests use the firm-clustered covariance matrix. ',
             r'The joint Wald test evaluates $\beta_U=\beta_R=\beta_N$. ',
             r'Historical momentum is excluded from the primary model and evaluated in sensitivity analyses.',
@@ -581,7 +581,7 @@ def _run_event_day_table(arglist: list[str]) -> None:
              r'sentiment unit. Firm-clustered CR1 standard errors appear in parentheses. '
              r'$^{**}p<0.05$, $^{*}p<0.10$ (unadjusted, two-sided). '
              r'Day 0 denotes the assigned event trading day; days $-1$ and $+1$ are adjacent '
-             r'TSE sessions. All models use the identical Stage 9 Model A sample and regressors. '
+             r'TSE sessions. All models use the identical primary estimation sample and regressors. '
              r'CAR $[-1,+1]$ is the sum of the three daily abnormal returns. '
              f'The direct new-sentiment day $+1$ minus day $-1$ slope difference is '
              f'${four(float(daytest.coef))}$ ($p={float(daytest.p):.3f}$). '
@@ -780,7 +780,7 @@ def _run_filing_time_table(arglist: list[str]) -> None:
             r'Primary controls & Yes & Yes & Yes & Yes \\',
             r'\hline\hline',r'\end{tabular}',r'\par\vspace{3pt}',
             r'\begin{minipage}{0.99\linewidth}',
-            (r'\footnotesize\textit{Notes:} All columns use the same Stage 9 Model A complete-case sample. '
+            (r'\footnotesize\textit{Notes:} All columns use the primary complete-case sample. '
              f'Of {n:,} filings, {groups["at_or_before"]:,} were submitted at/before the TSE market close and '
              f'{groups["after_close"]:,} afterward. '
              r'Coefficients are abnormal-return percentage points per unit of sentiment. '
