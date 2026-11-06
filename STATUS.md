@@ -1,8 +1,54 @@
 # Paper 2 --- Current Status
 
-**Last updated:** 2026-11-05 — post-Stage 9 robustness and code checkpoint
+**Last updated:** 2026-11-06 — complete 57-page manuscript draft, editorial and scientific sign-off open
 
-> **Reading convention:** This top section is the authoritative November 5 research/manuscript status. Everything under **Historical checkpoints (2026-11-02 and earlier)** is preserved as a dated research record, including old “current” language, earlier 21,540/22,166-observation specifications, old component-presence estimates and outdated next actions. Do not treat the older entries as the final Stage 9 model. `PAPER2_ROADMAP.md` governs active decisions and next steps; `PIPELINE.md` maps implementation and artifacts.
+> **Reading convention:** This November 6 checkpoint is the authoritative **manuscript** status. The November 5 Stage 9 code checkpoint remains the latest **user-reported repository commit**; the 57-page manuscript has been inspected as a PDF, not independently rebuilt from LaTeX or re-estimated from pipeline outputs. Everything beginning with **Research/manuscript checkpoint — 2026-11-05** below is retained unmodified as a dated historical research record, including now-obsolete remarks about an empty Introduction, provisional Conclusion, appendix numbering, and float placement. `PAPER2_ROADMAP.md` governs active tasks; `PIPELINE.md` remains the implementation/artifact map.
+
+## Research and manuscript checkpoint — 2026-11-06 (57-page full working draft)
+
+### Scope and provenance
+
+- **Inspected artifact:** user-supplied `EDHEC_LEFEVRE_PhD_Paper2_MDA_Novelty (2)(4).pdf`, **57 PDF pages**, dated November 6, 2026 on the title page. This confirms the **rendered manuscript's content and section layout** only; source `.tex`/`.bib`, repository head, data lineage, and build reproducibility were not independently checked in this documentation session.
+- **Title:** *Do Markets Respond to Old or New Textual Information? Evidence from Japanese Annual Reports* (clean two-line title presentation).
+- **Manuscript body:** Abstract; **§1 Introduction**, **§2 Related Work**, **§3 Data**, **§4 Methodology**, **§5 Empirical Results (§§5.1–5.7)**, and a **substantive §6 Conclusion** are all written. The manuscript is no longer missing its Introduction or Conclusion.
+- **Tables:** Main Tables **1–6** and Appendix Tables **A.1–A.5** are present. Table 2 now appears before the start of §5.2; Table 6 appears before §5.7 and the Conclusion. Earlier disruptive float placements are resolved in the inspected PDF. Appendix numbering has been changed from continuous 7–10 to A.1–A.4, with A.5 added for the whole-document interaction benchmark.
+- **Whole-document benchmark:** §5.7 and Appendix Table A.5 now report the 18 LMMD/Financial BERT/GPT-6 Sol × sentiment level/change × CAR-window specifications. **Manuscript incorporation is COMPLETE; independent corrected-market/source lineage reconciliation remains OPEN.** Do not confuse incorporation with a fresh end-to-end source-data verification.
+- **Repository evidence unchanged:** The last documented code checkpoint is user-reported Git `306a70d` on `main`, with 2 Stage 9 tests passing locally; it did not include manuscript source or generated data. No new pipeline run or Git commit is asserted here.
+
+### Empirical results preserved in the new manuscript
+
+| Finding | Current manuscript | Interpretation |
+|---|---|---|
+| Research universe | 33,046 standard consecutive annual-report pairs | 37,473 distinct MD&A documents in the eligible pair universe |
+| Valid primary event-window CARs | 30,926 `[−1,+1]` events | Subject to event-study eligibility and completeness criteria |
+| Primary Model A sample | **22,266 filings / 4,103 firms** | Firm and fiscal-year FE, seven controls, firm-clustered SE; CAR in percentage points |
+| New-component sentiment slope | **+0.2453**, raw **p=0.0304** | A one-SD increase corresponds to about **+8.1 bp** of three-day CAR; individual association only |
+| Principal new − unchanged contrast | **+0.2676**, **p=0.1570** | Does **not** establish a statistically stronger new-text association |
+| Joint equality | **p=0.3530** | Does not establish distinct or identical component slopes |
+| Three-slope Holm sensitivity | New-slope adjusted **p=0.091** | Illustrates multiplicity sensitivity |
+| Whole-document GPT-6 Sol level × novelty | Interaction **+0.05581**, raw **p=0.00243**, Holm **p=0.04381** | Three-day benchmark; decimal-return outcome and different sample/FE from Model A |
+
+The Introduction and Conclusion both distinguish **text newly introduced relative to last year's MD&A** from **information first becoming available to investors**, and both avoid causal claims about EDINET filing effects. The component-level and whole-document benchmarks are complementary, not interchangeable tests.
+
+### Remaining scientific and editorial work — current open items
+
+1. **Five-category measurement validity (scientific): OPEN.** Independent stratified human annotations of actual `unchanged/revised/new/non_substantive/uncertain` labels have not been completed. Binary persistent/novel validation is not evidence of five-category classification accuracy. Appendix B.3 correctly acknowledges this limitation. Preserve frozen production labels and LLM scores.
+2. **Whole-document benchmark provenance (scientific/reproducibility): OPEN.** Verify that §5.7 / Table A.5 output lineage reflects the corrected market-data rebuild and intended sample/control definitions; do not assume incorporation in the PDF verifies the underlying Stage 8A–8C lineage. No LLM rescoring is warranted.
+3. **Reproducibility of disclosed methods (scientific/editorial): OPEN.** Check §4.1–4.3 against actual Japanese LMMD resource/tokenization, Financial BERT checkpoint plus sentence-level aggregation, TF–IDF/Sudachi representation, and semantic matching implementation. A source-level paper-to-code audit has not been completed by the present PDF review.
+4. **Bibliography/prior work (editorial): OPEN.** MacKinlay (1997) is mentioned in §4.5 and FSA (2018) in §3.3, but both remain absent from the PDF reference list. Review and, if verified, add the closest Nakatsuka and Suimon (2026) Japanese textual novelty study to Related Work; it is listed in the supplied `polish.md` but is **not** in the rendered references.
+5. **Presentation clean-up (editorial): OPEN.** The abstract still starts its finding with **“Preliminary results indicate”** even though the complete empirical chapter and Conclusion are drafted. Reader-facing **“Stage 9”** references remain in §5 and table notes; Appendix Table A.3 retains internal A/B/C model labels. Remove internal pipeline terminology, then recompile/proofread.
+6. **Approval/provenance (delivery): OPEN.** Confirm manuscript `.tex`/`.bib` and generated artifacts are backed up or committed separately; obtain advisor/scientific sign-off on classification limitations, multiple testing, event timing, robustness, and benchmark comparability. No independent human validation or finalized advisor sign-off is claimed.
+
+### Recommended next actions
+
+- Finalize bounded text/reference repairs (abstract wording, MacKinlay/FSA references, prior-study positioning, reader-facing table labels and Stage 9 cleanup) and recompile.
+- Complete a limited, documented five-way human validation if feasible; otherwise retain and foreground the explicit unvalidated-classification limitation rather than imply it has been resolved.
+- Reconcile the **already-included** whole-document benchmark's corrected-market lineage and verify method-to-code consistency; prefer inspection over new estimation, and do not rerun frozen LLM stages.
+- Commit/back up the manuscript source and documentation as a distinct checkpoint, separate from existing code commit `306a70d`.
+
+---
+
+## Historical research checkpoints (November 5 and earlier; preserved verbatim)
 
 ## Research/manuscript checkpoint — 2026-11-05 (46-page draft; code commit `306a70d`)
 
